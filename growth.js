@@ -41,6 +41,29 @@ const growthDefaults = [
   }
 ];
 
+const growthNumberKeys = [
+  'hpGrowth',
+  'hpRegenGrowth',
+  'adGrowth',
+  'apGrowth',
+  'asGrowth',
+  'armorGrowth',
+  'mrGrowth',
+  'moveSpeedGrowth',
+  'rangeGrowth',
+  'abilityHasteGrowth'
+];
+
+function sanitizeGrowthPreset(preset) {
+  const safe = { ...preset };
+  safe.name = (preset.name || '').toString().trim() || '이름 없음';
+  growthNumberKeys.forEach((key) => {
+    const num = Number(preset[key]);
+    safe[key] = Number.isFinite(num) ? Math.max(num, 0) : 0;
+  });
+  return safe;
+}
+
 const growthForm = document.getElementById('growthForm');
 const growthFormTitle = document.getElementById('growthFormTitle');
 const growthTableBody = document.querySelector('#growthTable tbody');
@@ -63,17 +86,17 @@ let editingGrowthIndex = null;
 function loadGrowthPresets() {
   const stored = localStorage.getItem(GROWTH_STORAGE_KEY);
   if (!stored) {
-    return [...growthDefaults];
+    return [...growthDefaults].map(sanitizeGrowthPreset);
   }
   try {
     const parsed = JSON.parse(stored);
     if (Array.isArray(parsed)) {
-      return parsed;
+      return parsed.map(sanitizeGrowthPreset);
     }
   } catch (error) {
     console.error('성장 프리셋을 읽을 수 없습니다.', error);
   }
-  return [...growthDefaults];
+  return [...growthDefaults].map(sanitizeGrowthPreset);
 }
 
 function saveGrowthPresets() {
@@ -87,20 +110,7 @@ function showGrowthToast(message) {
 }
 
 function validateGrowthPayload(payload) {
-  const numberKeys = [
-    'hpGrowth',
-    'hpRegenGrowth',
-    'adGrowth',
-    'apGrowth',
-    'asGrowth',
-    'armorGrowth',
-    'mrGrowth',
-    'moveSpeedGrowth',
-    'rangeGrowth',
-    'abilityHasteGrowth'
-  ];
-
-  for (const key of numberKeys) {
+  for (const key of growthNumberKeys) {
     const value = Number(payload[key]);
     if (Number.isNaN(value) || value < 0) {
       throw new Error(`${key} 값은 0 이상의 숫자여야 합니다.`);
@@ -187,10 +197,10 @@ function handleGrowthSubmit(event) {
   }
 
   if (editingGrowthIndex != null) {
-    growthPresets[editingGrowthIndex] = normalized;
+    growthPresets[editingGrowthIndex] = sanitizeGrowthPreset(normalized);
     showGrowthToast('프리셋을 업데이트했습니다.');
   } else {
-    growthPresets.unshift(normalized);
+    growthPresets.unshift(sanitizeGrowthPreset(normalized));
     showGrowthToast('새 프리셋을 추가했습니다.');
   }
 
@@ -206,7 +216,7 @@ function copyGrowthExport() {
 }
 
 function resetGrowthToDefault() {
-  growthPresets = [...growthDefaults];
+  growthPresets = [...growthDefaults].map(sanitizeGrowthPreset);
   saveGrowthPresets();
   renderGrowthTable();
   resetGrowthFormState();

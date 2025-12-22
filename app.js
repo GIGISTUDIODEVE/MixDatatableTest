@@ -50,6 +50,32 @@ const defaultPresets = [
   }
 ];
 
+function sanitizePreset(preset) {
+  const safe = { ...preset };
+  safe.name = (preset.name || '').toString().trim() || '이름 없음';
+  safe.element = (preset.element || '').toString().trim();
+  baseNumberKeys.forEach((key) => {
+    const num = Number(preset[key]);
+    safe[key] = Number.isFinite(num) ? Math.max(num, 0) : 0;
+  });
+  return safe;
+}
+
+const baseNumberKeys = [
+  'hp',
+  'hpRegen',
+  'ad',
+  'ap',
+  'as',
+  'critChance',
+  'critDamage',
+  'armor',
+  'mr',
+  'moveSpeed',
+  'range',
+  'abilityHaste'
+];
+
 const form = document.getElementById('presetForm');
 const formTitle = document.getElementById('formTitle');
 const presetTableBody = document.querySelector('#presetTable tbody');
@@ -72,17 +98,17 @@ let editingIndex = null;
 function loadPresets() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) {
-    return [...defaultPresets];
+    return [...defaultPresets].map(sanitizePreset);
   }
   try {
     const parsed = JSON.parse(stored);
     if (Array.isArray(parsed)) {
-      return parsed;
+      return parsed.map(sanitizePreset);
     }
   } catch (error) {
     console.error('로컬 저장소를 읽을 수 없습니다.', error);
   }
-  return [...defaultPresets];
+  return [...defaultPresets].map(sanitizePreset);
 }
 
 function savePresets() {
@@ -96,12 +122,7 @@ function showToast(message) {
 }
 
 function validatePayload(payload) {
-  const numberKeys = [
-    'hp', 'hpRegen', 'ad', 'ap', 'as', 'critChance', 'critDamage',
-    'armor', 'mr', 'moveSpeed', 'range', 'abilityHaste'
-  ];
-
-  for (const key of numberKeys) {
+  for (const key of baseNumberKeys) {
     const value = Number(payload[key]);
     if (Number.isNaN(value) || value < 0) {
       throw new Error(`${key} 값은 0 이상의 숫자여야 합니다.`);
@@ -191,10 +212,10 @@ function handleSubmit(event) {
   }
 
   if (editingIndex != null) {
-    presets[editingIndex] = normalized;
+    presets[editingIndex] = sanitizePreset(normalized);
     showToast('프리셋을 업데이트했습니다.');
   } else {
-    presets.unshift(normalized);
+    presets.unshift(sanitizePreset(normalized));
     showToast('새 프리셋을 추가했습니다.');
   }
 
@@ -210,7 +231,7 @@ function copyExport() {
 }
 
 function resetToDefault() {
-  presets = [...defaultPresets];
+  presets = [...defaultPresets].map(sanitizePreset);
   savePresets();
   renderTable();
   resetForm();

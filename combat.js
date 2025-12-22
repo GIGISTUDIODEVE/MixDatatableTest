@@ -1,6 +1,34 @@
 const BASE_STORAGE_KEY = 'monster-base-stats-presets';
 const GROWTH_STORAGE_KEY = 'monster-growth-stats-presets';
 
+const baseNumberKeys = [
+  'hp',
+  'hpRegen',
+  'ad',
+  'ap',
+  'as',
+  'critChance',
+  'critDamage',
+  'armor',
+  'mr',
+  'moveSpeed',
+  'range',
+  'abilityHaste'
+];
+
+const growthNumberKeys = [
+  'hpGrowth',
+  'hpRegenGrowth',
+  'adGrowth',
+  'apGrowth',
+  'asGrowth',
+  'armorGrowth',
+  'mrGrowth',
+  'moveSpeedGrowth',
+  'rangeGrowth',
+  'abilityHasteGrowth'
+];
+
 const baseDefaults = [
   {
     name: '탱커 기본',
@@ -109,20 +137,45 @@ const summaryA = document.getElementById('summaryA');
 const summaryB = document.getElementById('summaryB');
 const refreshButton = document.getElementById('refreshButton');
 
-function loadPresets(key, defaults) {
+function safeNonNegative(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 0;
+  return Math.max(num, 0);
+}
+
+function sanitizeBasePreset(preset) {
+  const safe = { ...preset };
+  safe.name = (preset.name || '').toString().trim() || '이름 없음';
+  safe.element = (preset.element || '').toString().trim();
+  baseNumberKeys.forEach((key) => {
+    safe[key] = safeNonNegative(preset[key]);
+  });
+  return safe;
+}
+
+function sanitizeGrowthPreset(preset) {
+  const safe = { ...preset };
+  safe.name = (preset.name || '').toString().trim() || '이름 없음';
+  growthNumberKeys.forEach((key) => {
+    safe[key] = safeNonNegative(preset[key]);
+  });
+  return safe;
+}
+
+function loadPresets(key, defaults, sanitizer) {
   const stored = localStorage.getItem(key);
-  if (!stored) return [...defaults];
+  if (!stored) return [...defaults].map(sanitizer);
   try {
     const parsed = JSON.parse(stored);
-    if (Array.isArray(parsed) && parsed.length) return parsed;
+    if (Array.isArray(parsed) && parsed.length) return parsed.map(sanitizer);
   } catch (error) {
     console.error(`${key} 로딩 실패`, error);
   }
-  return [...defaults];
+  return [...defaults].map(sanitizer);
 }
 
-const basePresets = loadPresets(BASE_STORAGE_KEY, baseDefaults);
-const growthPresets = loadPresets(GROWTH_STORAGE_KEY, growthDefaults);
+const basePresets = loadPresets(BASE_STORAGE_KEY, baseDefaults, sanitizeBasePreset);
+const growthPresets = loadPresets(GROWTH_STORAGE_KEY, growthDefaults, sanitizeGrowthPreset);
 
 function getFormulaConfig() {
   if (window.FormulaConfig && typeof FormulaConfig.load === 'function') {
@@ -164,21 +217,25 @@ function clamp(value, min, max) {
 
 function combineStats(base, growth, level) {
   const lv = clampNumber(level, 0);
+  const safeBase = sanitizeBasePreset(base);
+  const safeGrowth = sanitizeGrowthPreset(growth);
+  const sum = (baseKey, growthKey) => safeNonNegative(safeBase[baseKey]) + lv * safeNonNegative(safeGrowth[growthKey]);
+
   return {
-    name: base.name,
-    hp: (Number(base.hp) || 0) + lv * (Number(growth.hpGrowth) || 0),
-    hpRegen: (Number(base.hpRegen) || 0) + lv * (Number(growth.hpRegenGrowth) || 0),
-    ad: (Number(base.ad) || 0) + lv * (Number(growth.adGrowth) || 0),
-    ap: (Number(base.ap) || 0) + lv * (Number(growth.apGrowth) || 0),
-    as: (Number(base.as) || 0) + lv * (Number(growth.asGrowth) || 0),
-    critChance: (Number(base.critChance) || 0),
-    critDamage: (Number(base.critDamage) || 1),
-    armor: (Number(base.armor) || 0) + lv * (Number(growth.armorGrowth) || 0),
-    mr: (Number(base.mr) || 0) + lv * (Number(growth.mrGrowth) || 0),
-    moveSpeed: (Number(base.moveSpeed) || 0) + lv * (Number(growth.moveSpeedGrowth) || 0),
-    range: (Number(base.range) || 0) + lv * (Number(growth.rangeGrowth) || 0),
-    abilityHaste: (Number(base.abilityHaste) || 0) + lv * (Number(growth.abilityHasteGrowth) || 0),
-    element: base.element || ''
+    name: safeBase.name,
+    hp: sum('hp', 'hpGrowth'),
+    hpRegen: sum('hpRegen', 'hpRegenGrowth'),
+    ad: sum('ad', 'adGrowth'),
+    ap: sum('ap', 'apGrowth'),
+    as: sum('as', 'asGrowth'),
+    critChance: safeNonNegative(safeBase.critChance),
+    critDamage: Math.max(safeNonNegative(safeBase.critDamage), 1),
+    armor: sum('armor', 'armorGrowth'),
+    mr: sum('mr', 'mrGrowth'),
+    moveSpeed: sum('moveSpeed', 'moveSpeedGrowth'),
+    range: sum('range', 'rangeGrowth'),
+    abilityHaste: sum('abilityHaste', 'abilityHasteGrowth'),
+    element: safeBase.element
   };
 }
 
