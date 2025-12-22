@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>성장 스텟 프리셋 관리</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">데이터 테이블</p>
+      <h1>성장 스텟 프리셋 관리</h1>
+      <p class="subtitle">레벨에 따른 증가량 프리셋을 생성·수정·삭제하고 JSON 으로 내보낼 수 있습니다.</p>
+      <nav class="page-nav" aria-label="프리셋 페이지 선택">
+        <a href="index.html">베이스 스텟</a>
+        <a class="active" href="growth.html" aria-current="page">성장 스텟</a>
+        <a href="combat.html">전투 테스트</a>
+        <a href="formula.html">계산식 수치</a>
+      </nav>
+    </div>
+    <button class="primary" id="addGrowthButton" type="button">새 프리셋 작성</button>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>프리셋 목록</h2>
+          <p class="subtitle">검색 또는 열 별 정렬 없이도 필터로 원하는 프리셋을 찾을 수 있습니다.</p>
+        </div>
+        <div class="actions">
+          <label class="search">
+            <span>검색</span>
+            <input id="growthSearch" type="search" placeholder="프리셋 이름 또는 속성" />
+          </label>
+          <button class="ghost" id="resetGrowthStorage" type="button">전체 초기화</button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table id="growthTable">
+          <thead>
+            <tr>
+              <th data-key="name">이름</th>
+              <th data-key="hpGrowth">HP 성장</th>
+              <th data-key="hpRegenGrowth">HP 회복 성장</th>
+              <th data-key="adGrowth">AD 성장</th>
+              <th data-key="apGrowth">AP 성장</th>
+              <th data-key="asGrowth">AS 성장</th>
+              <th data-key="armorGrowth">방어력 성장</th>
+              <th data-key="mrGrowth">마법저항 성장</th>
+              <th data-key="moveSpeedGrowth">이동속도 성장</th>
+              <th data-key="rangeGrowth">사거리 성장</th>
+              <th data-key="abilityHasteGrowth">스킬 가속 성장</th>
+              <th>액션</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="growthFormPanel">
+      <div class="panel-header">
+        <div>
+          <h2 id="growthFormTitle">프리셋 생성</h2>
+          <p class="subtitle">성장 수치는 레벨 당 증가량이며, 모든 값은 0 이상이어야 합니다.</p>
+        </div>
+        <button class="ghost" id="resetGrowthForm" type="button">입력 초기화</button>
+      </div>
+
+      <form id="growthForm" novalidate>
+        <div class="form-grid">
+          <label>이름<input name="name" type="text" required maxlength="50" placeholder="예: 탱커 성장" /></label>
+          <label>HP 성장<input name="hpGrowth" type="number" min="0" step="0.1" required /></label>
+          <label>HP 회복 성장<input name="hpRegenGrowth" type="number" min="0" step="0.01" required /></label>
+          <label>AD 성장<input name="adGrowth" type="number" min="0" step="0.1" required /></label>
+          <label>AP 성장<input name="apGrowth" type="number" min="0" step="0.1" required /></label>
+          <label>AS 성장<input name="asGrowth" type="number" min="0" step="0.001" required /></label>
+          <label>방어력 성장<input name="armorGrowth" type="number" min="0" step="0.1" required /></label>
+          <label>마법저항 성장<input name="mrGrowth" type="number" min="0" step="0.1" required /></label>
+          <label>이동속도 성장<input name="moveSpeedGrowth" type="number" min="0" step="0.01" required /></label>
+          <label>사거리 성장<input name="rangeGrowth" type="number" min="0" step="0.01" required /></label>
+          <label>스킬 가속 성장<input name="abilityHasteGrowth" type="number" min="0" step="0.1" required /></label>
+        </div>
+
+        <div class="form-actions">
+          <button class="primary" type="submit">저장</button>
+          <button class="ghost" id="cancelGrowthEdit" type="button">편집 취소</button>
+        </div>
+      </form>
+      <p class="form-helper">프리셋은 브라우저 로컬스토리지에 저장되어 새로 고침 후에도 유지됩니다.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>내보내기</h2>
+          <p class="subtitle">현재 프리셋을 JSON 으로 복사해 다른 환경에서도 재사용하세요.</p>
+        </div>
+        <button class="ghost" id="copyGrowthExport" type="button">JSON 복사</button>
+      </div>
+      <textarea id="growthExportArea" readonly></textarea>
+    </section>
+  </main>
+
+  <template id="growthRowTemplate">
+    <tr>
+      <td class="cell name"></td>
+      <td class="cell hpGrowth"></td>
+      <td class="cell hpRegenGrowth"></td>
+      <td class="cell adGrowth"></td>
+      <td class="cell apGrowth"></td>
+      <td class="cell asGrowth"></td>
+      <td class="cell armorGrowth"></td>
+      <td class="cell mrGrowth"></td>
+      <td class="cell moveSpeedGrowth"></td>
+      <td class="cell rangeGrowth"></td>
+      <td class="cell abilityHasteGrowth"></td>
+      <td class="actions">
+        <button class="ghost edit" type="button">편집</button>
+        <button class="danger delete" type="button">삭제</button>
+      </td>
+    </tr>
+  </template>
+
+  <dialog id="growthConfirmDialog">
+    <div class="dialog">
+      <h3>프리셋을 모두 초기화할까요?</h3>
+      <p>로컬에 저장된 성장 프리셋이 기본값으로 복원됩니다.</p>
+      <div class="dialog-actions">
+        <button class="ghost" id="cancelGrowthDialog" type="button">취소</button>
+        <button class="danger" id="confirmGrowthReset" type="button">초기화</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="growthToast" role="status" aria-live="polite"></div>
+  <script src="growth.js"></script>
+</body>
+</html>
