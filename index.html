@@ -213,6 +213,23 @@
     <section>
       <h2>2) 몬스터 타입 생성</h2>
       <p class="muted">MonsterDataTable.md 필수 필드를 만족하도록 서버 전역 타입을 생성합니다. createdAt/updatedAt은 서버 타임스탬프로 기록됩니다.</p>
+      <div class="stat-section" style="margin-bottom: 12px;">
+        <h4>스탯 프리셋 불러오기</h4>
+        <p class="muted" style="margin: 4px 0 10px;">미리 정의한 baseStats·growthPerLevel 프리셋을 선택해 입력값을 빠르게 채웁니다. 필요 시 아래 "3) 스탯 프리셋 관리"에서 프리셋을 추가하세요.</p>
+        <div class="grid-two">
+          <div>
+            <label for="presetSelect">프리셋 선택</label>
+            <select id="presetSelect">
+              <option value="">프리셋을 먼저 불러오세요</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: flex-end;">
+            <button id="loadPresets" type="button">프리셋 목록 불러오기</button>
+            <button id="applyPreset" type="button">프리셋 적용</button>
+          </div>
+        </div>
+        <div class="status" id="presetStatus"></div>
+      </div>
       <form id="createForm">
         <div class="grid-two">
           <div>
@@ -264,6 +281,62 @@
         </div>
         <div class="status" id="createStatus"></div>
       </form>
+    </section>
+
+    <section>
+      <h2>3) 스탯 프리셋 관리</h2>
+      <p class="muted">기본 baseStats·growthPerLevel을 미리 정의해 Firestore `monsterStatPresets` 컬렉션에 저장하고, 몬스터 생성 시 불러와 사용할 수 있습니다.</p>
+      <form id="presetForm">
+        <div class="grid-two">
+          <div>
+            <label for="presetId">프리셋 ID (문서 ID, 필수)</label>
+            <input id="presetId" placeholder="예: tank_basic" required />
+          </div>
+          <div>
+            <label for="presetName">프리셋 이름 (필수)</label>
+            <input id="presetName" placeholder="예: 탱커 기본 스탯" required />
+          </div>
+        </div>
+        <p class="muted" style="margin-top: 10px;">MonsterDataTable.md의 모든 스탯 키가 필수이며 숫자만 입력 가능합니다.</p>
+        <div>
+          <h3>baseStats (필수, 고정 스탯 필드)</h3>
+          <div id="presetBaseStatsFields"></div>
+        </div>
+        <div style="margin-top: 10px;">
+          <h3>growthPerLevel (필수, 고정 스탯 필드)</h3>
+          <div id="presetGrowthFields"></div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px;">
+          <button id="savePreset" type="submit">프리셋 저장</button>
+          <button id="presetFillSample" type="button">프리셋 샘플 채우기</button>
+          <div class="status" id="presetSaveStatus"></div>
+        </div>
+      </form>
+      <div style="margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <h3 style="margin: 0;">저장된 프리셋</h3>
+          <button id="refreshPresetList" type="button">프리셋 리스트 갱신</button>
+        </div>
+        <p class="muted" style="margin: 6px 0 8px;">서버에 저장된 프리셋 목록을 확인하고, 몬스터 생성 시 상단 선택 박스에서 불러올 수 있습니다.</p>
+        <div class="status" id="presetListStatus"></div>
+        <div style="overflow-x: auto;">
+          <table aria-label="스탯 프리셋 리스트">
+            <thead>
+              <tr>
+                <th>presetId</th>
+                <th>name</th>
+                <th>createdAt</th>
+                <th>updatedAt</th>
+              </tr>
+            </thead>
+            <tbody id="presetTableBody"></tbody>
+          </table>
+        </div>
+        <details style="margin-top: 10px;" open>
+          <summary style="font-weight: 700; cursor: pointer;">프리셋 JSON 미리보기</summary>
+          <textarea id="presetJsonPreview" readonly style="min-height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></textarea>
+        </details>
+      </div>
     </section>
   </main>
 
