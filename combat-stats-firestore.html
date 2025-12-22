@@ -17,6 +17,53 @@
       color: #e2e8f0;
     }
 
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
     h1 {
       margin-top: 0;
     }
@@ -148,6 +195,15 @@
   </style>
 </head>
 <body>
+  <nav class="top-nav">
+    <div class="nav-brand">Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link active" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+    </div>
+  </nav>
   <div class="container">
     <header class="card">
       <h1>CombatStats 상수 관리</h1>
