@@ -1,3 +1,5 @@
+import { fetchPresets, savePresets } from './firebase-client.js';
+
 const STORAGE_KEY = 'monster-base-stats-presets';
 const defaultPresets = [
   {
@@ -92,10 +94,21 @@ const clearAllButton = document.getElementById('clearAllButton');
 const confirmResetButton = document.getElementById('confirmResetButton');
 const cancelDialogButton = document.getElementById('cancelDialogButton');
 
-let presets = loadPresets();
+let presets = [];
 let editingIndex = null;
 
-function loadPresets() {
+async function loadPresets() {
+  const localFallback = loadLocalPresets();
+  const remote = await fetchPresets('presets/base', localFallback);
+  if (Array.isArray(remote)) {
+    const sanitized = remote.map(sanitizePreset);
+    saveLocalPresets(sanitized);
+    return sanitized;
+  }
+  return localFallback;
+}
+
+function loadLocalPresets() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) {
     return [...defaultPresets].map(sanitizePreset);
@@ -111,14 +124,19 @@ function loadPresets() {
   return [...defaultPresets].map(sanitizePreset);
 }
 
-function savePresets() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+function saveLocalPresets(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
 function showToast(message) {
   toast.textContent = message;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+function persistPresets() {
+  saveLocalPresets(presets);
+  savePresets('presets/base', presets);
 }
 
 function validatePayload(payload) {
@@ -182,7 +200,7 @@ function resetForm() {
 
 function deletePreset(target) {
   presets = presets.filter((preset) => preset !== target);
-  savePresets();
+  persistPresets();
   renderTable();
   showToast('프리셋을 삭제했습니다.');
   resetForm();
@@ -219,7 +237,7 @@ function handleSubmit(event) {
     showToast('새 프리셋을 추가했습니다.');
   }
 
-  savePresets();
+  persistPresets();
   renderTable();
   resetForm();
 }
@@ -232,7 +250,7 @@ function copyExport() {
 
 function resetToDefault() {
   presets = [...defaultPresets].map(sanitizePreset);
-  savePresets();
+  persistPresets();
   renderTable();
   resetForm();
   confirmDialog.close();
@@ -251,5 +269,10 @@ function attachEventListeners() {
   cancelDialogButton.addEventListener('click', () => confirmDialog.close());
 }
 
+async function initializePage() {
+  presets = await loadPresets();
+  renderTable();
+}
+
 attachEventListeners();
-renderTable();
+initializePage();

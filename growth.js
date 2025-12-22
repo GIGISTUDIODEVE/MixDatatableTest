@@ -1,3 +1,5 @@
+import { fetchPresets, savePresets } from './firebase-client.js';
+
 const GROWTH_STORAGE_KEY = 'monster-growth-stats-presets';
 const growthDefaults = [
   {
@@ -80,10 +82,21 @@ const resetGrowthStorageButton = document.getElementById('resetGrowthStorage');
 const confirmGrowthReset = document.getElementById('confirmGrowthReset');
 const cancelGrowthDialog = document.getElementById('cancelGrowthDialog');
 
-let growthPresets = loadGrowthPresets();
+let growthPresets = [];
 let editingGrowthIndex = null;
 
-function loadGrowthPresets() {
+async function loadGrowthPresets() {
+  const localFallback = loadLocalGrowthPresets();
+  const remote = await fetchPresets('presets/growth', localFallback);
+  if (Array.isArray(remote)) {
+    const sanitized = remote.map(sanitizeGrowthPreset);
+    saveLocalGrowthPresets(sanitized);
+    return sanitized;
+  }
+  return localFallback;
+}
+
+function loadLocalGrowthPresets() {
   const stored = localStorage.getItem(GROWTH_STORAGE_KEY);
   if (!stored) {
     return [...growthDefaults].map(sanitizeGrowthPreset);
@@ -99,14 +112,19 @@ function loadGrowthPresets() {
   return [...growthDefaults].map(sanitizeGrowthPreset);
 }
 
-function saveGrowthPresets() {
-  localStorage.setItem(GROWTH_STORAGE_KEY, JSON.stringify(growthPresets));
+function saveLocalGrowthPresets(data) {
+  localStorage.setItem(GROWTH_STORAGE_KEY, JSON.stringify(data));
 }
 
 function showGrowthToast(message) {
   growthToast.textContent = message;
   growthToast.classList.add('show');
   setTimeout(() => growthToast.classList.remove('show'), 2200);
+}
+
+function persistGrowthPresets() {
+  saveLocalGrowthPresets(growthPresets);
+  savePresets('presets/growth', growthPresets);
 }
 
 function validateGrowthPayload(payload) {
@@ -167,7 +185,7 @@ function resetGrowthFormState() {
 
 function deleteGrowthPreset(target) {
   growthPresets = growthPresets.filter((preset) => preset !== target);
-  saveGrowthPresets();
+  persistGrowthPresets();
   renderGrowthTable();
   showGrowthToast('프리셋을 삭제했습니다.');
   resetGrowthFormState();
@@ -204,7 +222,7 @@ function handleGrowthSubmit(event) {
     showGrowthToast('새 프리셋을 추가했습니다.');
   }
 
-  saveGrowthPresets();
+  persistGrowthPresets();
   renderGrowthTable();
   resetGrowthFormState();
 }
@@ -217,7 +235,7 @@ function copyGrowthExport() {
 
 function resetGrowthToDefault() {
   growthPresets = [...growthDefaults].map(sanitizeGrowthPreset);
-  saveGrowthPresets();
+  persistGrowthPresets();
   renderGrowthTable();
   resetGrowthFormState();
   growthConfirmDialog.close();
@@ -236,5 +254,10 @@ function attachGrowthListeners() {
   cancelGrowthDialog.addEventListener('click', () => growthConfirmDialog.close());
 }
 
+async function initializeGrowthPage() {
+  growthPresets = await loadGrowthPresets();
+  renderGrowthTable();
+}
+
 attachGrowthListeners();
-renderGrowthTable();
+initializeGrowthPage();
