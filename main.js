@@ -33,6 +33,8 @@ const createForm = document.getElementById("createForm");
 const createStatus = document.getElementById("createStatus");
 const createButton = document.getElementById("createButton");
 const fillSampleButton = document.getElementById("fillSample");
+const baseStatsFields = document.getElementById("baseStatsFields");
+const growthFields = document.getElementById("growthFields");
 
 const STAT_KEYS = [
   "hp",
@@ -62,35 +64,41 @@ function toDisplayDate(timestamp) {
   return date.toLocaleString();
 }
 
-function parseJsonField(raw, fieldName) {
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error(`${fieldName}는 객체 형태의 JSON이어야 합니다.`);
+function renderStatInputs() {
+  const renderTo = (container, prefix) => {
+    if (!container) return;
+    container.innerHTML = STAT_KEYS.map(
+      (key) => `
+        <label class="stat-field" for="${prefix}-${key}">
+          <span>${key}</span>
+          <input id="${prefix}-${key}" type="number" step="any" placeholder="0" required />
+        </label>
+      `
+    ).join("");
+  };
+
+  renderTo(baseStatsFields, "base");
+  renderTo(growthFields, "growth");
+}
+
+function collectStats(prefix, label) {
+  const stats = {};
+  for (const key of STAT_KEYS) {
+    const el = document.getElementById(`${prefix}-${key}`);
+    if (!el) {
+      throw new Error(`${label} 입력 필드(${key})를 찾을 수 없습니다.`);
     }
-
-    const statKeys = Object.keys(parsed);
-    if (statKeys.length === 0) {
-      throw new Error(`${fieldName}에 한 개 이상의 스탯 키가 필요합니다.`);
+    const raw = el.value.trim();
+    if (raw === "") {
+      throw new Error(`${label}.${key} 값을 입력하세요.`);
     }
-
-    for (const key of statKeys) {
-      if (!STAT_KEYS.includes(key)) {
-        throw new Error(
-          `${fieldName}에 허용되지 않은 키(${key})가 있습니다. 허용 키: ${STAT_KEYS.join(", ")}`
-        );
-      }
-
-      const value = parsed[key];
-      if (!Number.isFinite(value)) {
-        throw new Error(`${fieldName}.${key} 값은 숫자여야 합니다.`);
-      }
+    const value = Number(raw);
+    if (!Number.isFinite(value)) {
+      throw new Error(`${label}.${key} 값은 숫자여야 합니다.`);
     }
-
-    return parsed;
-  } catch (error) {
-    throw new Error(`${fieldName} JSON 파싱 실패: ${error.message}`);
+    stats[key] = value;
   }
+  return stats;
 }
 
 async function fetchMonsterTypes() {
@@ -155,8 +163,6 @@ async function handleCreate(event) {
   const rarityTier = Number(document.getElementById("rarityTier").value);
   const tagsRaw = document.getElementById("tags").value.trim();
   const dataVersionRaw = document.getElementById("dataVersion").value;
-  const baseStatsRaw = document.getElementById("baseStats").value.trim();
-  const growthPerLevelRaw = document.getElementById("growthPerLevel").value.trim();
   const notes = document.getElementById("notes").value.trim();
 
   if (!monsterTypeId || !name || !tagsRaw) {
@@ -169,16 +175,11 @@ async function handleCreate(event) {
     return;
   }
 
-  if (!baseStatsRaw || !growthPerLevelRaw) {
-    renderStatus(createStatus, "baseStats와 growthPerLevel을 입력하세요.", true);
-    return;
-  }
-
   let baseStats;
   let growthPerLevel;
   try {
-    baseStats = parseJsonField(baseStatsRaw, "baseStats");
-    growthPerLevel = parseJsonField(growthPerLevelRaw, "growthPerLevel");
+    baseStats = collectStats("base", "baseStats");
+    growthPerLevel = collectStats("growth", "growthPerLevel");
   } catch (error) {
     renderStatus(createStatus, error.message, true);
     return;
@@ -231,6 +232,15 @@ async function handleCreate(event) {
   }
 }
 
+function setStatValues(prefix, values) {
+  for (const key of STAT_KEYS) {
+    const el = document.getElementById(`${prefix}-${key}`);
+    if (el) {
+      el.value = values[key] ?? "";
+    }
+  }
+}
+
 function fillSampleStats() {
   const sampleBase = {
     hp: 120,
@@ -264,11 +274,11 @@ function fillSampleStats() {
     abilityHaste: 0.5,
   };
 
-  const baseStatsEl = document.getElementById("baseStats");
-  const growthEl = document.getElementById("growthPerLevel");
-  if (baseStatsEl) baseStatsEl.value = JSON.stringify(sampleBase, null, 2);
-  if (growthEl) growthEl.value = JSON.stringify(sampleGrowth, null, 2);
+  setStatValues("base", sampleBase);
+  setStatValues("growth", sampleGrowth);
 }
+
+renderStatInputs();
 
 loadButton?.addEventListener("click", fetchMonsterTypes);
 createForm?.addEventListener("submit", handleCreate);
