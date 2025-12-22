@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>몬스터 관리 (Firebase)</title>
+  <style>
+    :root {
+      font-family: "Inter", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+      color: #0f172a;
+      background: #f8fafc;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 16px 24px;
+    }
+
+    main {
+      padding: 24px;
+      max-width: 1100px;
+      margin: 0 auto 48px;
+    }
+
+    section {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 6px 24px rgba(15, 23, 42, 0.05);
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 12px;
+    }
+
+    p {
+      margin: 0 0 10px;
+      color: #475569;
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #0f172a;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+      background: #f8fafc;
+    }
+
+    input:focus, select:focus {
+      outline: 2px solid #6366f1;
+      border-color: #6366f1;
+      background: #fff;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+    }
+
+    button:hover {
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 10px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .status {
+      margin-top: 12px;
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .status.error {
+      color: #dc2626;
+    }
+
+    .muted {
+      color: #475569;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Firebase 몬스터 리스트 & 생성</h1>
+    <p style="margin: 6px 0 0; color: #cbd5e1;">MonsterDataTable.md 규칙에 맞춰 유저 몬스터 인스턴스를 Firestore에서 조회/생성합니다.</p>
+  </header>
+  <main>
+    <section>
+      <h2>1) 유저 몬스터 조회</h2>
+      <p class="muted">`users/{uid}/monsters` 컬렉션에서 몬스터를 조회합니다. createdAt 역순으로 정렬합니다.</p>
+      <div class="grid-two">
+        <div>
+          <label for="listUserId">유저 UID</label>
+          <input id="listUserId" type="text" placeholder="예: user_123" />
+        </div>
+        <div style="align-self: end;">
+          <button id="loadMonsters">몬스터 불러오기</button>
+        </div>
+      </div>
+      <div class="status" id="listStatus"></div>
+      <div style="overflow-x: auto;">
+        <table aria-label="몬스터 리스트">
+          <thead>
+            <tr>
+              <th>monsterUid</th>
+              <th>monsterTypeId</th>
+              <th>level</th>
+              <th>exp</th>
+              <th>ascension</th>
+              <th>locked</th>
+              <th>createdAt</th>
+            </tr>
+          </thead>
+          <tbody id="monsterTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>2) 몬스터 생성</h2>
+      <p class="muted">MonsterDataTable.md 필수 필드를 만족하도록 문서를 생성합니다. createdAt은 서버 타임스탬프로 기록됩니다.</p>
+      <form id="createForm">
+        <div class="grid-two">
+          <div>
+            <label for="createUserId">유저 UID (필수)</label>
+            <input id="createUserId" type="text" placeholder="users/{uid}" required />
+          </div>
+          <div>
+            <label for="monsterUid">monsterUid (필수)</label>
+            <input id="monsterUid" type="text" placeholder="문서 ID로 사용" required />
+          </div>
+          <div>
+            <label for="monsterTypeId">monsterTypeId (필수)</label>
+            <input id="monsterTypeId" type="text" placeholder="monsterTypes 참조" required />
+          </div>
+          <div>
+            <label for="level">level (>=1)</label>
+            <input id="level" type="number" min="1" step="1" value="1" required />
+          </div>
+          <div>
+            <label for="exp">exp (>=0)</label>
+            <input id="exp" type="number" min="0" step="1" value="0" required />
+          </div>
+          <div>
+            <label for="ascension">ascension (>=0)</label>
+            <input id="ascension" type="number" min="0" step="1" value="0" required />
+          </div>
+          <div>
+            <label for="locked">locked</label>
+            <select id="locked">
+              <option value="false">false</option>
+              <option value="true">true</option>
+            </select>
+          </div>
+          <div>
+            <label for="rarity">rarity (선택)</label>
+            <input id="rarity" type="text" placeholder="예: LEGENDARY" />
+          </div>
+        </div>
+        <div style="margin-top: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <button type="submit" id="createButton">몬스터 생성</button>
+          <span class="muted">필수 필드: monsterUid, monsterTypeId, level, exp, ascension, locked, createdAt</span>
+        </div>
+        <div class="status" id="createStatus"></div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
