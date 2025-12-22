@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BaseStat 프리셋 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      margin: 0;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="card">
+      <h1>BaseStat 프리셋 관리</h1>
+      <p class="muted">BaseStatsData.md와 CombatStats.md의 정의에 맞춰 프리셋을 Firestore에 저장/수정/삭제합니다.</p>
+    </header>
+
+    <section class="card">
+      <h2>프리셋 작성</h2>
+      <div class="grid" id="form-grid"></div>
+      <div class="actions">
+        <button class="primary" id="save-btn">프리셋 저장/업데이트</button>
+        <button class="secondary" id="reset-btn">새 프리셋 작성</button>
+      </div>
+      <div class="status" id="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>저장된 프리셋</h2>
+      <div class="muted">Firestore collection: <code>baseStatPresets</code></div>
+      <table id="preset-table">
+        <thead>
+          <tr>
+            <th>프리셋 이름</th>
+            <th>HP</th>
+            <th>HP Regen</th>
+            <th>AD</th>
+            <th>AP</th>
+            <th>AS</th>
+            <th>Crit%</th>
+            <th>Armor</th>
+            <th>MR</th>
+            <th>이동속도</th>
+            <th>사거리</th>
+            <th>속성</th>
+            <th>작업</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { firebaseConfig } from "./firebase-config.js";
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const presetsRef = collection(db, "baseStatPresets");
+
+    const statusEl = document.getElementById("status");
+    const tableBody = document.querySelector("#preset-table tbody");
+    const formGrid = document.getElementById("form-grid");
+    const saveBtn = document.getElementById("save-btn");
+    const resetBtn = document.getElementById("reset-btn");
+
+    const fields = [
+      { key: "name", label: "프리셋 이름", type: "text", required: true },
+      { key: "hp", label: "HP", type: "number", min: 0 },
+      { key: "hpRegen", label: "HP Regen", type: "number", min: 0 },
+      { key: "ad", label: "AD", type: "number", min: 0 },
+      { key: "ap", label: "AP", type: "number", min: 0 },
+      { key: "as", label: "AS", type: "number", min: 0 },
+      { key: "critChance", label: "치명 확률(0~100)", type: "number", min: 0, max: 100 },
+      { key: "critDamage", label: "치명 배율", type: "number", min: 0 },
+      { key: "armor", label: "Armor", type: "number", min: 0 },
+      { key: "mr", label: "MR", type: "number", min: 0 },
+      { key: "moveSpeed", label: "이동속도", type: "number", min: 0 },
+      { key: "range", label: "사거리", type: "number", min: 0 },
+      { key: "abilityHaste", label: "스킬 가속", type: "number", min: 0 },
+      { key: "Element", label: "속성 추가 데미지", type: "text" },
+    ];
+
+    const inputs = new Map();
+
+    function createForm() {
+      fields.forEach(({ key, label, type, min, max, required }) => {
+        const wrapper = document.createElement("div");
+        const labelEl = document.createElement("label");
+        labelEl.textContent = label;
+        const input = document.createElement("input");
+        input.type = type;
+        input.id = key;
+        if (min !== undefined) input.min = String(min);
+        if (max !== undefined) input.max = String(max);
+        if (required) input.required = true;
+        wrapper.append(labelEl, input);
+        formGrid.appendChild(wrapper);
+        inputs.set(key, input);
+      });
+    }
+
+    function clampNumber(value, min = 0, max = Number.POSITIVE_INFINITY) {
+      const parsed = Number(value);
+      if (Number.isNaN(parsed)) return min;
+      return Math.min(Math.max(parsed, min), max);
+    }
+
+    function readForm() {
+      const data = {};
+      fields.forEach(({ key, type, min, max }) => {
+        const value = inputs.get(key).value.trim();
+        if (type === "number") {
+          const lower = min ?? 0;
+          const upper = max ?? Number.POSITIVE_INFINITY;
+          data[key] = clampNumber(value, lower, upper);
+        } else {
+          data[key] = value;
+        }
+      });
+      return data;
+    }
+
+    function fillForm(preset) {
+      fields.forEach(({ key, type }) => {
+        const value = preset[key];
+        inputs.get(key).value = type === "number" ? (value ?? 0) : (value ?? "");
+      });
+    }
+
+    function clearStatus(delay = 4000) {
+      if (!delay) return;
+      setTimeout(() => (statusEl.textContent = ""), delay);
+    }
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+      clearStatus();
+    }
+
+    async function loadPresets() {
+      statusEl.textContent = "프리셋을 불러오는 중...";
+      const snapshot = await getDocs(presetsRef);
+      const rows = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        rows.push({ id: docSnap.id, ...data });
+      });
+      renderTable(rows);
+      setStatus(`총 ${rows.length}개 프리셋을 불러왔습니다.`);
+    }
+
+    function renderTable(rows) {
+      tableBody.innerHTML = "";
+      if (!rows.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 13;
+        td.textContent = "저장된 프리셋이 없습니다.";
+        tr.appendChild(td);
+        tableBody.appendChild(tr);
+        return;
+      }
+
+      rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        const cells = [
+          row.name,
+          row.hp,
+          row.hpRegen,
+          row.ad,
+          row.ap,
+          row.as,
+          row.critChance,
+          row.armor,
+          row.mr,
+          row.moveSpeed,
+          row.range,
+          row.Element,
+        ];
+
+        cells.forEach((value) => {
+          const td = document.createElement("td");
+          td.textContent = value ?? "-";
+          tr.appendChild(td);
+        });
+
+        const actionsTd = document.createElement("td");
+        const editBtn = document.createElement("button");
+        editBtn.className = "secondary";
+        editBtn.textContent = "불러오기";
+        editBtn.addEventListener("click", () => {
+          fillForm(row);
+          setStatus(`'${row.name}' 프리셋을 편집 중입니다.`);
+        });
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "danger";
+        deleteBtn.textContent = "삭제";
+        deleteBtn.addEventListener("click", async () => {
+          if (!confirm(`'${row.name}' 프리셋을 삭제할까요?`)) return;
+          await deleteDoc(doc(presetsRef, row.id));
+          setStatus(`'${row.name}' 프리셋을 삭제했습니다.`);
+          await loadPresets();
+          resetForm();
+        });
+
+        actionsTd.append(editBtn, deleteBtn);
+        tr.appendChild(actionsTd);
+        tableBody.appendChild(tr);
+      });
+    }
+
+    async function savePreset() {
+      const data = readForm();
+      if (!data.name) {
+        setStatus("프리셋 이름을 입력하세요.");
+        return;
+      }
+
+      const docId = data.name.replace(/\s+/g, "_").toLowerCase();
+      await setDoc(doc(presetsRef, docId), data, { merge: true });
+      setStatus(`'${data.name}' 프리셋이 저장되었습니다.`);
+      await loadPresets();
+    }
+
+    function resetForm() {
+      fields.forEach(({ key, type }) => {
+        inputs.get(key).value = type === "number" ? "0" : "";
+      });
+      setStatus("새 프리셋 입력을 시작하세요.");
+    }
+
+    saveBtn.addEventListener("click", async () => {
+      saveBtn.disabled = true;
+      try {
+        await savePreset();
+      } catch (error) {
+        console.error(error);
+        setStatus("저장 중 오류가 발생했습니다. 콘솔을 확인하세요.");
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    resetBtn.addEventListener("click", resetForm);
+
+    createForm();
+    resetForm();
+    loadPresets().catch((error) => {
+      console.error(error);
+      setStatus("프리셋을 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.");
+    });
+  </script>
+</body>
+</html>
