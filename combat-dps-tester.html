@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Combat DPS 테스트</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      margin: 0;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    .stat-table th,
+    .stat-table td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.45rem;
+      text-align: left;
+    }
+
+    .pill {
+      display: inline-flex;
+      gap: 0.35rem;
+      align-items: center;
+      padding: 0.35rem 0.55rem;
+      border-radius: 999px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      font-size: 0.9rem;
+    }
+
+    .dps-result {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin: 0.25rem 0 0.35rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="card">
+      <h1>Combat DPS 테스트</h1>
+      <p class="muted">BaseStats + (Level × GrowthBaseStats)와 CombatStats.md 수식을 기반으로 몬스터 A(공격) → B(방어) DPS를 시뮬레이션합니다.</p>
+    </header>
+
+    <section class="card">
+      <h2>설정 선택</h2>
+      <div class="grid" id="config-grid">
+        <div>
+          <label for="attacker-base">공격자 BaseStat</label>
+          <select id="attacker-base"></select>
+        </div>
+        <div>
+          <label for="attacker-growth">공격자 Growth</label>
+          <select id="attacker-growth"></select>
+        </div>
+        <div>
+          <label for="attacker-level">공격자 레벨</label>
+          <input type="number" id="attacker-level" min="0" value="0" />
+        </div>
+        <div>
+          <label for="defender-base">방어자 BaseStat</label>
+          <select id="defender-base"></select>
+        </div>
+        <div>
+          <label for="defender-growth">방어자 Growth</label>
+          <select id="defender-growth"></select>
+        </div>
+        <div>
+          <label for="defender-level">방어자 레벨</label>
+          <input type="number" id="defender-level" min="0" value="0" />
+        </div>
+        <div>
+          <label for="combat-config">전투 상수 (CombatStats)</label>
+          <select id="combat-config"></select>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="calculate-btn">DPS 계산</button>
+        <button class="secondary" id="reload-btn">Firestore 동기화</button>
+      </div>
+      <div class="status" id="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>계산 결과</h2>
+      <div class="row">
+        <div>
+          <div class="pill">몬스터 A (공격)</div>
+          <table class="stat-table" id="attacker-table"></table>
+        </div>
+        <div>
+          <div class="pill">몬스터 B (방어)</div>
+          <table class="stat-table" id="defender-table"></table>
+        </div>
+      </div>
+      <hr style="border: 1px solid #1f2937; margin: 1rem 0;" />
+      <div>
+        <div class="pill">전투 상수</div>
+        <table class="stat-table" id="config-table"></table>
+      </div>
+      <div style="margin-top: 1rem;">
+        <div class="muted">초당 피해 (A → B)</div>
+        <div class="dps-result" id="dps-result">-</div>
+        <div class="muted" id="dps-breakdown"></div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { firebaseConfig } from "./firebase-config.js";
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const basePresetSelects = {
+      attacker: document.getElementById("attacker-base"),
+      defender: document.getElementById("defender-base"),
+    };
+    const growthPresetSelects = {
+      attacker: document.getElementById("attacker-growth"),
+      defender: document.getElementById("defender-growth"),
+    };
+    const levelInputs = {
+      attacker: document.getElementById("attacker-level"),
+      defender: document.getElementById("defender-level"),
+    };
+    const combatConfigSelect = document.getElementById("combat-config");
+
+    const attackerTable = document.getElementById("attacker-table");
+    const defenderTable = document.getElementById("defender-table");
+    const configTable = document.getElementById("config-table");
+    const statusEl = document.getElementById("status");
+    const dpsResultEl = document.getElementById("dps-result");
+    const dpsBreakdownEl = document.getElementById("dps-breakdown");
+
+    const calculateBtn = document.getElementById("calculate-btn");
+    const reloadBtn = document.getElementById("reload-btn");
+
+    let basePresets = new Map();
+    let growthPresets = new Map();
+    let combatConfigs = new Map();
+
+    function clampNumber(value, min = 0, max = Number.POSITIVE_INFINITY) {
+      const num = Number(value);
+      if (Number.isNaN(num)) return min;
+      return Math.min(Math.max(num, min), max);
+    }
+
+    function renderSelect(selectEl, entries, labelKey = "name") {
+      const current = selectEl.value;
+      selectEl.innerHTML = "";
+      entries.forEach(({ id, data }) => {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = data[labelKey] ?? id;
+        selectEl.appendChild(option);
+      });
+      if (entries.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "데이터 없음";
+        selectEl.appendChild(option);
+      }
+      if (current && entries.some((e) => e.id === current)) {
+        selectEl.value = current;
+      }
+    }
+
+    function statToRow(label, value, suffix = "") {
+      const tr = document.createElement("tr");
+      const th = document.createElement("th");
+      th.textContent = label;
+      const td = document.createElement("td");
+      td.textContent = value ?? "-";
+      if (value !== undefined && value !== null && suffix) td.textContent += suffix;
+      tr.append(th, td);
+      return tr;
+    }
+
+    function renderStats(tableEl, stats) {
+      tableEl.innerHTML = "";
+      const rows = [
+        statToRow("HP", stats.hp),
+        statToRow("HPRegen", stats.hpRegen, "/s"),
+        statToRow("AD", stats.ad),
+        statToRow("AP", stats.ap),
+        statToRow("AS", stats.as, "/s"),
+        statToRow("Crit%", stats.critChance, "%"),
+        statToRow("Crit 배율", stats.critDamage, "x"),
+        statToRow("Armor", stats.armor),
+        statToRow("MR", stats.mr),
+        statToRow("이동속도", stats.moveSpeed),
+        statToRow("사거리", stats.range),
+        statToRow("속성", stats.Element ?? "")
+      ];
+      rows.forEach((row) => tableEl.appendChild(row));
+    }
+
+    function renderCombatConfig(config) {
+      configTable.innerHTML = "";
+      const rows = [
+        statToRow("critChanceMin", config.critChanceMin),
+        statToRow("critChanceMax", config.critChanceMax),
+        statToRow("critDamageMin", config.critDamageMin),
+        statToRow("armorMitigationBase", config.armorMitigationBase),
+        statToRow("armorMitigationDivisor", config.armorMitigationDivisor),
+        statToRow("attackSpeedMin", config.attackSpeedMin),
+      ];
+      rows.forEach((row) => configTable.appendChild(row));
+    }
+
+    function applyGrowth(base, growth, levelRaw) {
+      const level = clampNumber(levelRaw, 0, Number.POSITIVE_INFINITY);
+      const result = {};
+      const keys = new Set([
+        ...Object.keys(base ?? {}),
+        ...Object.keys(growth ?? {}),
+        "hp","hpRegen","ad","ap","as","critChance","critDamage","armor","mr","moveSpeed","range","abilityHaste","Element",
+      ]);
+      keys.forEach((key) => {
+        const baseVal = Number(base?.[key]) || 0;
+        const growthVal = Number(growth?.[key]) || 0;
+        if (key === "Element") {
+          result[key] = base?.[key] ?? growth?.[key] ?? "";
+        } else {
+          result[key] = baseVal + level * growthVal;
+        }
+      });
+      return result;
+    }
+
+    function computeDps(attacker, defender, config) {
+      const defaults = {
+        critChanceMin: 0,
+        critChanceMax: 100,
+        critDamageMin: 1,
+        armorMitigationBase: 100,
+        armorMitigationDivisor: 100,
+        attackSpeedMin: 0,
+      };
+      const cfg = { ...defaults, ...config };
+      const critChance = clampNumber(attacker.critChance ?? 0, cfg.critChanceMin, cfg.critChanceMax);
+      const critDamage = Math.max(Number(attacker.critDamage) || 0, cfg.critDamageMin);
+      const ad = Number(attacker.ad) || 0;
+      const as = Math.max(Number(attacker.as) || 0, cfg.attackSpeedMin);
+      const armor = Math.max(Number(defender.armor) || 0, 0);
+
+      const expectedHit = ad * (1 + (critChance / 100) * (critDamage - 1));
+      const mitigation = cfg.armorMitigationBase / (cfg.armorMitigationDivisor + armor);
+      const dps = expectedHit * mitigation * as;
+
+      return {
+        dps,
+        expectedHit,
+        mitigation,
+        critChance,
+        critDamage,
+        ad,
+        as,
+      };
+    }
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    async function loadCollections() {
+      setStatus("Firestore 데이터를 불러오는 중...");
+      const [baseSnap, growthSnap, combatSnap] = await Promise.all([
+        getDocs(collection(db, "baseStatPresets")),
+        getDocs(collection(db, "growthBaseStatPresets")),
+        getDocs(collection(db, "combatStatConfigs")),
+      ]);
+
+      basePresets = new Map();
+      baseSnap.forEach((docSnap) => basePresets.set(docSnap.id, docSnap.data()));
+      growthPresets = new Map();
+      growthSnap.forEach((docSnap) => growthPresets.set(docSnap.id, docSnap.data()));
+      combatConfigs = new Map();
+      combatSnap.forEach((docSnap) => combatConfigs.set(docSnap.id, docSnap.data()));
+
+      const baseEntries = Array.from(basePresets, ([id, data]) => ({ id, data }));
+      const growthEntries = Array.from(growthPresets, ([id, data]) => ({ id, data }));
+      const combatEntries = Array.from(combatConfigs, ([id, data]) => ({ id, data }));
+
+      renderSelect(basePresetSelects.attacker, baseEntries);
+      renderSelect(basePresetSelects.defender, baseEntries);
+      renderSelect(growthPresetSelects.attacker, growthEntries);
+      renderSelect(growthPresetSelects.defender, growthEntries);
+      renderSelect(combatConfigSelect, combatEntries);
+
+      setStatus(`불러오기 완료: Base ${baseEntries.length}개, Growth ${growthEntries.length}개, Combat ${combatEntries.length}개.`);
+    }
+
+    function getSelectedOrEmpty(map, key) {
+      const selected = key?.value;
+      return selected && map.has(selected) ? map.get(selected) : {};
+    }
+
+    function refreshView() {
+      const attackerBase = getSelectedOrEmpty(basePresets, basePresetSelects.attacker);
+      const defenderBase = getSelectedOrEmpty(basePresets, basePresetSelects.defender);
+      const attackerGrowth = getSelectedOrEmpty(growthPresets, growthPresetSelects.attacker);
+      const defenderGrowth = getSelectedOrEmpty(growthPresets, growthPresetSelects.defender);
+      const combatConfig = getSelectedOrEmpty(combatConfigs, combatConfigSelect);
+
+      const attackerFinal = applyGrowth(attackerBase, attackerGrowth, levelInputs.attacker.value);
+      const defenderFinal = applyGrowth(defenderBase, defenderGrowth, levelInputs.defender.value);
+
+      renderStats(attackerTable, attackerFinal);
+      renderStats(defenderTable, defenderFinal);
+      renderCombatConfig(combatConfig);
+
+      const { dps, expectedHit, mitigation, critChance, critDamage, ad, as } = computeDps(attackerFinal, defenderFinal, combatConfig);
+      dpsResultEl.textContent = Number.isFinite(dps) ? `${dps.toFixed(2)} DPS` : "-";
+      dpsBreakdownEl.textContent = `ExpectedHit: ${expectedHit.toFixed(2)}, Mitigation: ${mitigation.toFixed(4)}, AS: ${as.toFixed(2)}, Crit: ${critChance.toFixed(2)}% × ${critDamage.toFixed(2)}x`;
+    }
+
+    calculateBtn.addEventListener("click", () => {
+      calculateBtn.disabled = true;
+      try {
+        refreshView();
+      } finally {
+        calculateBtn.disabled = false;
+      }
+    });
+
+    [
+      basePresetSelects.attacker,
+      basePresetSelects.defender,
+      growthPresetSelects.attacker,
+      growthPresetSelects.defender,
+      combatConfigSelect,
+      levelInputs.attacker,
+      levelInputs.defender,
+    ].forEach((el) => el.addEventListener("change", () => calculateBtn.click()));
+
+    reloadBtn.addEventListener("click", async () => {
+      reloadBtn.disabled = true;
+      try {
+        await loadCollections();
+        refreshView();
+      } catch (error) {
+        console.error(error);
+        setStatus("데이터를 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.");
+      } finally {
+        reloadBtn.disabled = false;
+      }
+    });
+
+    loadCollections()
+      .then(() => refreshView())
+      .catch((error) => {
+        console.error(error);
+        setStatus("초기 데이터 로드에 실패했습니다. 콘솔을 확인하세요.");
+      });
+  </script>
+</body>
+</html>
