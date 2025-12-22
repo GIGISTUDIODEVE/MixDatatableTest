@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>전투 스텟 테스트</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">스텟 검증</p>
+      <h1>베이스 · 성장 스텟 전투 테스트</h1>
+      <p class="subtitle">베이스 + 성장 스텟으로 최종 수치를 만든 뒤, A의 공격이 B의 방어를 얼마나 관통하는지 확인합니다.</p>
+      <nav class="page-nav" aria-label="프리셋 페이지 선택">
+        <a href="index.html">베이스 스텟</a>
+        <a href="growth.html">성장 스텟</a>
+        <a class="active" href="combat.html" aria-current="page">전투 테스트</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="layout single">
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>테스트 설정</h2>
+          <p class="subtitle">A와 B의 프리셋, 성장 프리셋, 레벨을 고르고 최종 스텟을 만듭니다.</p>
+        </div>
+      </div>
+      <div class="duel-layout">
+        <div class="duel-card" aria-label="공격자 A 설정">
+          <div class="duel-header">
+            <h3>A (공격자)</h3>
+            <span class="badge">Attacker</span>
+          </div>
+          <label>베이스 프리셋
+            <select id="baseSelectA"></select>
+          </label>
+          <label>성장 프리셋
+            <select id="growthSelectA"></select>
+          </label>
+          <label>레벨
+            <input id="levelA" type="number" min="0" value="1" />
+          </label>
+        </div>
+        <div class="duel-card" aria-label="방어자 B 설정">
+          <div class="duel-header">
+            <h3>B (방어자)</h3>
+            <span class="badge ghost">Defender</span>
+          </div>
+          <label>베이스 프리셋
+            <select id="baseSelectB"></select>
+          </label>
+          <label>성장 프리셋
+            <select id="growthSelectB"></select>
+          </label>
+          <label>레벨
+            <input id="levelB" type="number" min="0" value="1" />
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>최종 스텟</h2>
+          <p class="subtitle">베이스 + (레벨 × 성장) 공식으로 합산한 결과입니다.</p>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div>
+          <div class="duel-header space">
+            <h3>A 결과</h3>
+            <span id="summaryA" class="badge">-</span>
+          </div>
+          <div id="finalStatsA" class="stat-card"></div>
+        </div>
+        <div>
+          <div class="duel-header space">
+            <h3>B 결과</h3>
+            <span id="summaryB" class="badge ghost">-</span>
+          </div>
+          <div id="finalStatsB" class="stat-card"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>DPS 시뮬레이션</h2>
+          <p class="subtitle">A의 기대 타격 피해와 B의 방어 감쇠 계수를 곱해 초당 피해량을 계산합니다.</p>
+        </div>
+        <button class="ghost" id="refreshButton" type="button">값 새로고침</button>
+      </div>
+      <div class="result-box">
+        <div class="result-line">
+          <span>기대 타격 피해 (치명 포함)</span>
+          <strong id="expectedHit">-</strong>
+        </div>
+        <div class="result-line">
+          <span>방어력 감쇠 계수</span>
+          <strong id="mitigation">-</strong>
+        </div>
+        <div class="result-line highlight">
+          <span>초당 입히는 피해 (A ➜ B)</span>
+          <strong id="dps">-</strong>
+        </div>
+      </div>
+      <p class="subtitle small">계산식: 기대 타격 피해 × 방어력 감쇠 계수 × 공격속도. 자세한 내용은 CombatStats.md 를 참고하세요.</p>
+    </section>
+  </main>
+
+  <script src="combat.js"></script>
+</body>
+</html>
