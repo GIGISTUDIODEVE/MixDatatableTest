@@ -1,5 +1,6 @@
 # CombatStats.md
 
+
 # Combat Stats & Damage Formula Reference
 
 이 문서는 다음을 목표로 한다.
@@ -17,8 +18,8 @@
 
 | 스탯 | 설명 |
 |---|---|
-| Physical Attack | 물리 피해를 발생시키는 공격 스탯 |
-| Magic Attack | 마법 피해를 발생시키는 공격 스탯 |
+| Physical Attack | 물리 피해를 발생시키는 공격(ad) 스탯 |
+| Magic Attack | 마법 피해를 발생시키는 마법 공격(ap) 스탯 |
 | True Damage | 방어 및 데미지 감소를 무시하는 고정 피해 |
 
 ---
