@@ -251,7 +251,7 @@
       deleteDoc,
       doc,
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-    import { firebaseConfig } from "./firebase-config.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
 
     const statusEl = document.getElementById("status");
     const tableBody = document.querySelector("#config-table tbody");
@@ -436,7 +436,7 @@
 
     async function initializeFirestore() {
       try {
-        const app = initializeApp(firebaseConfig);
+        const app = initializeApp(await getFirebaseConfig());
         const db = getFirestore(app);
         presetsRef = collection(db, "combatStatConfigs");
       } catch (error) {
