@@ -1,20 +1,26 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
-import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js';
+import { getAnalytics, isSupported as analyticsSupported } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js';
 import { getDatabase, ref, get, set, child } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+import { firebaseConfig } from './firebase-config.js';
 
-export const firebaseConfig = {
-  apiKey: 'AIzaSyBq6NYET2gBapgOi5Yh2aSePctsMA8Dr7U',
-  authDomain: 'studydase.firebaseapp.com',
-  databaseURL: 'https://studydase-default-rtdb.firebaseio.com',
-  projectId: 'studydase',
-  storageBucket: 'studydase.firebasestorage.app',
-  messagingSenderId: '889952871801',
-  appId: '1:889952871801:web:2739d10dd5b3291b563ba8',
-  measurementId: 'G-JH3EBS40YM'
-};
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+} catch (error) {
+  console.error('[firebase] 초기화 실패: 구성 값을 확인하세요.', error);
+  throw error;
+}
 
-const app = initializeApp(firebaseConfig);
-getAnalytics(app);
+(async () => {
+  try {
+    if (await analyticsSupported()) {
+      getAnalytics(app);
+    }
+  } catch (error) {
+    console.warn('[firebase] 애널리틱스 초기화가 건너뛰어졌습니다.', error);
+  }
+})();
+
 const database = getDatabase(app);
 
 export async function fetchPresets(path, fallback) {
