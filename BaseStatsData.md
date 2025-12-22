@@ -1,4 +1,4 @@
-# MonsterBaseStats.md
+# BaseStats.md
 
 **생존**
 
@@ -25,4 +25,5 @@
 * `abilityHaste` : 스킬 가속
 
 **속성**
+
 * `Element` : 속성 추가 데미지
