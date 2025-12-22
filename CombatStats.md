@@ -10,13 +10,21 @@
 
 ## 피해 계산
 - 기대 타격 피해(치명 기대값 포함):
-  - `critChanceClamped = clamp(critChance, 0, 100)`
-  - `critDamageClamped = max(critDamage, 1)`
+  - `critChanceClamped = clamp(critChance, critChanceMin, critChanceMax)`
+  - `critDamageClamped = max(critDamage, critDamageMin)`
   - `expectedHit = AD × (1 + critChanceClamped / 100 × (critDamageClamped - 1))`
 - 방어력 감쇠 계수(물리 피해):
-  - `mitigation = 100 / (100 + max(armor, 0))`
+  - `mitigation = armorMitigationBase / (armorMitigationDivisor + max(armor, 0))`
 - 초당 입히는 피해(DPS):
-  - `dps = expectedHit × mitigation × AS`
+  - `dps = expectedHit × mitigation × max(AS, attackSpeedMin)`
+
+### 기본 상수(페이지에서 수정 가능)
+- `critChanceMin = 0`
+- `critChanceMax = 100`
+- `critDamageMin = 1`
+- `armorMitigationBase = 100`
+- `armorMitigationDivisor = 100`
+- `attackSpeedMin = 0`
 
 ## 주의 사항
 - 모든 필드가 숫자가 아닐 경우 0으로 변환합니다.

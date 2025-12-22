@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>전투 계산식 수치 관리</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">전투 계산식</p>
+      <h1>CombatStats 계산 수치 관리</h1>
+      <p class="subtitle">CombatStats.md에 정의된 기대 피해, 방어 감쇠, DPS 계산에서 사용하는 상수 값을 관리합니다.</p>
+      <nav class="page-nav" aria-label="페이지 선택">
+        <a href="index.html">베이스 스텟</a>
+        <a href="growth.html">성장 스텟</a>
+        <a href="combat.html">전투 테스트</a>
+        <a class="active" href="formula.html" aria-current="page">계산식 수치</a>
+      </nav>
+    </div>
+    <div class="button-group">
+      <button class="ghost" id="resetDefaults" type="button">기본값 복원</button>
+      <button class="primary" id="saveConfig" type="button">설정 저장</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>크리티컬 및 공격속도</h2>
+          <p class="subtitle">치명타 확률/배율 및 공격속도의 하한을 제어합니다.</p>
+        </div>
+      </div>
+      <form class="form-grid" id="criticalForm" novalidate>
+        <label>치명확률 최소값 (%)
+          <input name="critChanceMin" type="number" min="0" step="1" required />
+        </label>
+        <label>치명확률 최대값 (%)
+          <input name="critChanceMax" type="number" min="0" step="1" required />
+        </label>
+        <label>치명타 배율 최소값
+          <input name="critDamageMin" type="number" min="1" step="0.01" required />
+        </label>
+        <label>공격속도 최소값
+          <input name="attackSpeedMin" type="number" min="0" step="0.01" required />
+        </label>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>방어력 감쇠 계수</h2>
+          <p class="subtitle">방어력 → 피해감쇠 계산에 사용되는 기본값과 분모를 조정합니다.</p>
+        </div>
+      </div>
+      <form class="form-grid" id="mitigationForm" novalidate>
+        <label>방어력 감쇠 기본값
+          <input name="armorMitigationBase" type="number" min="0.0001" step="0.0001" required />
+        </label>
+        <label>방어력 감쇠 분모 기본값
+          <input name="armorMitigationDivisor" type="number" min="0.0001" step="0.0001" required />
+        </label>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>JSON 내보내기</h2>
+          <p class="subtitle">현재 설정을 JSON으로 복사해 백업하거나 공유할 수 있습니다.</p>
+        </div>
+        <button class="ghost" id="copyConfig" type="button">JSON 복사</button>
+      </div>
+      <textarea id="configExport" readonly></textarea>
+    </section>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="formula-config.js"></script>
+  <script src="formula.js"></script>
+</body>
+</html>

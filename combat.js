@@ -124,6 +124,22 @@ function loadPresets(key, defaults) {
 const basePresets = loadPresets(BASE_STORAGE_KEY, baseDefaults);
 const growthPresets = loadPresets(GROWTH_STORAGE_KEY, growthDefaults);
 
+function getFormulaConfig() {
+  if (window.FormulaConfig && typeof FormulaConfig.load === 'function') {
+    return FormulaConfig.load();
+  }
+  return {
+    critChanceMin: 0,
+    critChanceMax: 100,
+    critDamageMin: 1,
+    armorMitigationBase: 100,
+    armorMitigationDivisor: 100,
+    attackSpeedMin: 0
+  };
+}
+
+let formulaConfig = getFormulaConfig();
+
 function populateSelect(select, presets) {
   select.innerHTML = '';
   presets.forEach((preset, index) => {
@@ -138,6 +154,12 @@ function clampNumber(value, min = 0) {
   const num = Number(value);
   if (Number.isNaN(num)) return min;
   return Math.max(num, min);
+}
+
+function clamp(value, min, max) {
+  const num = Number(value);
+  if (Number.isNaN(num)) return min;
+  return Math.min(Math.max(num, min), max);
 }
 
 function combineStats(base, growth, level) {
@@ -194,26 +216,30 @@ function renderFinalStats(container, stats) {
 }
 
 function expectedHitDamage(attacker) {
+  const config = formulaConfig || getFormulaConfig();
   const ad = Math.max(Number(attacker.ad) || 0, 0);
-  const critChance = Math.min(Math.max(Number(attacker.critChance) || 0, 0), 100);
-  const critDamage = Math.max(Number(attacker.critDamage) || 1, 1);
+  const critChance = clamp(attacker.critChance, config.critChanceMin, config.critChanceMax);
+  const critDamage = Math.max(Number(attacker.critDamage) || 0, config.critDamageMin);
   return ad * (1 + (critChance / 100) * (critDamage - 1));
 }
 
 function mitigationFromArmor(armor) {
+  const config = formulaConfig || getFormulaConfig();
   const safeArmor = Math.max(Number(armor) || 0, 0);
-  return 100 / (100 + safeArmor);
+  return config.armorMitigationBase / (config.armorMitigationDivisor + safeArmor);
 }
 
 function calculateDps(attacker, defender) {
+  const config = formulaConfig || getFormulaConfig();
   const hit = expectedHitDamage(attacker);
   const mitigation = mitigationFromArmor(defender.armor);
-  const attackSpeed = Math.max(Number(attacker.as) || 0, 0);
+  const attackSpeed = Math.max(Number(attacker.as) || 0, config.attackSpeedMin);
   const dps = hit * mitigation * attackSpeed;
   return { hit, mitigation, dps };
 }
 
 function update() {
+  formulaConfig = getFormulaConfig();
   const baseA = basePresets[baseSelectA.value] || baseDefaults[0];
   const baseB = basePresets[baseSelectB.value] || baseDefaults[0];
   const growthA = growthPresets[growthSelectA.value] || growthDefaults[0];

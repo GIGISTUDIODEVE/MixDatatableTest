@@ -33,6 +33,11 @@ h1, h2, h3, p { margin: 0; }
   margin-bottom: 20px;
 }
 
+.button-group {
+  display: inline-flex;
+  gap: 10px;
+}
+
 .page-nav {
   display: inline-flex;
   gap: 10px;
