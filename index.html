@@ -150,6 +150,11 @@
         <button id="loadMonsters">몬스터 타입 불러오기</button>
       </div>
       <div class="status" id="listStatus"></div>
+      <details style="margin: 10px 0;" open>
+        <summary style="font-weight: 700; cursor: pointer;">불러온 데이터 미리보기(JSON)</summary>
+        <p class="muted" style="margin: 6px 0 8px;">`baseStats`, `growthPerLevel`를 포함한 전체 문서 내용을 JSON으로 확인하여 정상 저장 여부를 검증합니다.</p>
+        <textarea id="jsonPreview" readonly style="min-height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></textarea>
+      </details>
       <div style="overflow-x: auto;">
         <table aria-label="몬스터 타입 리스트">
           <thead>
@@ -207,6 +212,10 @@
         <div style="margin-top: 16px;">
           <label for="notes">notes (선택)</label>
           <textarea id="notes" placeholder="운영/밸런스 메모"></textarea>
+        </div>
+        <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" id="fillSample">샘플 스탯 채우기</button>
+          <span class="muted">MonsterDataTable.md 기준 스탯 키만 허용되며 숫자값을 입력해야 합니다.</span>
         </div>
 
         <div style="margin-top: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">

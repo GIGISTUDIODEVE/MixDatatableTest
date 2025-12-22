@@ -27,10 +27,28 @@ const db = getFirestore(app);
 const listStatus = document.getElementById("listStatus");
 const tableBody = document.getElementById("monsterTableBody");
 const loadButton = document.getElementById("loadMonsters");
+const jsonPreview = document.getElementById("jsonPreview");
 
 const createForm = document.getElementById("createForm");
 const createStatus = document.getElementById("createStatus");
 const createButton = document.getElementById("createButton");
+const fillSampleButton = document.getElementById("fillSample");
+
+const STAT_KEYS = [
+  "hp",
+  "hpRegen",
+  "ad",
+  "ap",
+  "as",
+  "critChance",
+  "critDamage",
+  "armor",
+  "mr",
+  "tenacity",
+  "moveSpeed",
+  "range",
+  "abilityHaste",
+];
 
 function renderStatus(el, message, isError = false) {
   if (!el) return;
@@ -47,10 +65,29 @@ function toDisplayDate(timestamp) {
 function parseJsonField(raw, fieldName) {
   try {
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(`${fieldName}는 객체 형태의 JSON이어야 합니다.`);
     }
-    throw new Error(`${fieldName}는 객체 형태의 JSON이어야 합니다.`);
+
+    const statKeys = Object.keys(parsed);
+    if (statKeys.length === 0) {
+      throw new Error(`${fieldName}에 한 개 이상의 스탯 키가 필요합니다.`);
+    }
+
+    for (const key of statKeys) {
+      if (!STAT_KEYS.includes(key)) {
+        throw new Error(
+          `${fieldName}에 허용되지 않은 키(${key})가 있습니다. 허용 키: ${STAT_KEYS.join(", ")}`
+        );
+      }
+
+      const value = parsed[key];
+      if (!Number.isFinite(value)) {
+        throw new Error(`${fieldName}.${key} 값은 숫자여야 합니다.`);
+      }
+    }
+
+    return parsed;
   } catch (error) {
     throw new Error(`${fieldName} JSON 파싱 실패: ${error.message}`);
   }
@@ -68,13 +105,17 @@ async function fetchMonsterTypes() {
 
     if (snap.empty) {
       renderStatus(listStatus, "등록된 몬스터 타입이 없습니다.");
+      if (jsonPreview) jsonPreview.value = "";
       return;
     }
 
     const rows = [];
+    const rawDocs = [];
     snap.forEach((docSnap) => {
       const data = docSnap.data();
-      rows.push({ id: docSnap.id, ...data });
+      const docData = { id: docSnap.id, ...data };
+      rows.push(docData);
+      rawDocs.push(docData);
     });
 
     tableBody.innerHTML = rows
@@ -93,9 +134,14 @@ async function fetchMonsterTypes() {
       .join("");
 
     renderStatus(listStatus, `총 ${rows.length}개 몬스터 타입`);
+
+    if (jsonPreview) {
+      jsonPreview.value = JSON.stringify(rawDocs, null, 2);
+    }
   } catch (error) {
     console.error(error);
     renderStatus(listStatus, `불러오기 실패: ${error.message}`, true);
+    if (jsonPreview) jsonPreview.value = "";
   } finally {
     loadButton.disabled = false;
   }
@@ -185,5 +231,45 @@ async function handleCreate(event) {
   }
 }
 
+function fillSampleStats() {
+  const sampleBase = {
+    hp: 120,
+    hpRegen: 2.5,
+    ad: 14,
+    ap: 0,
+    as: 1.05,
+    critChance: 0.1,
+    critDamage: 2,
+    armor: 8,
+    mr: 6,
+    tenacity: 0,
+    moveSpeed: 330,
+    range: 1,
+    abilityHaste: 0,
+  };
+
+  const sampleGrowth = {
+    hp: 12,
+    hpRegen: 0.1,
+    ad: 1.4,
+    ap: 0,
+    as: 0.025,
+    critChance: 0,
+    critDamage: 0,
+    armor: 0.9,
+    mr: 0.7,
+    tenacity: 0,
+    moveSpeed: 0,
+    range: 0,
+    abilityHaste: 0.5,
+  };
+
+  const baseStatsEl = document.getElementById("baseStats");
+  const growthEl = document.getElementById("growthPerLevel");
+  if (baseStatsEl) baseStatsEl.value = JSON.stringify(sampleBase, null, 2);
+  if (growthEl) growthEl.value = JSON.stringify(sampleGrowth, null, 2);
+}
+
 loadButton?.addEventListener("click", fetchMonsterTypes);
 createForm?.addEventListener("submit", handleCreate);
+fillSampleButton?.addEventListener("click", fillSampleStats);
