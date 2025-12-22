@@ -36,21 +36,14 @@ const fillSampleButton = document.getElementById("fillSample");
 const baseStatsFields = document.getElementById("baseStatsFields");
 const growthFields = document.getElementById("growthFields");
 
-const STAT_KEYS = [
-  "hp",
-  "hpRegen",
-  "ad",
-  "ap",
-  "as",
-  "critChance",
-  "critDamage",
-  "armor",
-  "mr",
-  "tenacity",
-  "moveSpeed",
-  "range",
-  "abilityHaste",
+const STAT_CATEGORIES = [
+  { label: "생존", keys: ["hp", "hpRegen"] },
+  { label: "공격", keys: ["ad", "ap", "as", "critChance", "critDamage"] },
+  { label: "방어·유틸", keys: ["armor", "mr", "tenacity", "moveSpeed", "range"] },
+  { label: "쿨·자원", keys: ["abilityHaste"] },
 ];
+
+const STAT_KEYS = STAT_CATEGORIES.flatMap((cat) => cat.keys);
 
 function renderStatus(el, message, isError = false) {
   if (!el) return;
@@ -67,12 +60,23 @@ function toDisplayDate(timestamp) {
 function renderStatInputs() {
   const renderTo = (container, prefix) => {
     if (!container) return;
-    container.innerHTML = STAT_KEYS.map(
-      (key) => `
-        <label class="stat-field" for="${prefix}-${key}">
-          <span>${key}</span>
-          <input id="${prefix}-${key}" type="number" step="any" placeholder="0" required />
-        </label>
+    container.innerHTML = STAT_CATEGORIES.map(
+      (cat) => `
+        <div class="stat-section" aria-label="${cat.label} 카테고리">
+          <h4>${cat.label}</h4>
+          <div class="stat-grid">
+            ${cat.keys
+              .map(
+                (key) => `
+                  <label class="stat-field" for="${prefix}-${key}">
+                    <span>${key}</span>
+                    <input id="${prefix}-${key}" type="number" step="any" placeholder="0" required />
+                  </label>
+                `
+              )
+              .join("")}
+          </div>
+        </div>
       `
     ).join("");
   };
