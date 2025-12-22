@@ -1,8 +1,4 @@
-# MonsterData.md
-
-## 1) 스탯 표준 키
-
-### 1.1 기본 스탯 키 (baseStats)
+# MonsterBaseStats.md
 
 **생존**
 
