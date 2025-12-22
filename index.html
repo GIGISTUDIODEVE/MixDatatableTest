@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>가족 협업형 섬 경영 &amp; 디펜스 - 테스트 페이지</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --text: #e2e8f0;
+      --accent: #38bdf8;
+      --muted: #94a3b8;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+    }
+
+    header {
+      padding: 24px 32px;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.1);
+      background: rgba(15, 23, 42, 0.85);
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(24px, 3vw, 32px);
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    main {
+      padding: 32px;
+      max-width: 1000px;
+      width: 100%;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 16px;
+      padding: 20px 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent);
+      font-size: 13px;
+      margin-right: 8px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    ul, ol {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    button.toggle {
+      background: rgba(148, 163, 184, 0.15);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    button.toggle:hover,
+    button.toggle:focus-visible {
+      background: rgba(56, 189, 248, 0.18);
+      outline: none;
+      transform: translateY(-1px);
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    details summary::-webkit-details-marker {
+      color: var(--accent);
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>가족 협업형 섬 경영 &amp; 디펜스 - 테스트 페이지</h1>
+    <p>README와 Firebase 설계 초안을 바탕으로 한 기본 구조 미리보기입니다.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="section-title">
+        <h2>한 줄 요약</h2>
+        <button class="toggle" data-target="core-loop">루프 보기/숨기기</button>
+      </div>
+      <p><span class="pill">역할</span> A(부모)는 퀘스트와 보상을 설계·지원하고, B(자식)는 섬을 운영·방어하며 몬스터를 수집/합성해 성장합니다.</p>
+      <div id="core-loop">
+        <ol>
+          <li>A가 오늘의 퀘스트를 설정합니다.</li>
+          <li>B가 섬 경영/전투 플레이로 퀘스트를 수행합니다.</li>
+          <li>완료된 퀘스트 보상으로 특수 재화나 합성 보조를 획득합니다.</li>
+          <li>몬스터 알 구매 → 합성 → 전력 강화 후 다음 날 반복합니다.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>핵심 시스템 3축</h2>
+      <div class="grid">
+        <div>
+          <div class="pill">섬 경영</div>
+          <ul>
+            <li>자원 생산(농사/벌목)으로 건설·업그레이드 재료 확보</li>
+            <li>시설 강화와 섬 확장이 장기 목표</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pill">전투(디펜스)</div>
+          <ul>
+            <li>웨이브 형태의 적 공격을 방어</li>
+            <li>몬스터 편성과 성장이 승패에 직접 영향</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pill">몬스터</div>
+          <ul>
+            <li>퀘스트 보상 재화로 알을 구매해 수집</li>
+            <li>확률 합성과 천장 게이지로 상위/신규 몬스터 획득</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Firebase 모델 핵심(요약)</h2>
+      <div class="grid">
+        <div>
+          <div class="pill">인증 &amp; 가족</div>
+          <ul>
+            <li><strong>users</strong>: role(HOST/CLIENT), familyId, displayName</li>
+            <li><strong>families</strong>: hostUid, clientUids, 초대 코드</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pill">섬 데이터</div>
+          <ul>
+            <li><strong>islands</strong>: ownerUid, level, power, timestamps</li>
+            <li><strong>state/buildings</strong>: 자원, 건설 상태, 타이머 필드</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pill">퀘스트 &amp; 합성</div>
+          <ul>
+            <li>dailyQuests, questClaims, synthesis 요청/게이지</li>
+            <li>Cloud Functions로 보상, RNG, 천장 게이지 관리</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pill">보안 원칙</div>
+          <ul>
+            <li>중요 쓰기는 클라우드 함수 전담(보상, 합성, 결제)</li>
+            <li>자주 변하는 데이터는 별도 문서로 분리해 핫스팟 회피</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>검증 포인트</h2>
+      <ul>
+        <li>클라이언트는 요청만, 실제 반영은 서버(Cloud Functions)에서 수행</li>
+        <li>타이머는 서버 시간을 기준으로 시작·종료를 계산</li>
+        <li>보호권/안정제/천장 게이지로 실패 리스크 완화</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>테스트용 인터랙션</h2>
+      <details>
+        <summary>기본 안내</summary>
+        <p>“루프 보기/숨기기” 버튼으로 코어 루프 섹션을 펼치거나 접을 수 있습니다. 이후 컴포넌트 확장 시 버튼/토글 이벤트를 여기에 추가하면 됩니다.</p>
+      </details>
+      <details>
+        <summary>차후 점검 아이디어</summary>
+        <ul>
+          <li>간단한 더미 데이터 테이블 추가</li>
+          <li>Firebase 컬렉션별 예시 데이터 시각화</li>
+          <li>디펜스 웨이브/빌딩 상태를 나타내는 미니 카드</li>
+        </ul>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    게임 구조와 파이어베이스 설계 초안을 빠르게 확인하기 위한 테스트 페이지입니다.
+  </footer>
+
+  <script>
+    const toggleButtons = document.querySelectorAll('button.toggle');
+    toggleButtons.forEach((btn) => {
+      const targetId = btn.dataset.target;
+      const targetEl = document.getElementById(targetId);
+
+      btn.addEventListener('click', () => {
+        const isHidden = targetEl.hidden;
+        targetEl.hidden = !isHidden;
+        btn.textContent = targetEl.hidden ? '루프 보기' : '루프 숨기기';
+      });
+    });
+  </script>
+</body>
+</html>
