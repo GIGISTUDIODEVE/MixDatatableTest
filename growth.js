@@ -122,9 +122,12 @@ function showGrowthToast(message) {
   setTimeout(() => growthToast.classList.remove('show'), 2200);
 }
 
-function persistGrowthPresets() {
+async function persistGrowthPresets() {
   saveLocalGrowthPresets(growthPresets);
-  savePresets('presets/growth', growthPresets);
+  const ok = await savePresets('presets/growth', growthPresets);
+  if (!ok) {
+    showGrowthToast('Firebase 저장에 실패했습니다. 연결을 확인하세요.');
+  }
 }
 
 function validateGrowthPayload(payload) {
@@ -183,15 +186,15 @@ function resetGrowthFormState() {
   growthFormTitle.textContent = '프리셋 생성';
 }
 
-function deleteGrowthPreset(target) {
+async function deleteGrowthPreset(target) {
   growthPresets = growthPresets.filter((preset) => preset !== target);
-  persistGrowthPresets();
+  await persistGrowthPresets();
   renderGrowthTable();
   showGrowthToast('프리셋을 삭제했습니다.');
   resetGrowthFormState();
 }
 
-function handleGrowthSubmit(event) {
+async function handleGrowthSubmit(event) {
   event.preventDefault();
   const formData = new FormData(growthForm);
   const payload = Object.fromEntries(formData.entries());
@@ -222,7 +225,7 @@ function handleGrowthSubmit(event) {
     showGrowthToast('새 프리셋을 추가했습니다.');
   }
 
-  persistGrowthPresets();
+  await persistGrowthPresets();
   renderGrowthTable();
   resetGrowthFormState();
 }
@@ -233,9 +236,9 @@ function copyGrowthExport() {
   showGrowthToast('JSON을 복사했습니다.');
 }
 
-function resetGrowthToDefault() {
+async function resetGrowthToDefault() {
   growthPresets = [...growthDefaults].map(sanitizeGrowthPreset);
-  persistGrowthPresets();
+  await persistGrowthPresets();
   renderGrowthTable();
   resetGrowthFormState();
   growthConfirmDialog.close();
@@ -256,6 +259,9 @@ function attachGrowthListeners() {
 
 async function initializeGrowthPage() {
   growthPresets = await loadGrowthPresets();
+  if (!(await savePresets('presets/growth', growthPresets))) {
+    console.warn('[firebase] 성장 프리셋 초기 저장 실패');
+  }
   renderGrowthTable();
 }
 

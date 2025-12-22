@@ -1,7 +1,8 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js';
 import { getDatabase, ref, get, set, child } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: 'AIzaSyBq6NYET2gBapgOi5Yh2aSePctsMA8Dr7U',
   authDomain: 'studydase.firebaseapp.com',
   databaseURL: 'https://studydase-default-rtdb.firebaseio.com',
@@ -13,6 +14,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+getAnalytics(app);
 const database = getDatabase(app);
 
 export async function fetchPresets(path, fallback) {

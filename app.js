@@ -134,9 +134,12 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
-function persistPresets() {
+async function persistPresets() {
   saveLocalPresets(presets);
-  savePresets('presets/base', presets);
+  const ok = await savePresets('presets/base', presets);
+  if (!ok) {
+    showToast('Firebase 저장에 실패했습니다. 연결을 확인하세요.');
+  }
 }
 
 function validatePayload(payload) {
@@ -198,15 +201,15 @@ function resetForm() {
   formTitle.textContent = '프리셋 생성';
 }
 
-function deletePreset(target) {
+async function deletePreset(target) {
   presets = presets.filter((preset) => preset !== target);
-  persistPresets();
+  await persistPresets();
   renderTable();
   showToast('프리셋을 삭제했습니다.');
   resetForm();
 }
 
-function handleSubmit(event) {
+async function handleSubmit(event) {
   event.preventDefault();
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
@@ -237,7 +240,7 @@ function handleSubmit(event) {
     showToast('새 프리셋을 추가했습니다.');
   }
 
-  persistPresets();
+  await persistPresets();
   renderTable();
   resetForm();
 }
@@ -248,9 +251,9 @@ function copyExport() {
   showToast('JSON을 복사했습니다.');
 }
 
-function resetToDefault() {
+async function resetToDefault() {
   presets = [...defaultPresets].map(sanitizePreset);
-  persistPresets();
+  await persistPresets();
   renderTable();
   resetForm();
   confirmDialog.close();
@@ -271,6 +274,9 @@ function attachEventListeners() {
 
 async function initializePage() {
   presets = await loadPresets();
+  if (!(await savePresets('presets/base', presets))) {
+    console.warn('[firebase] 초기 프리셋 저장 실패');
+  }
   renderTable();
 }
 
