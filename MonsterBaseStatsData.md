@@ -1,4 +1,4 @@
-# MonsterBaseStats.md
+# BaseStats.md
 
 **생존**
 
