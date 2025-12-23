@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>강화(Enhancement) 정의 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: center;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      background: #111827;
+      border: 1px solid #1f2937;
+    }
+
+    .pill label {
+      margin: 0;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .pill input,
+    .pill select {
+      background: transparent;
+      border: none;
+      color: inherit;
+      font-weight: 700;
+      outline: none;
+      min-width: 90px;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.4rem;
+    }
+
+    .muted {
+      color: #94a3b8;
+      margin-top: 0;
+      margin-bottom: 1rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #1f2937;
+      text-align: left;
+      padding: 0.55rem 0.4rem;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-weight: 800;
+      font-size: 0.95rem;
+    }
+
+    td {
+      font-size: 0.92rem;
+    }
+
+    code.inline {
+      padding: 0.12rem 0.35rem;
+      background: #0b1220;
+      border-radius: 6px;
+      border: 1px solid #1f2937;
+      font-size: 0.86rem;
+    }
+
+    .status {
+      margin-top: 0.25rem;
+      font-weight: 700;
+      color: #a5b4fc;
+      min-height: 1.2em;
+    }
+
+    .stacked-cols {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">강화 시스템 정의 관리</div>
+    <div class="nav-actions">
+      <div class="pill">
+        <label for="env-select">env</label>
+        <input id="env-select" type="text" value="dev" aria-label="환경" />
+      </div>
+      <div class="pill">
+        <label for="stage-filter">stage</label>
+        <select id="stage-filter">
+          <option value="">전체</option>
+          <option value="EARLY">EARLY</option>
+          <option value="MID">MID</option>
+          <option value="LATE">LATE</option>
+          <option value="ACCUM">ACCUM</option>
+        </select>
+      </div>
+      <button id="reload-btn" class="secondary" aria-label="정의 새로고침">새로고침</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <section class="card">
+      <h2>정의 추가/수정</h2>
+      <p class="muted">EnhancementFirebase.md 설계를 기준으로, 정적 정의를 <code class="inline">gameData/{env}/enhancementDefinitions</code>에 저장합니다.</p>
+      <div class="stacked-cols">
+        <div class="grid" id="form-grid"></div>
+        <div>
+          <label for="conditions-json">conditions (JSON 배열)</label>
+          <textarea id="conditions-json" placeholder='[{ "type": "tag", "value": "mode:pvp" }]'></textarea>
+
+          <label for="modifiers-json">modifierTemplates (JSON 배열)</label>
+          <textarea id="modifiers-json" placeholder='[{ "statId": "atk", "op": "ADD", "value": 5 }]'></textarea>
+
+          <label for="tags-input">tags (쉼표로 구분)</label>
+          <input id="tags-input" type="text" placeholder="family:levelUp, mode:all" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="save-btn" class="primary">저장</button>
+        <button id="reset-btn" class="secondary">폼 초기화</button>
+      </div>
+      <div class="status" id="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>등록된 정의</h2>
+      <p class="muted">env와 stage 필터를 선택한 뒤 새로고침을 눌러 불러오세요.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>이름</th>
+            <th>Stage</th>
+            <th>Priority</th>
+            <th>Stacking</th>
+            <th>MaxStacks</th>
+            <th>ExclusiveGroup</th>
+            <th>버전</th>
+            <th>작업</th>
+          </tr>
+        </thead>
+        <tbody id="definitions-body"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+      serverTimestamp,
+      query,
+      where,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const app = initializeApp(await getFirebaseConfig());
+    const db = getFirestore(app);
+
+    const envInput = document.getElementById("env-select");
+    const stageFilter = document.getElementById("stage-filter");
+    const reloadBtn = document.getElementById("reload-btn");
+    const formGrid = document.getElementById("form-grid");
+    const saveBtn = document.getElementById("save-btn");
+    const resetBtn = document.getElementById("reset-btn");
+    const statusEl = document.getElementById("status");
+    const tableBody = document.getElementById("definitions-body");
+    const conditionsInput = document.getElementById("conditions-json");
+    const modifiersInput = document.getElementById("modifiers-json");
+    const tagsInput = document.getElementById("tags-input");
+
+    const fields = [
+      { key: "definitionId", label: "definitionId", type: "text", required: true, placeholder: "levelUpBoost_v1" },
+      { key: "name", label: "이름", type: "text", required: true },
+      { key: "desc", label: "설명", type: "text" },
+      { key: "stage", label: "stage", type: "select", options: ["EARLY", "MID", "LATE", "ACCUM"], required: true },
+      { key: "stackingPolicy", label: "stackingPolicy", type: "select", options: ["NONE", "STACK", "STACK_BY_OWNED_COUNT", "STACK_BY_EQUIPPED_COUNT"], required: true },
+      { key: "maxStacks", label: "maxStacks", type: "number", min: 0, default: 1 },
+      { key: "exclusiveGroup", label: "exclusiveGroup", type: "text" },
+      { key: "priority", label: "priority", type: "number", min: 0, default: 0 },
+      { key: "applyOrder", label: "applyOrder", type: "number", min: 0, default: 0 },
+      { key: "version", label: "version", type: "number", min: 1, default: 1 },
+    ];
+
+    const inputs = new Map();
+
+    function createForm() {
+      fields.forEach(({ key, label, type, options, min, max, required, placeholder }) => {
+        const wrapper = document.createElement("div");
+        const labelEl = document.createElement("label");
+        labelEl.textContent = label;
+        let input;
+
+        if (type === "select") {
+          input = document.createElement("select");
+          options.forEach((opt) => {
+            const optionEl = document.createElement("option");
+            optionEl.value = opt;
+            optionEl.textContent = opt;
+            input.appendChild(optionEl);
+          });
+        } else {
+          input = document.createElement("input");
+          input.type = type;
+        }
+
+        input.id = key;
+        if (min !== undefined) input.min = String(min);
+        if (max !== undefined) input.max = String(max);
+        if (required) input.required = true;
+        if (placeholder) input.placeholder = placeholder;
+
+        wrapper.append(labelEl, input);
+        formGrid.appendChild(wrapper);
+        inputs.set(key, input);
+      });
+    }
+
+    function setStatus(message, delay = 4000) {
+      statusEl.textContent = message;
+      if (delay) {
+        setTimeout(() => {
+          if (statusEl.textContent === message) {
+            statusEl.textContent = "";
+          }
+        }, delay);
+      }
+    }
+
+    function clampNumber(value, min = 0, max = Number.POSITIVE_INFINITY) {
+      const parsed = Number(value);
+      if (Number.isNaN(parsed)) return min;
+      return Math.min(Math.max(parsed, min), max);
+    }
+
+    function readJsonArray(inputEl, label) {
+      const raw = inputEl.value.trim();
+      if (!raw) return [];
+      try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+          throw new Error(`${label}는 배열이어야 합니다.`);
+        }
+        return parsed;
+      } catch (error) {
+        throw new Error(`${label} 파싱 실패: ${error.message}`);
+      }
+    }
+
+    function readForm() {
+      const data = {};
+      fields.forEach(({ key, type, min, max, default: def }) => {
+        const value = inputs.get(key).value.trim();
+        if (type === "number") {
+          const lower = min ?? 0;
+          const upper = max ?? Number.POSITIVE_INFINITY;
+          data[key] = clampNumber(value || def ?? 0, lower, upper);
+        } else {
+          data[key] = value;
+        }
+      });
+
+      data.tags = tagsInput.value
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+      data.conditions = readJsonArray(conditionsInput, "conditions");
+      data.modifierTemplates = readJsonArray(modifiersInput, "modifierTemplates");
+      data.updatedAt = serverTimestamp();
+
+      return data;
+    }
+
+    function fillForm(def) {
+      fields.forEach(({ key, type, default: defValue }) => {
+        const value = def[key];
+        const input = inputs.get(key);
+        if (type === "number") {
+          input.value = value ?? defValue ?? 0;
+        } else {
+          input.value = value ?? "";
+        }
+      });
+      tagsInput.value = Array.isArray(def.tags) ? def.tags.join(", ") : "";
+      conditionsInput.value = def.conditions ? JSON.stringify(def.conditions, null, 2) : "";
+      modifiersInput.value = def.modifierTemplates ? JSON.stringify(def.modifierTemplates, null, 2) : "";
+    }
+
+    function resetForm() {
+      fields.forEach(({ key, type, default: defValue }) => {
+        const input = inputs.get(key);
+        if (type === "number") {
+          input.value = defValue ?? 0;
+        } else {
+          input.value = "";
+        }
+      });
+      tagsInput.value = "";
+      conditionsInput.value = "";
+      modifiersInput.value = "";
+      setStatus("새 정의 입력을 시작하세요.");
+    }
+
+    function getDefinitionsCollection() {
+      const env = envInput.value.trim() || "dev";
+      return collection(db, "gameData", env, "enhancementDefinitions");
+    }
+
+    async function loadDefinitions() {
+      tableBody.innerHTML = "";
+      const colRef = getDefinitionsCollection();
+      const filters = [];
+      if (stageFilter.value) {
+        filters.push(where("stage", "==", stageFilter.value));
+      }
+      const colQuery = filters.length ? query(colRef, ...filters) : colRef;
+      const snapshot = await getDocs(colQuery);
+      const rows = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+      renderTable(rows);
+      setStatus(`총 ${rows.length}개 정의를 불러왔습니다.`);
+    }
+
+    function renderTable(rows) {
+      tableBody.innerHTML = "";
+      if (!rows.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 9;
+        td.textContent = "저장된 정의가 없습니다.";
+        tr.appendChild(td);
+        tableBody.appendChild(tr);
+        return;
+      }
+
+      rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        const cells = [
+          row.definitionId || row.id,
+          row.name,
+          row.stage,
+          row.priority,
+          row.stackingPolicy,
+          row.maxStacks,
+          row.exclusiveGroup || "-",
+          row.version,
+        ];
+
+        cells.forEach((value) => {
+          const td = document.createElement("td");
+          td.textContent = value ?? "-";
+          tr.appendChild(td);
+        });
+
+        const actionsTd = document.createElement("td");
+        const loadBtn = document.createElement("button");
+        loadBtn.className = "secondary";
+        loadBtn.textContent = "불러오기";
+        loadBtn.addEventListener("click", () => {
+          fillForm(row);
+          setStatus(`'${row.definitionId || row.id}' 정의를 편집 중입니다.`);
+        });
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "danger";
+        deleteBtn.textContent = "삭제";
+        deleteBtn.addEventListener("click", async () => {
+          const targetId = row.definitionId || row.id;
+          if (!confirm(`'${targetId}' 정의를 삭제할까요?`)) return;
+          await deleteDoc(doc(getDefinitionsCollection(), targetId));
+          setStatus(`'${targetId}' 정의를 삭제했습니다.`);
+          await loadDefinitions();
+          resetForm();
+        });
+
+        actionsTd.append(loadBtn, deleteBtn);
+        tr.appendChild(actionsTd);
+        tableBody.appendChild(tr);
+      });
+    }
+
+    async function saveDefinition() {
+      const data = readForm();
+      if (!data.definitionId) {
+        throw new Error("definitionId를 입력하세요.");
+      }
+      if (!data.name) {
+        throw new Error("이름을 입력하세요.");
+      }
+      const docId = data.definitionId;
+      await setDoc(doc(getDefinitionsCollection(), docId), data, { merge: true });
+      setStatus(`'${docId}' 정의가 저장되었습니다.`);
+      await loadDefinitions();
+    }
+
+    reloadBtn.addEventListener("click", () => {
+      loadDefinitions().catch((error) => {
+        console.error(error);
+        setStatus("정의를 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.", 6000);
+      });
+    });
+
+    saveBtn.addEventListener("click", async () => {
+      saveBtn.disabled = true;
+      try {
+        await saveDefinition();
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "저장 중 오류가 발생했습니다.", 6000);
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    resetBtn.addEventListener("click", resetForm);
+
+    createForm();
+    resetForm();
+    loadDefinitions().catch((error) => {
+      console.error(error);
+      setStatus("초기 데이터 불러오기 중 오류가 발생했습니다. 콘솔을 확인하세요.", 6000);
+    });
+  </script>
+</body>
+</html>
