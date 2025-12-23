@@ -208,6 +208,24 @@
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 0.9rem;
     }
+
+    .guide-list {
+      list-style: decimal;
+      padding-left: 1.25rem;
+      margin: 0.5rem 0 0;
+      color: #cbd5e1;
+    }
+
+    .guide-list strong {
+      color: #f8fafc;
+    }
+
+    .inline-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -281,6 +299,37 @@
         <tbody id="definitions-body"></tbody>
       </table>
     </section>
+
+    <section class="card">
+      <h2>빠른 관리</h2>
+      <p class="muted">테이블에 나타나지 않는 문서도 ID를 알고 있으면 바로 편집할 수 있습니다.</p>
+      <label for="definition-id-fetch">definitionId로 바로 불러오기</label>
+      <div class="inline-actions">
+        <input id="definition-id-fetch" type="text" placeholder="예: levelUpBoost_v1" aria-label="불러올 definitionId" />
+        <button id="fetch-btn" class="secondary">불러오기</button>
+      </div>
+      <p class="muted">폼에 불러온 뒤 수정 후 <strong>저장</strong>을 누르면 Firestore에 병합 저장됩니다.</p>
+      <label for="quick-json-input">JSON으로 빠른 수정</label>
+      <textarea id="quick-json-input" placeholder="폼을 JSON으로 변환하거나 JSON을 붙여넣어 수정하세요." aria-label="JSON 수정 입력"></textarea>
+      <div class="inline-actions">
+        <button id="form-to-json-btn" class="secondary">폼 → JSON</button>
+        <button id="json-to-form-btn" class="secondary">JSON → 폼</button>
+        <button id="save-json-btn" class="primary">JSON 저장</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>사용 가이드</h2>
+      <p class="muted">주요 버튼과 입력란의 동작 요약입니다. Firestore 반영 전까지 상태 메시지를 확인하세요.</p>
+      <ol class="guide-list">
+        <li><strong>env 입력</strong>: 원하는 환경 이름을 입력하면 동일한 env 하위 콜렉션을 사용합니다.</li>
+        <li><strong>필터</strong>: EnhancementType, stage를 지정한 뒤 <strong>새로고침</strong>을 눌러 목록을 제한합니다.</li>
+        <li><strong>저장</strong>: definitionId, 이름을 채운 뒤 저장하면 Firestore에 병합 저장됩니다. 숫자 필드는 자동으로 최소값을 적용합니다.</li>
+        <li><strong>불러오기</strong>: 테이블의 불러오기 또는 "definitionId로 바로 불러오기"를 사용해 폼을 채운 뒤 수정·저장합니다.</li>
+        <li><strong>삭제</strong>: 테이블의 삭제 버튼으로 선택한 정의를 Firestore에서 제거합니다.</li>
+        <li><strong>폼 초기화</strong>: 입력을 모두 지우고 기본값으로 되돌립니다.</li>
+      </ol>
+    </section>
   </div>
 
   <script type="module">
@@ -289,6 +338,7 @@
       getFirestore,
       collection,
       getDocs,
+      getDoc,
       setDoc,
       deleteDoc,
       doc,
@@ -313,6 +363,12 @@
     const conditionsInput = document.getElementById("conditions-json");
     const modifiersInput = document.getElementById("modifiers-json");
     const tagsInput = document.getElementById("tags-input");
+    const definitionIdFetchInput = document.getElementById("definition-id-fetch");
+    const fetchBtn = document.getElementById("fetch-btn");
+    const quickJsonInput = document.getElementById("quick-json-input");
+    const formToJsonBtn = document.getElementById("form-to-json-btn");
+    const jsonToFormBtn = document.getElementById("json-to-form-btn");
+    const saveJsonBtn = document.getElementById("save-json-btn");
 
     const fields = [
       { key: "definitionId", label: "definitionId", type: "text", required: true, placeholder: "levelUpBoost_v1" },
@@ -393,7 +449,7 @@
       }
     }
 
-    function readForm() {
+    function readForm(includeTimestamp = true) {
       const data = {};
       fields.forEach(({ key, type, min, max, default: def }) => {
         const value = inputs.get(key).value.trim();
@@ -413,9 +469,21 @@
 
       data.conditions = readJsonArray(conditionsInput, "conditions");
       data.modifierTemplates = readJsonArray(modifiersInput, "modifierTemplates");
-      data.updatedAt = serverTimestamp();
+      if (includeTimestamp) {
+        data.updatedAt = serverTimestamp();
+      }
 
       return data;
+    }
+
+    function updateQuickJson(def) {
+      if (!quickJsonInput) return;
+      try {
+        quickJsonInput.value = JSON.stringify(def ?? {}, null, 2);
+      } catch (error) {
+        console.error(error);
+        setStatus("JSON 변환 중 오류가 발생했습니다. 콘솔을 확인하세요.", 6000);
+      }
     }
 
     function fillForm(def) {
@@ -431,6 +499,7 @@
       tagsInput.value = Array.isArray(def.tags) ? def.tags.join(", ") : "";
       conditionsInput.value = def.conditions ? JSON.stringify(def.conditions, null, 2) : "";
       modifiersInput.value = def.modifierTemplates ? JSON.stringify(def.modifierTemplates, null, 2) : "";
+      updateQuickJson(def);
     }
 
     function resetForm() {
@@ -445,12 +514,129 @@
       tagsInput.value = "";
       conditionsInput.value = "";
       modifiersInput.value = "";
+      updateQuickJson({});
       setStatus("새 정의 입력을 시작하세요.");
+    }
+
+    function parseQuickJsonInput() {
+      const raw = quickJsonInput.value.trim();
+      if (!raw) {
+        throw new Error("JSON 입력이 비어 있습니다.");
+      }
+      try {
+        return JSON.parse(raw);
+      } catch (error) {
+        throw new Error(`JSON 파싱 실패: ${error.message}`);
+      }
+    }
+
+    function buildPayloadFromJson(parsed, includeTimestamp = false) {
+      const payload = {};
+      fields.forEach(({ key, type, min, max, default: defValue }) => {
+        const rawValue = parsed[key];
+        if (type === "number") {
+          const lower = min ?? 0;
+          const upper = max ?? Number.POSITIVE_INFINITY;
+          payload[key] = clampNumber(rawValue ?? defValue ?? 0, lower, upper);
+        } else if (typeof rawValue === "string") {
+          payload[key] = rawValue.trim();
+        } else {
+          payload[key] = rawValue ?? "";
+        }
+      });
+
+      if (typeof payload.definitionId !== "string" || !payload.definitionId.trim()) {
+        throw new Error("JSON에 definitionId가 필요합니다.");
+      }
+
+      if (typeof payload.name !== "string" || !payload.name.trim()) {
+        throw new Error("JSON에 name이 필요합니다.");
+      }
+
+      if (parsed.tags !== undefined) {
+        if (Array.isArray(parsed.tags)) {
+          payload.tags = parsed.tags.map((t) => String(t).trim()).filter(Boolean);
+        } else if (typeof parsed.tags === "string") {
+          payload.tags = parsed.tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean);
+        } else {
+          throw new Error("tags는 배열 또는 쉼표 문자열이어야 합니다.");
+        }
+      }
+
+      if (parsed.conditions !== undefined && !Array.isArray(parsed.conditions)) {
+        throw new Error("conditions는 배열이어야 합니다.");
+      }
+      if (parsed.modifierTemplates !== undefined && !Array.isArray(parsed.modifierTemplates)) {
+        throw new Error("modifierTemplates는 배열이어야 합니다.");
+      }
+
+      payload.conditions = parsed.conditions ?? [];
+      payload.modifierTemplates = parsed.modifierTemplates ?? [];
+
+      const reserved = new Set([
+        ...fields.map((f) => f.key),
+        "conditions",
+        "modifierTemplates",
+        "tags",
+        "updatedAt",
+      ]);
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (!reserved.has(key)) {
+          payload[key] = value;
+        }
+      });
+
+      if (includeTimestamp) {
+        payload.updatedAt = serverTimestamp();
+      }
+
+      return payload;
+    }
+
+    function applyJsonToForm() {
+      const parsed = parseQuickJsonInput();
+      const payload = buildPayloadFromJson(parsed, false);
+      fillForm(payload);
+      setStatus("JSON을 폼에 적용했습니다.");
+    }
+
+    function formToJson() {
+      const payload = readForm(false);
+      updateQuickJson(payload);
+      setStatus("폼을 JSON으로 변환했습니다.");
     }
 
     function getDefinitionsCollection() {
       const env = envInput.value.trim() || "dev";
       return collection(db, "gameData", env, "enhancementDefinitions");
+    }
+
+    async function loadDefinitionById(definitionId) {
+      const targetId = definitionId.trim();
+      if (!targetId) {
+        throw new Error("불러올 definitionId를 입력하세요.");
+      }
+      const docSnap = await getDoc(doc(getDefinitionsCollection(), targetId));
+      if (!docSnap.exists()) {
+        throw new Error(`'${targetId}' 정의를 찾을 수 없습니다.`);
+      }
+      const data = { id: docSnap.id, ...docSnap.data() };
+      fillForm(data);
+      setStatus(`'${targetId}' 정의를 폼에 불러왔습니다.`);
+      return data;
+    }
+
+    async function saveJsonDefinition() {
+      const parsed = parseQuickJsonInput();
+      const payload = buildPayloadFromJson(parsed, true);
+      const docId = payload.definitionId.trim();
+      await setDoc(doc(getDefinitionsCollection(), docId), payload, { merge: true });
+      setStatus(`JSON으로 '${docId}' 정의를 저장했습니다.`);
+      fillForm(payload);
+      await loadDefinitions();
     }
 
     async function loadDefinitions() {
@@ -560,6 +746,48 @@
         setStatus(error.message || "저장 중 오류가 발생했습니다.", 6000);
       } finally {
         saveBtn.disabled = false;
+      }
+    });
+
+    fetchBtn.addEventListener("click", async () => {
+      fetchBtn.disabled = true;
+      try {
+        await loadDefinitionById(definitionIdFetchInput.value);
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "definitionId 불러오기 중 오류가 발생했습니다.", 6000);
+      } finally {
+        fetchBtn.disabled = false;
+      }
+    });
+
+    formToJsonBtn.addEventListener("click", () => {
+      try {
+        formToJson();
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "폼을 JSON으로 변환하지 못했습니다.", 6000);
+      }
+    });
+
+    jsonToFormBtn.addEventListener("click", () => {
+      try {
+        applyJsonToForm();
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "JSON을 폼에 적용하지 못했습니다.", 6000);
+      }
+    });
+
+    saveJsonBtn.addEventListener("click", async () => {
+      saveJsonBtn.disabled = true;
+      try {
+        await saveJsonDefinition();
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "JSON 저장 중 오류가 발생했습니다.", 6000);
+      } finally {
+        saveJsonBtn.disabled = false;
       }
     });
 
