@@ -230,6 +230,56 @@
       </header>
 
       <section class="card">
+        <h2>문서 관리</h2>
+        <div class="grid">
+          <div>
+            <label for="doc-id">문서 ID (collection: xpCurveDocs)</label>
+            <input id="doc-id" type="text" placeholder="xp_curve_formula_recommendations" />
+          </div>
+          <div>
+            <label for="doc-title">제목</label>
+            <input id="doc-title" type="text" placeholder="XP Curve 수식 추천" />
+          </div>
+          <div>
+            <label for="doc-tags">태그 (쉼표 구분)</label>
+            <input id="doc-tags" type="text" placeholder="power, piecewise, exponential" />
+          </div>
+        </div>
+        <div style="margin-top: 0.75rem;">
+          <label for="doc-desc">설명</label>
+          <textarea id="doc-desc" placeholder="운영 정책, 반올림 규칙, 추천 파라미터 등을 포함"></textarea>
+        </div>
+        <div style="margin-top: 0.75rem;">
+          <label for="doc-content">본문 (Markdown)</label>
+          <textarea id="doc-content" rows="16" placeholder="XP_Curve_Formula_Recommendations.md 내용을 붙여넣으세요"></textarea>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="load-doc">ID로 불러오기</button>
+          <button class="primary" id="save-doc">Firestore 저장/업데이트</button>
+          <button class="secondary" id="reset-doc">입력 초기화</button>
+          <button class="secondary" id="refresh-docs">목록 새로고침</button>
+        </div>
+        <div class="status" id="doc-status"></div>
+      </section>
+
+      <section class="card">
+        <h2>저장된 문서</h2>
+        <div class="muted">Firestore collection: <code>xpCurveDocs</code></div>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>제목</th>
+              <th>태그</th>
+              <th>업데이트</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody id="doc-table-body"><tr><td colspan="5">저장된 문서가 없습니다.</td></tr></tbody>
+        </table>
+      </section>
+
+      <section class="card">
       <h2>수식 테스트</h2>
       <div class="grid">
         <div>
@@ -326,12 +376,23 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      getDoc,
+      doc,
+      setDoc,
+      deleteDoc,
+      serverTimestamp,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
     import { getFirebaseConfig } from "./firebase-config.js";
 
     const app = initializeApp(await getFirebaseConfig());
     const db = getFirestore(app);
     const testRunsRef = collection(db, "xpCurveTestRuns");
+    const docsRef = collection(db, "xpCurveDocs");
 
     const paramGrid = document.getElementById("param-grid");
     const roundingSelect = document.getElementById("rounding");
@@ -355,11 +416,183 @@
     const fillLogisticBtn = document.getElementById("fill-logistic");
     const runTestBtn = document.getElementById("run-test");
     const sendTestBtn = document.getElementById("send-test");
+    const docIdInput = document.getElementById("doc-id");
+    const docTitleInput = document.getElementById("doc-title");
+    const docTagsInput = document.getElementById("doc-tags");
+    const docDescInput = document.getElementById("doc-desc");
+    const docContentInput = document.getElementById("doc-content");
+    const docStatus = document.getElementById("doc-status");
+    const docTableBody = document.getElementById("doc-table-body");
+    const loadDocBtn = document.getElementById("load-doc");
+    const saveDocBtn = document.getElementById("save-doc");
+    const resetDocBtn = document.getElementById("reset-doc");
+    const refreshDocsBtn = document.getElementById("refresh-docs");
+
+    function setDocStatus(message, delay = 4500) {
+      docStatus.textContent = message;
+      if (delay) setTimeout(() => (docStatus.textContent = ""), delay);
+    }
 
     function setTestStatus(message, delay = 4500) {
       testStatus.textContent = message;
       if (delay) setTimeout(() => (testStatus.textContent = ""), delay);
     }
+
+    function parseTags(raw) {
+      return raw
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+    }
+
+    function resetDocForm() {
+      docIdInput.value = "";
+      docTitleInput.value = "";
+      docTagsInput.value = "";
+      docDescInput.value = "";
+      docContentInput.value = "";
+    }
+
+    function fillDocForm(id, data) {
+      docIdInput.value = id ?? "";
+      docTitleInput.value = data?.title ?? "";
+      docTagsInput.value = Array.isArray(data?.tags) ? data.tags.join(", ") : "";
+      docDescInput.value = data?.description ?? "";
+      docContentInput.value = data?.content ?? "";
+    }
+
+    function formatTimestamp(ts) {
+      if (!ts) return "-";
+      try {
+        const date = ts.toDate ? ts.toDate() : new Date(ts);
+        return new Intl.DateTimeFormat("ko-KR", {
+          dateStyle: "short",
+          timeStyle: "short",
+        }).format(date);
+      } catch (error) {
+        return "-";
+      }
+    }
+
+    function renderDocTable(docs) {
+      if (!docs.length) {
+        docTableBody.innerHTML = "<tr><td colspan=\"5\">저장된 문서가 없습니다.</td></tr>";
+        return;
+      }
+
+      const sorted = [...docs].sort((a, b) => {
+        const aTime = a.data.updatedAt?.toMillis?.() ?? 0;
+        const bTime = b.data.updatedAt?.toMillis?.() ?? 0;
+        return bTime - aTime;
+      });
+
+      docTableBody.innerHTML = "";
+      sorted.forEach((docItem) => {
+        const tr = document.createElement("tr");
+        const tags = Array.isArray(docItem.data.tags) ? docItem.data.tags.join(", ") : "-";
+        const updated = formatTimestamp(docItem.data.updatedAt || docItem.data.updatedAtLocal);
+        [docItem.id, docItem.data.title || "-", tags, updated].forEach((value) => {
+          const td = document.createElement("td");
+          td.textContent = value || "-";
+          tr.appendChild(td);
+        });
+
+        const actionTd = document.createElement("td");
+        const loadBtn = document.createElement("button");
+        loadBtn.className = "secondary";
+        loadBtn.textContent = "불러오기";
+        loadBtn.type = "button";
+        loadBtn.addEventListener("click", () => loadDocById(docItem.id));
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "danger";
+        deleteBtn.textContent = "삭제";
+        deleteBtn.type = "button";
+        deleteBtn.addEventListener("click", async () => {
+          const ok = confirm(`${docItem.id} 문서를 삭제할까요?`);
+          if (!ok) return;
+          deleteBtn.disabled = true;
+          try {
+            await deleteDoc(doc(docsRef, docItem.id));
+            setDocStatus("문서를 삭제했습니다.");
+            await fetchDocList();
+          } catch (error) {
+            console.error(error);
+            setDocStatus(error.message || "문서를 삭제하지 못했습니다.");
+          } finally {
+            deleteBtn.disabled = false;
+          }
+        });
+
+        actionTd.append(loadBtn, deleteBtn);
+        tr.appendChild(actionTd);
+        docTableBody.appendChild(tr);
+      });
+    }
+
+    async function fetchDocList() {
+      try {
+        setDocStatus("목록을 불러오는 중...");
+        const snap = await getDocs(docsRef);
+        const docs = snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+        renderDocTable(docs);
+        setDocStatus("목록을 불러왔습니다.");
+      } catch (error) {
+        console.error(error);
+        setDocStatus(error.message || "목록을 불러오지 못했습니다.");
+      }
+    }
+
+    async function loadDocById(id) {
+      const docId = (id || docIdInput.value || "").trim();
+      if (!docId) {
+        setDocStatus("문서 ID를 입력하세요.");
+        return;
+      }
+      try {
+        setDocStatus("문서를 불러오는 중...");
+        const snap = await getDoc(doc(docsRef, docId));
+        if (!snap.exists()) {
+          setDocStatus("문서를 찾을 수 없습니다.");
+          return;
+        }
+        fillDocForm(docId, snap.data());
+        setDocStatus("문서를 불러왔습니다.");
+      } catch (error) {
+        console.error(error);
+        setDocStatus(error.message || "문서를 불러오지 못했습니다.");
+      }
+    }
+
+    async function saveDoc() {
+      const docId = docIdInput.value.trim();
+      if (!docId) {
+        setDocStatus("문서 ID를 입력하세요.");
+        return;
+      }
+
+      const payload = {
+        title: docTitleInput.value.trim(),
+        tags: parseTags(docTagsInput.value),
+        description: docDescInput.value.trim(),
+        content: docContentInput.value,
+        updatedAt: serverTimestamp(),
+        updatedAtLocal: new Date().toISOString(),
+      };
+
+      saveDocBtn.disabled = true;
+      try {
+        await setDoc(doc(docsRef, docId), payload, { merge: true });
+        setDocStatus("저장/업데이트 완료");
+        await fetchDocList();
+      } catch (error) {
+        console.error(error);
+        setDocStatus(error.message || "저장에 실패했습니다.");
+      } finally {
+        saveDocBtn.disabled = false;
+      }
+    }
+
 
     const paramDefinitions = {
       POWER: [
@@ -1027,7 +1260,17 @@
         renderParamInputs(typeSelect.value);
         createExtraRow({ level: 10, value: 100, type: "VALUE" });
         createConditionalRow({ condition: "L % 10 === 0", value: 100, type: "VALUE" });
+        if (!docIdInput.value) docIdInput.value = "xp_curve_formula_recommendations";
+        fetchDocList();
       }
+
+      loadDocBtn.addEventListener("click", () => loadDocById());
+      saveDocBtn.addEventListener("click", saveDoc);
+      resetDocBtn.addEventListener("click", () => {
+        resetDocForm();
+        setDocStatus("입력을 초기화했습니다.");
+      });
+      refreshDocsBtn.addEventListener("click", fetchDocList);
 
       typeSelect.addEventListener("change", () => renderParamInputs(typeSelect.value));
       runTestBtn.addEventListener("click", runTest);
