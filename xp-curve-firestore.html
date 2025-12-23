@@ -310,6 +310,16 @@
         </div>
       </div>
 
+      <div style="margin-top: 0.75rem;">
+        <label for="extra-xp">특정 레벨 추가 XP (JSON 또는 쉼표 구분)</label>
+        <textarea
+          id="extra-xp"
+          rows="3"
+          placeholder='{"5": 200, "10": 500} 또는 5:200, 10:500'
+        ></textarea>
+        <p class="muted">예: 5:200, 10:500 → 5레벨은 +200, 10레벨은 +500을 추가 요구</p>
+      </div>
+
       <div id="param-grid" class="grid" style="margin-top: 0.75rem;"></div>
 
       <div style="margin-top: 0.75rem;">
@@ -331,6 +341,7 @@
             <tr>
               <th>L</th>
               <th>xp(L)</th>
+              <th>추가XP(L)</th>
               <th>TotalXp(L)</th>
             </tr>
           </thead>
@@ -374,6 +385,7 @@
     const typeSelect = document.getElementById("formula-type");
     const levelStartInput = document.getElementById("level-start");
     const levelEndInput = document.getElementById("level-end");
+    const extraXpInput = document.getElementById("extra-xp");
     const advancedJson = document.getElementById("advanced-json");
     const testStatus = document.getElementById("test-status");
     const resultWrapper = document.getElementById("result-wrapper");
@@ -603,9 +615,45 @@
       return { start, end };
     }
 
+    function parseExtraXp(raw) {
+      const map = new Map();
+      const trimmed = raw.trim();
+      if (!trimmed) return map;
+
+      const tryAdd = (level, amount) => {
+        const L = Math.floor(toNumber(level, NaN));
+        const xp = Math.floor(toNumber(amount, NaN));
+        if (!Number.isFinite(L) || !Number.isFinite(xp) || L < 1) return;
+        if (xp === 0) return;
+        map.set(L, xp);
+      };
+
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object") {
+          Object.entries(parsed).forEach(([k, v]) => tryAdd(k, v));
+          return map;
+        }
+      } catch (error) {
+        // fallback below
+      }
+
+      trimmed
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .forEach((pair) => {
+          const [lvl, amt] = pair.split(":").map((p) => p.trim());
+          tryAdd(lvl, amt);
+        });
+
+      return map;
+    }
+
     function buildFormulaConfig() {
       const type = typeSelect.value;
       const rounding = roundingSelect.value;
+      const extraXp = parseExtraXp(extraXpInput.value);
       if (type === "PIECEWISE" || type === "TABLE") {
         let parsed = {};
         if (advancedJson.value.trim()) {
@@ -615,7 +663,7 @@
             throw new Error("고급 설정 JSON을 파싱하지 못했습니다.");
           }
         }
-        return { type, params: parsed, rounding };
+        return { type, params: parsed, rounding, extraXp };
       }
 
       const params = {};
@@ -623,7 +671,7 @@
       defs.forEach(({ key }) => {
         params[key] = toNumber(paramInputs.get(key)?.value ?? 0, 0);
       });
-      return { type, params, rounding };
+      return { type, params, rounding, extraXp };
     }
 
     function evaluateFormula(config, level) {
@@ -693,9 +741,10 @@
         for (let L = start; L <= end; L++) {
           const result = evaluateFormula(config, L);
           if (result.warning) lastWarning = result.warning;
-          const xpValue = result.xp ?? 0;
+          const extra = config.extraXp.get(L) ?? 0;
+          const xpValue = Math.max(0, (result.xp ?? 0) + extra);
           total += xpValue;
-          rows.push({ L, xp: xpValue, total });
+          rows.push({ L, xp: xpValue, extra, total });
         }
 
         renderResults(rows);
@@ -710,7 +759,7 @@
       resultBody.innerHTML = "";
       rows.forEach((row) => {
         const tr = document.createElement("tr");
-        [row.L, row.xp, row.total].forEach((value) => {
+        [row.L, row.xp, row.extra, row.total].forEach((value) => {
           const td = document.createElement("td");
           td.textContent = Number.isFinite(value) ? value.toLocaleString() : "-";
           tr.appendChild(td);
