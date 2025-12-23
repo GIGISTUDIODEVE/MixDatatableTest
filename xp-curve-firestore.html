@@ -326,6 +326,20 @@
         <p class="muted">입력 타입을 "직접 입력"(숫자) 또는 "수식"(예: <code>L * 50</code>)으로 설정할 수 있습니다.</p>
       </div>
 
+      <div style="margin-top: 1rem;">
+        <label for="conditional-extra-json">조건부 추가 XP 규칙 (조건식이 참이면 XP 추가)</label>
+        <p class="muted">예: <code>L % 10 === 0</code> → 10레벨마다 추가 XP 적용. 각 규칙별로 조건식과 값/수식을 입력한 뒤 "조건 규칙 적용" 버튼을 눌러 JSON을 갱신하세요.</p>
+        <div class="extra-rows" id="conditional-rows" style="margin-top: 0.5rem; display: grid; gap: 0.75rem;"></div>
+        <div class="actions" style="margin-top: 0.25rem;">
+          <button class="secondary" id="add-conditional-row">조건 규칙 추가</button>
+          <button class="secondary" id="apply-conditional-rules">조건 규칙 적용</button>
+        </div>
+        <textarea id="conditional-extra-json" rows="5" placeholder='[
+  {"condition": "L % 10 === 0", "type": "VALUE", "value": 100}
+]'></textarea>
+        <p class="muted">JSON을 직접 편집해도 되며, 조건식은 <code>L</code>과 <code>Math</code> 함수를 사용한 비교/논리 수식을 허용합니다. (예: <code>L % 5 === 0 && L >= 10</code>)</p>
+      </div>
+
       <div id="param-grid" class="grid" style="margin-top: 0.75rem;"></div>
 
       <div style="margin-top: 0.75rem;">
@@ -349,6 +363,7 @@
               <th>L</th>
               <th>xp(L)</th>
               <th>추가XP(L)</th>
+              <th>조건 추가XP(L)</th>
               <th>TotalXp(L)</th>
             </tr>
           </thead>
@@ -398,6 +413,10 @@
     const extraRowsContainer = document.getElementById("extra-rows");
     const addExtraRowBtn = document.getElementById("add-extra-row");
     const applyExtraXpBtn = document.getElementById("apply-extra-xp");
+    const conditionalRowsContainer = document.getElementById("conditional-rows");
+    const addConditionalRowBtn = document.getElementById("add-conditional-row");
+    const applyConditionalRulesBtn = document.getElementById("apply-conditional-rules");
+    const conditionalRulesInput = document.getElementById("conditional-extra-json");
     const advancedJson = document.getElementById("advanced-json");
     const testStatus = document.getElementById("test-status");
     const resultWrapper = document.getElementById("result-wrapper");
@@ -677,6 +696,7 @@
     }
 
     const extraRows = [];
+    const conditionalRows = [];
 
     function evaluateExtraExpression(expr, L) {
       const cleaned = expr.trim();
@@ -692,6 +712,22 @@
       const xp = Math.floor(value);
       if (!Number.isFinite(xp)) throw new Error("수식 결과가 유효한 숫자가 아닙니다.");
       return xp;
+    }
+
+    function evaluateConditionExpression(expr, L) {
+      const cleaned = expr.trim();
+      if (!cleaned) throw new Error("조건식을 입력하세요.");
+
+      const allowed = /^[0-9+\-*/%<>=!&|?:().\sLMathpowexincosqrtlogabsmaxmin]+$/i;
+      if (!allowed.test(cleaned)) {
+        throw new Error("조건식에 허용되지 않는 문자가 있습니다.");
+      }
+
+      const fn = new Function("L", "Math", `"use strict"; return (${cleaned});`);
+      const result = fn(L, Math);
+      if (typeof result === "boolean") return result;
+      if (result === 0 || result === 1) return Boolean(result);
+      throw new Error("조건식 결과가 불리언이 아닙니다.");
     }
 
     function createExtraRow(initial = {}) {
@@ -756,6 +792,67 @@
       return entry;
     }
 
+    function createConditionalRow(initial = {}) {
+      const row = document.createElement("div");
+      row.className = "grid";
+      row.style.gridTemplateColumns = "repeat(auto-fit, minmax(140px, 1fr))";
+      row.style.gap = "0.35rem 0.65rem";
+
+      const condWrapper = document.createElement("div");
+      const condLabel = document.createElement("label");
+      condLabel.textContent = "조건식";
+      const condInput = document.createElement("input");
+      condInput.type = "text";
+      condInput.placeholder = "예: L % 10 === 0";
+      if (initial.condition) condInput.value = initial.condition;
+      condWrapper.append(condLabel, condInput);
+
+      const typeWrapper = document.createElement("div");
+      const typeLabel = document.createElement("label");
+      typeLabel.textContent = "입력 타입";
+      const typeSelect = document.createElement("select");
+      [
+        { value: "VALUE", label: "직접 입력" },
+        { value: "FORMULA", label: "수식" },
+      ].forEach(({ value, label }) => {
+        const opt = document.createElement("option");
+        opt.value = value;
+        opt.textContent = label;
+        typeSelect.appendChild(opt);
+      });
+      if (initial.type) typeSelect.value = initial.type;
+      typeWrapper.append(typeLabel, typeSelect);
+
+      const valueWrapper = document.createElement("div");
+      const valueLabel = document.createElement("label");
+      valueLabel.textContent = "값/수식";
+      const valueInput = document.createElement("input");
+      valueInput.type = "text";
+      valueInput.placeholder = "예: 100 또는 L * 25";
+      if (initial.value !== undefined) valueInput.value = initial.value;
+      valueWrapper.append(valueLabel, valueInput);
+
+      const removeWrapper = document.createElement("div");
+      removeWrapper.style.display = "flex";
+      removeWrapper.style.alignItems = "flex-end";
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "danger";
+      removeBtn.textContent = "삭제";
+      removeBtn.type = "button";
+      removeBtn.addEventListener("click", () => {
+        conditionalRowsContainer.removeChild(row);
+        const idx = conditionalRows.findIndex((item) => item.wrapper === row);
+        if (idx >= 0) conditionalRows.splice(idx, 1);
+      });
+      removeWrapper.appendChild(removeBtn);
+
+      row.append(condWrapper, typeWrapper, valueWrapper, removeWrapper);
+      conditionalRowsContainer.appendChild(row);
+      const entry = { wrapper: row, condInput, typeSelect, valueInput };
+      conditionalRows.push(entry);
+      return entry;
+    }
+
     function applyExtraXpInputs() {
       const map = parseExtraXp(extraXpInput.value);
       const errors = [];
@@ -811,10 +908,135 @@
       setTestStatus(`단일 레벨 추가 XP 반영: ${updates.join(", ")}`);
     }
 
+    function applyConditionalRulesInputs() {
+      const rules = [];
+      const errors = [];
+
+      conditionalRows.forEach(({ condInput, valueInput, typeSelect }, index) => {
+        const condition = (condInput.value || "").trim();
+        const rawValue = (valueInput.value || "").trim();
+        const mode = typeSelect.value;
+        const label = `${index + 1}번 규칙`;
+
+        if (!condition) {
+          errors.push(`${label}: 조건식을 입력하세요.`);
+          return;
+        }
+        if (!rawValue) {
+          errors.push(`${label}: 추가 XP 값/수식을 입력하세요.`);
+          return;
+        }
+
+        try {
+          evaluateConditionExpression(condition, 1);
+        } catch (error) {
+          errors.push(`${label}: ${error.message}`);
+          return;
+        }
+
+        let value = Number.NaN;
+        if (mode === "FORMULA") {
+          try {
+            evaluateExtraExpression(rawValue, 1);
+          } catch (error) {
+            errors.push(`${label}: ${error.message}`);
+            return;
+          }
+          value = rawValue;
+        } else {
+          value = Math.floor(toNumber(rawValue, NaN));
+          if (!Number.isFinite(value) || value < 0) {
+            errors.push(`${label}: 추가 XP는 0 이상 숫자여야 합니다.`);
+            return;
+          }
+        }
+
+        rules.push({ condition, type: mode, value });
+      });
+
+      if (errors.length) {
+        setTestStatus(errors.join("\n"), 6000);
+        return;
+      }
+
+      conditionalRulesInput.value = JSON.stringify(rules, null, 2);
+      setTestStatus(`조건 규칙 ${rules.length}건을 반영했습니다.`);
+    }
+
+    function parseConditionalRules() {
+      const raw = conditionalRulesInput.value.trim();
+      if (!raw) return [];
+
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (error) {
+        throw new Error("조건부 추가 XP JSON을 확인하세요 (파싱 실패).");
+      }
+
+      if (!Array.isArray(parsed)) {
+        throw new Error("조건부 추가 XP는 배열 형태여야 합니다.");
+      }
+
+      return parsed.map((rule, index) => {
+        const label = `${index + 1}번 규칙`;
+        if (!rule || typeof rule !== "object") {
+          throw new Error(`${label}: 객체 형식이어야 합니다.`);
+        }
+        const condition = (rule.condition || "").toString().trim();
+        const type = rule.type === "FORMULA" ? "FORMULA" : "VALUE";
+        const rawValue = rule.value;
+        if (!condition) throw new Error(`${label}: 조건식이 필요합니다.`);
+        evaluateConditionExpression(condition, 1);
+
+        if (type === "FORMULA") {
+          const expr = (rawValue || "").toString();
+          evaluateExtraExpression(expr, 1);
+          return { condition, type, value: expr };
+        }
+
+        const value = Math.floor(toNumber(rawValue, NaN));
+        if (!Number.isFinite(value) || value < 0) {
+          throw new Error(`${label}: 추가 XP는 0 이상 숫자여야 합니다.`);
+        }
+        return { condition, type, value };
+      });
+    }
+
+    function calculateConditionalExtra(config, L) {
+      if (!config.conditionalRules || !config.conditionalRules.length) return 0;
+
+      let total = 0;
+      for (let i = 0; i < config.conditionalRules.length; i++) {
+        const rule = config.conditionalRules[i];
+        let matched = false;
+        try {
+          matched = evaluateConditionExpression(rule.condition, L);
+        } catch (error) {
+          throw new Error(`${i + 1}번 조건식 오류: ${error.message}`);
+        }
+        if (!matched) continue;
+
+        let xp = 0;
+        try {
+          xp = rule.type === "FORMULA" ? evaluateExtraExpression(rule.value, L) : Math.floor(toNumber(rule.value, 0));
+        } catch (error) {
+          throw new Error(`${i + 1}번 조건식의 값 계산 실패: ${error.message}`);
+        }
+
+        if (xp < 0 || !Number.isFinite(xp)) {
+          throw new Error(`${i + 1}번 조건식의 추가 XP가 유효하지 않습니다.`);
+        }
+        total += xp;
+      }
+      return total;
+    }
+
     function buildFormulaConfig() {
       const type = typeSelect.value;
       const rounding = roundingSelect.value;
       const extraXp = parseExtraXp(extraXpInput.value);
+      const conditionalRules = parseConditionalRules();
       if (type === "PIECEWISE" || type === "TABLE") {
         let parsed = {};
         if (advancedJson.value.trim()) {
@@ -824,7 +1046,7 @@
             throw new Error("고급 설정 JSON을 파싱하지 못했습니다.");
           }
         }
-        return { type, params: parsed, rounding, extraXp };
+        return { type, params: parsed, rounding, extraXp, conditionalRules };
       }
 
       const params = {};
@@ -832,7 +1054,7 @@
       defs.forEach(({ key }) => {
         params[key] = toNumber(paramInputs.get(key)?.value ?? 0, 0);
       });
-      return { type, params, rounding, extraXp };
+      return { type, params, rounding, extraXp, conditionalRules };
     }
 
     function evaluateFormula(config, level) {
@@ -899,14 +1121,15 @@
         let total = 0;
         let lastWarning = "";
 
-        for (let L = start; L <= end; L++) {
-          const result = evaluateFormula(config, L);
-          if (result.warning) lastWarning = result.warning;
-          const extra = config.extraXp.get(L) ?? 0;
-          const xpValue = Math.max(0, (result.xp ?? 0) + extra);
-          total += xpValue;
-          rows.push({ L, xp: xpValue, extra, total });
-        }
+      for (let L = start; L <= end; L++) {
+        const result = evaluateFormula(config, L);
+        if (result.warning) lastWarning = result.warning;
+        const extra = config.extraXp.get(L) ?? 0;
+        const conditionalExtra = calculateConditionalExtra(config, L);
+        const xpValue = Math.max(0, (result.xp ?? 0) + extra + conditionalExtra);
+        total += xpValue;
+        rows.push({ L, xp: xpValue, extra, conditionalExtra, total });
+      }
 
         renderResults(rows);
         setTestStatus(lastWarning ? `경고: ${lastWarning}` : "테스트 완료");
@@ -924,13 +1147,14 @@
         let warning = "";
         const previewEnd = Math.min(end, start + 4);
 
-        for (let L = start; L <= previewEnd; L++) {
-          const result = evaluateFormula(config, L);
-          if (result.warning) warning = result.warning;
-          const extra = config.extraXp.get(L) ?? 0;
-          const xpValue = Math.max(0, (result.xp ?? 0) + extra);
-          previewRows.push({ L, xp: xpValue, extra });
-        }
+      for (let L = start; L <= previewEnd; L++) {
+        const result = evaluateFormula(config, L);
+        if (result.warning) warning = result.warning;
+        const extra = config.extraXp.get(L) ?? 0;
+        const conditionalExtra = calculateConditionalExtra(config, L);
+        const xpValue = Math.max(0, (result.xp ?? 0) + extra + conditionalExtra);
+        previewRows.push({ L, xp: xpValue, extra, conditionalExtra });
+      }
 
         const payload = {
           createdAt: new Date().toISOString(),
@@ -938,6 +1162,7 @@
           params: config.params,
           rounding: config.rounding,
           extraXp: mapToObject(config.extraXp),
+          conditionalExtraRules: config.conditionalRules,
           levelStart: start,
           levelEnd: end,
           preview: previewRows,
@@ -956,7 +1181,7 @@
       resultBody.innerHTML = "";
       rows.forEach((row) => {
         const tr = document.createElement("tr");
-        [row.L, row.xp, row.extra, row.total].forEach((value) => {
+        [row.L, row.xp, row.extra, row.conditionalExtra, row.total].forEach((value) => {
           const td = document.createElement("td");
           td.textContent = Number.isFinite(value) ? value.toLocaleString() : "-";
           tr.appendChild(td);
@@ -1008,6 +1233,7 @@
     function init() {
       renderParamInputs(typeSelect.value);
       createExtraRow({ level: 10, value: 100, type: "VALUE" });
+      createConditionalRow({ condition: "L % 10 === 0", value: 100, type: "VALUE" });
       resetDocForm();
       loadDocuments().catch((error) => {
         console.error(error);
@@ -1033,6 +1259,8 @@
     runTestBtn.addEventListener("click", runTest);
     addExtraRowBtn.addEventListener("click", () => createExtraRow());
     applyExtraXpBtn.addEventListener("click", applyExtraXpInputs);
+    addConditionalRowBtn.addEventListener("click", () => createConditionalRow());
+    applyConditionalRulesBtn.addEventListener("click", applyConditionalRulesInputs);
     sendTestBtn.addEventListener("click", async () => {
       sendTestBtn.disabled = true;
       try {
