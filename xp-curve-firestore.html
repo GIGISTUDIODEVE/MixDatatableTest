@@ -244,15 +244,6 @@
           </select>
         </div>
         <div>
-          <label for="rounding">반올림 규칙</label>
-          <select id="rounding">
-            <option value="CEIL">CEIL</option>
-            <option value="ROUND">ROUND</option>
-            <option value="FLOOR">FLOOR</option>
-          </select>
-          <p class="muted" style="margin-top: 0.35rem;">테스트용으로만 사용하며 업로드 시에는 저장되지 않습니다.</p>
-        </div>
-        <div>
           <label for="level-start">레벨 시작</label>
           <input id="level-start" type="number" min="1" value="1" />
         </div>
@@ -374,7 +365,6 @@
     const testRunsRef = collection(db, "xpCurveTestRuns");
 
     const paramGrid = document.getElementById("param-grid");
-    const roundingSelect = document.getElementById("rounding");
     const typeSelect = document.getElementById("formula-type");
     const levelStartInput = document.getElementById("level-start");
     const levelEndInput = document.getElementById("level-end");
@@ -462,18 +452,6 @@
         paramGrid.appendChild(wrapper);
         paramInputs.set(key, input);
       });
-    }
-
-    function getRounding(mode) {
-      switch (mode) {
-        case "FLOOR":
-          return Math.floor;
-        case "ROUND":
-          return Math.round;
-        case "CEIL":
-        default:
-          return Math.ceil;
-      }
     }
 
     function toNumber(value, fallback = 0) {
@@ -904,7 +882,6 @@
 
     function buildFormulaConfig() {
       const type = typeSelect.value;
-      const rounding = roundingSelect.value;
       const extraXp = parseExtraXp(extraXpInput.value);
       const conditionalRules = parseConditionalRules();
       if (type === "PIECEWISE" || type === "TABLE") {
@@ -916,7 +893,7 @@
             throw new Error("고급 설정 JSON을 파싱하지 못했습니다.");
           }
         }
-        return { type, params: parsed, rounding, extraXp, conditionalRules };
+        return { type, params: parsed, extraXp, conditionalRules };
       }
 
       const params = {};
@@ -924,12 +901,12 @@
       defs.forEach(({ key }) => {
         params[key] = toNumber(paramInputs.get(key)?.value ?? 0, 0);
       });
-      return { type, params, rounding, extraXp, conditionalRules };
+      return { type, params, extraXp, conditionalRules };
     }
 
     function evaluateFormula(config, level) {
-      const { type, params, rounding } = config;
-      const round = getRounding(rounding);
+      const { type, params } = config;
+      const round = Math.ceil;
       const L = level;
       let xp = Number.NaN;
 
@@ -958,7 +935,7 @@
           const segments = params?.segments ?? [];
           const segment = segments.find((s) => L >= s.minL && L <= s.maxL);
           if (!segment) return { xp: null, warning: "해당 레벨에 맞는 세그먼트가 없습니다." };
-          const inner = evaluateFormula({ type: segment.type, params: segment.params ?? {}, rounding }, level);
+          const inner = evaluateFormula({ type: segment.type, params: segment.params ?? {} }, level);
           if (inner.warning) return inner;
           xp = inner.xp;
           break;
@@ -1066,7 +1043,6 @@
       try {
         typeSelect.value = run.type ?? "POWER";
         renderParamInputs(typeSelect.value);
-        roundingSelect.value = run.rounding ?? "CEIL";
         levelStartInput.value = run.levelStart ?? 1;
         levelEndInput.value = run.levelEnd ?? Math.max(run.levelStart ?? 1, 20);
 
@@ -1212,7 +1188,6 @@
       renderParamInputs(type);
       switch (type) {
         case "POWER": {
-          roundingSelect.value = "CEIL";
           paramInputs.get("A").value = 50;
           paramInputs.get("P").value = 1.6;
           paramInputs.get("B").value = 0;
@@ -1220,7 +1195,6 @@
           break;
         }
         case "PIECEWISE": {
-          roundingSelect.value = "CEIL";
           advancedJson.value = JSON.stringify(
             {
               segments: [
@@ -1235,7 +1209,6 @@
           break;
         }
         case "LOGISTIC": {
-          roundingSelect.value = "CEIL";
           paramInputs.get("K").value = 600;
           paramInputs.get("r").value = 0.08;
           paramInputs.get("L0").value = 45;
