@@ -1012,17 +1012,12 @@
       try {
         const config = buildFormulaConfig();
         const { start, end } = clampLevelRange();
-        const previewRows = [];
         let warning = "";
         const previewEnd = Math.min(end, start + 4);
 
         for (let L = start; L <= previewEnd; L++) {
           const result = evaluateFormula(config, L);
           if (result.warning) warning = result.warning;
-          const extra = config.extraXp.get(L) ?? 0;
-          const conditionalExtra = calculateConditionalExtra(config, L);
-          const xpValue = Math.max(0, (result.xp ?? 0) + extra + conditionalExtra);
-          previewRows.push({ L, xp: xpValue, extra, conditionalExtra });
         }
 
         const key = sanitizeKey(testKeyInput.value);
@@ -1038,7 +1033,6 @@
           conditionalExtraRules: config.conditionalRules,
           levelStart: start,
           levelEnd: end,
-          preview: previewRows,
           updatedAt: new Date().toISOString(),
         };
         if (warning) payload.warning = warning;
