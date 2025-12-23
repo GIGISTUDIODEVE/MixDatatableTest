@@ -223,62 +223,13 @@
     </div>
   </nav>
 
-  <div class="container">
-    <header class="card">
-      <h1>XP Curve 수식 관리 & 테스트</h1>
-      <p class="muted">XP_Curve_Formula_Recommendations.md 내용을 Firestore에 보관/버전 관리하고, 다양한 수식을 직접 테스트합니다.</p>
-    </header>
+    <div class="container">
+      <header class="card">
+        <h1>XP Curve 수식 테스트</h1>
+        <p class="muted">XP_Curve_Formula_Recommendations.md 기반 수식을 직접 실험하고 Firestore에 테스트 기록을 남깁니다.</p>
+      </header>
 
-    <section class="card">
-      <h2>문서 관리</h2>
-      <div class="grid">
-        <div>
-          <label for="doc-id">문서 ID (collection: xpCurveDocs)</label>
-          <input id="doc-id" type="text" placeholder="xp_curve_formula_recommendations" />
-        </div>
-        <div>
-          <label for="doc-title">제목</label>
-          <input id="doc-title" type="text" placeholder="XP Curve 수식 추천" />
-        </div>
-        <div>
-          <label for="doc-tags">태그 (쉼표 구분)</label>
-          <input id="doc-tags" type="text" placeholder="power, piecewise, exponential" />
-        </div>
-      </div>
-      <div style="margin-top: 0.75rem;">
-        <label for="doc-desc">설명</label>
-        <textarea id="doc-desc" placeholder="운영 정책, 반올림 규칙, 추천 파라미터 등을 포함"></textarea>
-      </div>
-      <div style="margin-top: 0.75rem;">
-        <label for="doc-content">본문 (Markdown)</label>
-        <textarea id="doc-content" rows="16" placeholder="XP_Curve_Formula_Recommendations.md 내용을 붙여넣으세요"></textarea>
-      </div>
-      <div class="actions">
-        <button class="secondary" id="load-local">로컬 문서 불러오기</button>
-        <button class="primary" id="save-doc">Firestore 저장/업데이트</button>
-        <button class="secondary" id="reset-doc">입력 초기화</button>
-      </div>
-      <div class="status" id="doc-status"></div>
-    </section>
-
-    <section class="card">
-      <h2>저장된 문서</h2>
-      <div class="muted">Firestore collection: <code>xpCurveDocs</code></div>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>제목</th>
-            <th>태그</th>
-            <th>업데이트</th>
-            <th>작업</th>
-          </tr>
-        </thead>
-        <tbody id="doc-table-body"></tbody>
-      </table>
-    </section>
-
-    <section class="card">
+      <section class="card">
       <h2>수식 테스트</h2>
       <div class="grid">
         <div>
@@ -375,34 +326,12 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-    import {
-      getFirestore,
-      collection,
-      getDocs,
-      addDoc,
-      setDoc,
-      deleteDoc,
-      doc,
-    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
     import { getFirebaseConfig } from "./firebase-config.js";
 
     const app = initializeApp(await getFirebaseConfig());
     const db = getFirestore(app);
-    const docsRef = collection(db, "xpCurveDocs");
     const testRunsRef = collection(db, "xpCurveTestRuns");
-
-    const docInputs = {
-      id: document.getElementById("doc-id"),
-      title: document.getElementById("doc-title"),
-      desc: document.getElementById("doc-desc"),
-      tags: document.getElementById("doc-tags"),
-      content: document.getElementById("doc-content"),
-    };
-    const docStatus = document.getElementById("doc-status");
-    const docTableBody = document.getElementById("doc-table-body");
-    const loadLocalBtn = document.getElementById("load-local");
-    const saveDocBtn = document.getElementById("save-doc");
-    const resetDocBtn = document.getElementById("reset-doc");
 
     const paramGrid = document.getElementById("param-grid");
     const roundingSelect = document.getElementById("rounding");
@@ -427,145 +356,9 @@
     const runTestBtn = document.getElementById("run-test");
     const sendTestBtn = document.getElementById("send-test");
 
-    function setDocStatus(message, delay = 4500) {
-      docStatus.textContent = message;
-      if (delay) setTimeout(() => (docStatus.textContent = ""), delay);
-    }
-
     function setTestStatus(message, delay = 4500) {
       testStatus.textContent = message;
       if (delay) setTimeout(() => (testStatus.textContent = ""), delay);
-    }
-
-    function resetDocForm() {
-      docInputs.id.value = "xp_curve_formula_recommendations";
-      docInputs.title.value = "XP Curve 수식 추천";
-      docInputs.desc.value = "XP_Curve_Formula_Recommendations.md 기반 정책/수식 정리";
-      docInputs.tags.value = "power,piecewise,exponential,logistic,table";
-      docInputs.content.value = "";
-      setDocStatus("문서 입력을 초기화했습니다.");
-    }
-
-    async function loadLocalMarkdown() {
-      try {
-        const res = await fetch("./XP_Curve_Formula_Recommendations.md");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const text = await res.text();
-        docInputs.content.value = text;
-        setDocStatus("로컬 MD 파일을 불러왔습니다. 저장 후 Firestore에 보관하세요.");
-      } catch (error) {
-        console.error(error);
-        setDocStatus("로컬 파일을 불러오지 못했습니다. 브라우저에서 파일 접근이 허용되는지 확인하세요.");
-      }
-    }
-
-    async function saveDocument() {
-      const id = docInputs.id.value.trim() || "xp_curve_formula_recommendations";
-      const title = docInputs.title.value.trim();
-      const desc = docInputs.desc.value.trim();
-      const tags = docInputs.tags.value
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
-      const content = docInputs.content.value;
-
-      if (!title) {
-        setDocStatus("제목을 입력하세요.");
-        return;
-      }
-      if (!content.trim()) {
-        setDocStatus("본문(Markdown)을 채워주세요.");
-        return;
-      }
-
-      const payload = {
-        title,
-        description: desc,
-        tags,
-        content,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await setDoc(doc(docsRef, id), payload, { merge: true });
-      setDocStatus(`'${id}' 문서를 저장했습니다.`);
-      await loadDocuments();
-    }
-
-    async function loadDocuments() {
-      docTableBody.innerHTML = "";
-      const snapshot = await getDocs(docsRef);
-      const rows = [];
-      snapshot.forEach((snap) => rows.push({ id: snap.id, ...snap.data() }));
-      rows.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
-      if (!rows.length) {
-        const tr = document.createElement("tr");
-        const td = document.createElement("td");
-        td.colSpan = 5;
-        td.textContent = "저장된 문서가 없습니다.";
-        tr.appendChild(td);
-        docTableBody.appendChild(tr);
-        return;
-      }
-
-      rows.forEach((row) => {
-        const tr = document.createElement("tr");
-        const tagTd = document.createElement("td");
-        tagTd.append(
-          ...(row.tags ?? []).map((tag) => {
-            const span = document.createElement("span");
-            span.className = "pill";
-            span.textContent = tag;
-            return span;
-          })
-        );
-
-        const actionsTd = document.createElement("td");
-        const loadBtn = document.createElement("button");
-        loadBtn.className = "secondary";
-        loadBtn.textContent = "불러오기";
-        loadBtn.addEventListener("click", () => fillDocForm(row));
-
-        const deleteBtn = document.createElement("button");
-        deleteBtn.className = "danger";
-        deleteBtn.textContent = "삭제";
-        deleteBtn.addEventListener("click", async () => {
-          if (!confirm(`'${row.id}' 문서를 삭제할까요?`)) return;
-          await deleteDoc(doc(docsRef, row.id));
-          setDocStatus(`'${row.id}' 문서를 삭제했습니다.`);
-          await loadDocuments();
-        });
-
-        actionsTd.append(loadBtn, deleteBtn);
-
-        const cells = [
-          row.id,
-          row.title ?? "-",
-          tagTd,
-          row.updatedAt ? new Date(row.updatedAt).toLocaleString() : "-",
-          actionsTd,
-        ];
-
-        cells.forEach((value) => {
-          const td = document.createElement("td");
-          if (value instanceof HTMLElement) {
-            td.appendChild(value);
-          } else {
-            td.textContent = value;
-          }
-          tr.appendChild(td);
-        });
-
-        docTableBody.appendChild(tr);
-      });
-    }
-
-    function fillDocForm(row) {
-      docInputs.id.value = row.id ?? "";
-      docInputs.title.value = row.title ?? "";
-      docInputs.desc.value = row.description ?? "";
-      docInputs.tags.value = (row.tags ?? []).join(",");
-      docInputs.content.value = row.content ?? "";
-      setDocStatus(`'${row.id}' 문서를 편집 중입니다.`);
     }
 
     const paramDefinitions = {
@@ -1230,50 +1023,31 @@
       }
     }
 
-    function init() {
-      renderParamInputs(typeSelect.value);
-      createExtraRow({ level: 10, value: 100, type: "VALUE" });
-      createConditionalRow({ condition: "L % 10 === 0", value: 100, type: "VALUE" });
-      resetDocForm();
-      loadDocuments().catch((error) => {
-        console.error(error);
-        setDocStatus("Firestore에서 문서를 불러오는 중 오류가 발생했습니다.");
+      function init() {
+        renderParamInputs(typeSelect.value);
+        createExtraRow({ level: 10, value: 100, type: "VALUE" });
+        createConditionalRow({ condition: "L % 10 === 0", value: 100, type: "VALUE" });
+      }
+
+      typeSelect.addEventListener("change", () => renderParamInputs(typeSelect.value));
+      runTestBtn.addEventListener("click", runTest);
+      addExtraRowBtn.addEventListener("click", () => createExtraRow());
+      applyExtraXpBtn.addEventListener("click", applyExtraXpInputs);
+      addConditionalRowBtn.addEventListener("click", () => createConditionalRow());
+      applyConditionalRulesBtn.addEventListener("click", applyConditionalRulesInputs);
+      sendTestBtn.addEventListener("click", async () => {
+        sendTestBtn.disabled = true;
+        try {
+          await sendTestConfigToServer();
+        } finally {
+          sendTestBtn.disabled = false;
+        }
       });
-    }
+      fillPowerBtn.addEventListener("click", () => applyPreset("POWER"));
+      fillPiecewiseBtn.addEventListener("click", () => applyPreset("PIECEWISE"));
+      fillLogisticBtn.addEventListener("click", () => applyPreset("LOGISTIC"));
 
-    loadLocalBtn.addEventListener("click", loadLocalMarkdown);
-    saveDocBtn.addEventListener("click", async () => {
-      saveDocBtn.disabled = true;
-      try {
-        await saveDocument();
-      } catch (error) {
-        console.error(error);
-        setDocStatus("저장 중 오류가 발생했습니다.");
-      } finally {
-        saveDocBtn.disabled = false;
-      }
-    });
-    resetDocBtn.addEventListener("click", resetDocForm);
-
-    typeSelect.addEventListener("change", () => renderParamInputs(typeSelect.value));
-    runTestBtn.addEventListener("click", runTest);
-    addExtraRowBtn.addEventListener("click", () => createExtraRow());
-    applyExtraXpBtn.addEventListener("click", applyExtraXpInputs);
-    addConditionalRowBtn.addEventListener("click", () => createConditionalRow());
-    applyConditionalRulesBtn.addEventListener("click", applyConditionalRulesInputs);
-    sendTestBtn.addEventListener("click", async () => {
-      sendTestBtn.disabled = true;
-      try {
-        await sendTestConfigToServer();
-      } finally {
-        sendTestBtn.disabled = false;
-      }
-    });
-    fillPowerBtn.addEventListener("click", () => applyPreset("POWER"));
-    fillPiecewiseBtn.addEventListener("click", () => applyPreset("PIECEWISE"));
-    fillLogisticBtn.addEventListener("click", () => applyPreset("LOGISTIC"));
-
-    init();
+      init();
   </script>
 </body>
 </html>
