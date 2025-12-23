@@ -208,6 +208,24 @@
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 0.9rem;
     }
+
+    .guide-list {
+      list-style: decimal;
+      padding-left: 1.25rem;
+      margin: 0.5rem 0 0;
+      color: #cbd5e1;
+    }
+
+    .guide-list strong {
+      color: #f8fafc;
+    }
+
+    .inline-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -281,6 +299,30 @@
         <tbody id="definitions-body"></tbody>
       </table>
     </section>
+
+    <section class="card">
+      <h2>빠른 관리</h2>
+      <p class="muted">테이블에 나타나지 않는 문서도 ID를 알고 있으면 바로 편집할 수 있습니다.</p>
+      <label for="definition-id-fetch">definitionId로 바로 불러오기</label>
+      <div class="inline-actions">
+        <input id="definition-id-fetch" type="text" placeholder="예: levelUpBoost_v1" aria-label="불러올 definitionId" />
+        <button id="fetch-btn" class="secondary">불러오기</button>
+      </div>
+      <p class="muted">폼에 불러온 뒤 수정 후 <strong>저장</strong>을 누르면 Firestore에 병합 저장됩니다.</p>
+    </section>
+
+    <section class="card">
+      <h2>사용 가이드</h2>
+      <p class="muted">주요 버튼과 입력란의 동작 요약입니다. Firestore 반영 전까지 상태 메시지를 확인하세요.</p>
+      <ol class="guide-list">
+        <li><strong>env 입력</strong>: 원하는 환경 이름을 입력하면 동일한 env 하위 콜렉션을 사용합니다.</li>
+        <li><strong>필터</strong>: EnhancementType, stage를 지정한 뒤 <strong>새로고침</strong>을 눌러 목록을 제한합니다.</li>
+        <li><strong>저장</strong>: definitionId, 이름을 채운 뒤 저장하면 Firestore에 병합 저장됩니다. 숫자 필드는 자동으로 최소값을 적용합니다.</li>
+        <li><strong>불러오기</strong>: 테이블의 불러오기 또는 "definitionId로 바로 불러오기"를 사용해 폼을 채운 뒤 수정·저장합니다.</li>
+        <li><strong>삭제</strong>: 테이블의 삭제 버튼으로 선택한 정의를 Firestore에서 제거합니다.</li>
+        <li><strong>폼 초기화</strong>: 입력을 모두 지우고 기본값으로 되돌립니다.</li>
+      </ol>
+    </section>
   </div>
 
   <script type="module">
@@ -289,6 +331,7 @@
       getFirestore,
       collection,
       getDocs,
+      getDoc,
       setDoc,
       deleteDoc,
       doc,
@@ -313,6 +356,8 @@
     const conditionsInput = document.getElementById("conditions-json");
     const modifiersInput = document.getElementById("modifiers-json");
     const tagsInput = document.getElementById("tags-input");
+    const definitionIdFetchInput = document.getElementById("definition-id-fetch");
+    const fetchBtn = document.getElementById("fetch-btn");
 
     const fields = [
       { key: "definitionId", label: "definitionId", type: "text", required: true, placeholder: "levelUpBoost_v1" },
@@ -453,6 +498,21 @@
       return collection(db, "gameData", env, "enhancementDefinitions");
     }
 
+    async function loadDefinitionById(definitionId) {
+      const targetId = definitionId.trim();
+      if (!targetId) {
+        throw new Error("불러올 definitionId를 입력하세요.");
+      }
+      const docSnap = await getDoc(doc(getDefinitionsCollection(), targetId));
+      if (!docSnap.exists()) {
+        throw new Error(`'${targetId}' 정의를 찾을 수 없습니다.`);
+      }
+      const data = { id: docSnap.id, ...docSnap.data() };
+      fillForm(data);
+      setStatus(`'${targetId}' 정의를 폼에 불러왔습니다.`);
+      return data;
+    }
+
     async function loadDefinitions() {
       tableBody.innerHTML = "";
       const colRef = getDefinitionsCollection();
@@ -560,6 +620,18 @@
         setStatus(error.message || "저장 중 오류가 발생했습니다.", 6000);
       } finally {
         saveBtn.disabled = false;
+      }
+    });
+
+    fetchBtn.addEventListener("click", async () => {
+      fetchBtn.disabled = true;
+      try {
+        await loadDefinitionById(definitionIdFetchInput.value);
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "definitionId 불러오기 중 오류가 발생했습니다.", 6000);
+      } finally {
+        fetchBtn.disabled = false;
       }
     });
 
