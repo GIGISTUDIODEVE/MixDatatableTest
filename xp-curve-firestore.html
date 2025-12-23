@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>XP Curve 수식 관리 & 테스트 (Firestore)</title>
+  <title>XP Curve 구성 관리 (Firestore)</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -225,12 +225,12 @@
 
     <div class="container">
       <header class="card">
-        <h1>XP Curve 수식 테스트</h1>
-        <p class="muted">XP_Curve_Formula_Recommendations.md 기반 수식을 직접 실험하고 Firestore에 테스트 기록을 남깁니다.</p>
+        <h1>XP Curve 구성 관리</h1>
+        <p class="muted">XP_Curve_Formula_Recommendations.md 기반 구성을 Firestore에 저장·불러오기/삭제하며 관리합니다.</p>
       </header>
 
       <section class="card">
-      <h2>수식 테스트</h2>
+      <h2>구성 입력</h2>
       <div class="grid">
         <div>
           <label for="formula-type">수식 타입</label>
@@ -293,7 +293,7 @@
 
       <div class="grid" style="margin-top: 0.75rem;">
         <div>
-          <label for="test-key">테스트 키 (Firestore 문서 ID)</label>
+          <label for="test-key">구성 키 (Firestore 문서 ID)</label>
           <input id="test-key" type="text" placeholder="예: default_power_curve" />
           <p class="muted">특정 키를 지정하면 동일 키 문서를 덮어씁니다. 비워두면 새 문서로 저장합니다.</p>
         </div>
@@ -303,8 +303,8 @@
         <button class="secondary" id="fill-power">POWER 추천값 채우기</button>
         <button class="secondary" id="fill-piecewise">PIECEWISE 예시 채우기</button>
         <button class="secondary" id="fill-logistic">LOGISTIC 완화 예시</button>
-        <button class="primary" id="run-test">테스트 실행</button>
-        <button class="secondary" id="send-test">테스트 설정 서버 전송</button>
+        <button class="secondary" id="run-test">미리보기 계산</button>
+        <button class="primary" id="send-test">구성 업로드</button>
       </div>
       <div class="status" id="test-status"></div>
       <div class="result-table" id="result-wrapper" hidden>
@@ -324,7 +324,7 @@
     </section>
 
     <section class="card">
-      <h2>저장된 테스트 설정</h2>
+      <h2>저장된 구성</h2>
       <div class="muted">Firestore collection: <code>xpCurveTestRuns</code></div>
       <div class="actions" style="margin-top: 0.35rem;">
         <button class="secondary" id="refresh-list">리스트 새로고침</button>
@@ -544,6 +544,22 @@
       conditionalRowsContainer.innerHTML = "";
       extraRows.length = 0;
       conditionalRows.length = 0;
+    }
+
+    function resetForm() {
+      clearDynamicRows();
+      typeSelect.value = "POWER";
+      renderParamInputs("POWER");
+      levelStartInput.value = 1;
+      levelEndInput.value = 20;
+      extraXpInput.value = "";
+      conditionalRulesInput.value = "";
+      advancedJson.value = "";
+      testKeyInput.value = "";
+      resultBody.innerHTML = "";
+      resultWrapper.hidden = true;
+      testStatus.textContent = "";
+      currentLoadedRun = null;
     }
 
     function evaluateExtraExpression(expr, L) {
@@ -979,10 +995,10 @@
       }
 
         renderResults(rows);
-        setTestStatus(lastWarning ? `경고: ${lastWarning}` : "테스트 완료");
+        setTestStatus(lastWarning ? `경고: ${lastWarning}` : "미리보기를 완료했습니다.");
       } catch (error) {
         console.error(error);
-        setTestStatus(error.message || "테스트 중 오류가 발생했습니다.");
+        setTestStatus(error.message || "미리보기 계산 중 오류가 발생했습니다.");
       }
     }
 
@@ -1016,11 +1032,11 @@
 
         if (key) {
           await setDoc(doc(testRunsRef, key), payload, { merge: true });
-          setTestStatus(`테스트 설정을 '${key}' 키로 저장했습니다.`);
+          setTestStatus(`구성을 '${key}' 키로 저장했습니다.`);
           currentLoadedRun = { id: key, ...payload };
         } else {
           const ref = await addDoc(testRunsRef, payload);
-          setTestStatus(`테스트 설정을 새 문서로 저장했습니다. (key: ${ref.id})`);
+          setTestStatus(`구성을 새 문서로 저장했습니다. (key: ${ref.id})`);
           testKeyInput.value = ref.id;
           currentLoadedRun = { id: ref.id, ...payload };
         }
@@ -1028,7 +1044,7 @@
         await refreshTestRunList();
       } catch (error) {
         console.error(error);
-        setTestStatus(error.message || "테스트 설정을 전송하지 못했습니다.");
+        setTestStatus(error.message || "구성을 업로드하지 못했습니다.");
       }
     }
 
@@ -1041,6 +1057,7 @@
 
     function applyRunToForm(run) {
       try {
+        resetForm();
         typeSelect.value = run.type ?? "POWER";
         renderParamInputs(typeSelect.value);
         levelStartInput.value = run.levelStart ?? 1;
@@ -1064,20 +1081,12 @@
 
         clearDynamicRows();
         const extraEntries = Array.from(extraMap.entries()).sort((a, b) => a[0] - b[0]);
-        if (extraEntries.length) {
-          extraEntries.forEach(([L, xp]) => createExtraRow({ level: L, value: xp, type: "VALUE" }));
-        } else {
-          createExtraRow({ level: 10, value: 100, type: "VALUE" });
-        }
+        extraEntries.forEach(([L, xp]) => createExtraRow({ level: L, value: xp, type: "VALUE" }));
 
         const rules = run.conditionalExtraRules ?? [];
-        if (rules.length) {
-          rules.forEach((rule) =>
-            createConditionalRow({ condition: rule.condition, value: rule.value, type: rule.type })
-          );
-        } else {
-          createConditionalRow({ condition: "L % 10 === 0", value: 100, type: "VALUE" });
-        }
+        rules.forEach((rule) =>
+          createConditionalRow({ condition: rule.condition, value: rule.value, type: rule.type })
+        );
 
         testKeyInput.value = run.id ?? "";
         currentLoadedRun = { id: run.id, createdAt: run.createdAt };
@@ -1118,7 +1127,7 @@
         await deleteDoc(doc(testRunsRef, id));
         setListStatus(`'${id}' 삭제 완료`);
         if (currentLoadedRun?.id === id) {
-          currentLoadedRun = null;
+          resetForm();
         }
         await refreshTestRunList();
       } catch (error) {
@@ -1184,6 +1193,7 @@
     }
 
     function applyPreset(type) {
+      resetForm();
       typeSelect.value = type;
       renderParamInputs(type);
       switch (type) {
@@ -1220,9 +1230,7 @@
     }
 
     function init() {
-      renderParamInputs(typeSelect.value);
-      createExtraRow({ level: 10, value: 100, type: "VALUE" });
-      createConditionalRow({ condition: "L % 10 === 0", value: 100, type: "VALUE" });
+      resetForm();
       refreshTestRunList();
     }
 
