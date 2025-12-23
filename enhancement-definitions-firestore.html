@@ -226,6 +226,69 @@
       flex-wrap: wrap;
       margin-top: 0.5rem;
     }
+
+    .list-card {
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 0.75rem;
+      background: #0b1220;
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .list-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .list-card-header h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .list-card-header p {
+      margin: 0.1rem 0 0;
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .list-card-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .list-card .grid-line {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .chip-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.5rem 0.6rem;
+      border-radius: 8px;
+      border: 1px solid #1f2937;
+      background: #0f172a;
+    }
+
+    .chip-row strong {
+      font-size: 0.95rem;
+    }
+
+    .chip-row small {
+      color: #94a3b8;
+    }
+
+    .empty-state {
+      color: #94a3b8;
+      font-size: 0.92rem;
+    }
   </style>
 </head>
 <body>
@@ -261,13 +324,59 @@
       <div class="stacked-cols">
         <div class="grid" id="form-grid"></div>
         <div>
-          <label for="conditions-json">conditions (JSON 배열)</label>
-          <textarea id="conditions-json" placeholder='[{ "type": "tag", "value": "mode:pvp" }]'></textarea>
+          <div class="list-card" aria-labelledby="conditions-heading">
+            <div class="list-card-header">
+              <div>
+                <h3 id="conditions-heading">conditions</h3>
+                <p>조건을 한 줄씩 추가해 관리하세요.</p>
+              </div>
+              <button id="add-condition-btn" class="secondary" type="button">조건 추가</button>
+            </div>
+            <div class="grid-line">
+              <div>
+                <label for="condition-type-input">type</label>
+                <input id="condition-type-input" type="text" placeholder="예: tag" />
+              </div>
+              <div>
+                <label for="condition-value-input">value</label>
+                <input id="condition-value-input" type="text" placeholder="예: mode:pvp" />
+              </div>
+            </div>
+            <div id="conditions-list" class="grid" aria-live="polite"></div>
+          </div>
 
-          <label for="modifiers-json">modifierTemplates (JSON 배열)</label>
-          <textarea id="modifiers-json" placeholder='[{ "statId": "atk", "op": "ADD", "value": 5 }]'></textarea>
+          <div class="list-card" aria-labelledby="modifiers-heading" style="margin-top: 0.75rem">
+            <div class="list-card-header">
+              <div>
+                <h3 id="modifiers-heading">modifierTemplates</h3>
+                <p>스탯 보정 항목을 직관적으로 추가하세요.</p>
+              </div>
+              <button id="add-modifier-btn" class="secondary" type="button">보정 추가</button>
+            </div>
+            <div class="grid-line">
+              <div>
+                <label for="modifier-stat-input">statId</label>
+                <input id="modifier-stat-input" type="text" placeholder="예: atk" />
+              </div>
+              <div>
+                <label for="modifier-op-input">op</label>
+                <select id="modifier-op-input">
+                  <option value="">선택</option>
+                  <option value="ADD">ADD</option>
+                  <option value="MULTIPLY">MULTIPLY</option>
+                  <option value="PERCENT_ADD">PERCENT_ADD</option>
+                  <option value="SET">SET</option>
+                </select>
+              </div>
+              <div>
+                <label for="modifier-value-input">value</label>
+                <input id="modifier-value-input" type="number" step="any" placeholder="예: 5" />
+              </div>
+            </div>
+            <div id="modifiers-list" class="grid" aria-live="polite"></div>
+          </div>
 
-          <label for="tags-input">tags (쉼표로 구분)</label>
+          <label for="tags-input" style="margin-top: 0.75rem; display: block">tags (쉼표로 구분)</label>
           <input id="tags-input" type="text" placeholder="family:levelUp, mode:all" />
         </div>
       </div>
@@ -360,8 +469,15 @@
     const resetBtn = document.getElementById("reset-btn");
     const statusEl = document.getElementById("status");
     const tableBody = document.getElementById("definitions-body");
-    const conditionsInput = document.getElementById("conditions-json");
-    const modifiersInput = document.getElementById("modifiers-json");
+    const conditionTypeInput = document.getElementById("condition-type-input");
+    const conditionValueInput = document.getElementById("condition-value-input");
+    const addConditionBtn = document.getElementById("add-condition-btn");
+    const conditionsList = document.getElementById("conditions-list");
+    const modifierStatInput = document.getElementById("modifier-stat-input");
+    const modifierOpInput = document.getElementById("modifier-op-input");
+    const modifierValueInput = document.getElementById("modifier-value-input");
+    const addModifierBtn = document.getElementById("add-modifier-btn");
+    const modifiersList = document.getElementById("modifiers-list");
     const tagsInput = document.getElementById("tags-input");
     const definitionIdFetchInput = document.getElementById("definition-id-fetch");
     const fetchBtn = document.getElementById("fetch-btn");
@@ -435,18 +551,112 @@
       return Math.min(Math.max(parsed, min), max);
     }
 
-    function readJsonArray(inputEl, label) {
-      const raw = inputEl.value.trim();
-      if (!raw) return [];
-      try {
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) {
-          throw new Error(`${label}는 배열이어야 합니다.`);
-        }
-        return parsed;
-      } catch (error) {
-        throw new Error(`${label} 파싱 실패: ${error.message}`);
+    const conditionState = [];
+    const modifierState = [];
+
+    function renderConditionList() {
+      conditionsList.innerHTML = "";
+      if (!conditionState.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = "조건이 없습니다. type과 value를 입력 후 추가하세요.";
+        conditionsList.appendChild(empty);
+        return;
       }
+
+      conditionState.forEach((cond, index) => {
+        const row = document.createElement("div");
+        row.className = "chip-row";
+
+        const text = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = cond.type || "(type 없음)";
+        const value = document.createElement("small");
+        value.textContent = cond.value || "(value 없음)";
+        text.append(title, document.createElement("br"), value);
+
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "danger";
+        removeBtn.type = "button";
+        removeBtn.textContent = "삭제";
+        removeBtn.addEventListener("click", () => {
+          conditionState.splice(index, 1);
+          renderConditionList();
+          setStatus("조건을 삭제했습니다.");
+        });
+
+        row.append(text, removeBtn);
+        conditionsList.appendChild(row);
+      });
+    }
+
+    function renderModifierList() {
+      modifiersList.innerHTML = "";
+      if (!modifierState.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = "보정 항목이 없습니다. statId와 op, value를 입력 후 추가하세요.";
+        modifiersList.appendChild(empty);
+        return;
+      }
+
+      modifierState.forEach((mod, index) => {
+        const row = document.createElement("div");
+        row.className = "chip-row";
+
+        const text = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = `${mod.statId || "(statId 없음)"} · ${mod.op || "op 없음"}`;
+        const value = document.createElement("small");
+        value.textContent = `value: ${mod.value ?? "-"}`;
+        text.append(title, document.createElement("br"), value);
+
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "danger";
+        removeBtn.type = "button";
+        removeBtn.textContent = "삭제";
+        removeBtn.addEventListener("click", () => {
+          modifierState.splice(index, 1);
+          renderModifierList();
+          setStatus("보정 항목을 삭제했습니다.");
+        });
+
+        row.append(text, removeBtn);
+        modifiersList.appendChild(row);
+      });
+    }
+
+    function addCondition() {
+      const typeValue = conditionTypeInput.value.trim();
+      const conditionValue = conditionValueInput.value.trim();
+      if (!typeValue && !conditionValue) {
+        setStatus("type 또는 value를 입력하세요.");
+        return;
+      }
+      conditionState.push({ type: typeValue, value: conditionValue });
+      conditionTypeInput.value = "";
+      conditionValueInput.value = "";
+      renderConditionList();
+      setStatus("조건을 추가했습니다.");
+    }
+
+    function addModifier() {
+      const statId = modifierStatInput.value.trim();
+      const op = modifierOpInput.value.trim();
+      const valueRaw = modifierValueInput.value.trim();
+
+      if (!statId || !op || valueRaw === "") {
+        setStatus("statId, op, value를 모두 입력하세요.");
+        return;
+      }
+
+      const parsedValue = Number(valueRaw);
+      modifierState.push({ statId, op, value: Number.isNaN(parsedValue) ? valueRaw : parsedValue });
+      modifierStatInput.value = "";
+      modifierOpInput.value = "";
+      modifierValueInput.value = "";
+      renderModifierList();
+      setStatus("보정 항목을 추가했습니다.");
     }
 
     function readForm(includeTimestamp = true) {
@@ -467,8 +677,8 @@
         .map((t) => t.trim())
         .filter(Boolean);
 
-      data.conditions = readJsonArray(conditionsInput, "conditions");
-      data.modifierTemplates = readJsonArray(modifiersInput, "modifierTemplates");
+      data.conditions = [...conditionState];
+      data.modifierTemplates = [...modifierState];
       if (includeTimestamp) {
         data.updatedAt = serverTimestamp();
       }
@@ -497,8 +707,10 @@
         }
       });
       tagsInput.value = Array.isArray(def.tags) ? def.tags.join(", ") : "";
-      conditionsInput.value = def.conditions ? JSON.stringify(def.conditions, null, 2) : "";
-      modifiersInput.value = def.modifierTemplates ? JSON.stringify(def.modifierTemplates, null, 2) : "";
+      conditionState.splice(0, conditionState.length, ...(Array.isArray(def.conditions) ? def.conditions : []));
+      modifierState.splice(0, modifierState.length, ...(Array.isArray(def.modifierTemplates) ? def.modifierTemplates : []));
+      renderConditionList();
+      renderModifierList();
       updateQuickJson(def);
     }
 
@@ -512,8 +724,10 @@
         }
       });
       tagsInput.value = "";
-      conditionsInput.value = "";
-      modifiersInput.value = "";
+      conditionState.splice(0, conditionState.length);
+      modifierState.splice(0, modifierState.length);
+      renderConditionList();
+      renderModifierList();
       updateQuickJson({});
       setStatus("새 정의 입력을 시작하세요.");
     }
@@ -790,6 +1004,9 @@
         saveJsonBtn.disabled = false;
       }
     });
+
+    addConditionBtn.addEventListener("click", addCondition);
+    addModifierBtn.addEventListener("click", addModifier);
 
     resetBtn.addEventListener("click", resetForm);
 
