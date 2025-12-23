@@ -309,6 +309,13 @@
         <button id="fetch-btn" class="secondary">불러오기</button>
       </div>
       <p class="muted">폼에 불러온 뒤 수정 후 <strong>저장</strong>을 누르면 Firestore에 병합 저장됩니다.</p>
+      <label for="quick-json-input">JSON으로 빠른 수정</label>
+      <textarea id="quick-json-input" placeholder="폼을 JSON으로 변환하거나 JSON을 붙여넣어 수정하세요." aria-label="JSON 수정 입력"></textarea>
+      <div class="inline-actions">
+        <button id="form-to-json-btn" class="secondary">폼 → JSON</button>
+        <button id="json-to-form-btn" class="secondary">JSON → 폼</button>
+        <button id="save-json-btn" class="primary">JSON 저장</button>
+      </div>
     </section>
 
     <section class="card">
@@ -358,6 +365,10 @@
     const tagsInput = document.getElementById("tags-input");
     const definitionIdFetchInput = document.getElementById("definition-id-fetch");
     const fetchBtn = document.getElementById("fetch-btn");
+    const quickJsonInput = document.getElementById("quick-json-input");
+    const formToJsonBtn = document.getElementById("form-to-json-btn");
+    const jsonToFormBtn = document.getElementById("json-to-form-btn");
+    const saveJsonBtn = document.getElementById("save-json-btn");
 
     const fields = [
       { key: "definitionId", label: "definitionId", type: "text", required: true, placeholder: "levelUpBoost_v1" },
@@ -438,7 +449,7 @@
       }
     }
 
-    function readForm() {
+    function readForm(includeTimestamp = true) {
       const data = {};
       fields.forEach(({ key, type, min, max, default: def }) => {
         const value = inputs.get(key).value.trim();
@@ -458,9 +469,21 @@
 
       data.conditions = readJsonArray(conditionsInput, "conditions");
       data.modifierTemplates = readJsonArray(modifiersInput, "modifierTemplates");
-      data.updatedAt = serverTimestamp();
+      if (includeTimestamp) {
+        data.updatedAt = serverTimestamp();
+      }
 
       return data;
+    }
+
+    function updateQuickJson(def) {
+      if (!quickJsonInput) return;
+      try {
+        quickJsonInput.value = JSON.stringify(def ?? {}, null, 2);
+      } catch (error) {
+        console.error(error);
+        setStatus("JSON 변환 중 오류가 발생했습니다. 콘솔을 확인하세요.", 6000);
+      }
     }
 
     function fillForm(def) {
@@ -476,6 +499,7 @@
       tagsInput.value = Array.isArray(def.tags) ? def.tags.join(", ") : "";
       conditionsInput.value = def.conditions ? JSON.stringify(def.conditions, null, 2) : "";
       modifiersInput.value = def.modifierTemplates ? JSON.stringify(def.modifierTemplates, null, 2) : "";
+      updateQuickJson(def);
     }
 
     function resetForm() {
@@ -490,7 +514,99 @@
       tagsInput.value = "";
       conditionsInput.value = "";
       modifiersInput.value = "";
+      updateQuickJson({});
       setStatus("새 정의 입력을 시작하세요.");
+    }
+
+    function parseQuickJsonInput() {
+      const raw = quickJsonInput.value.trim();
+      if (!raw) {
+        throw new Error("JSON 입력이 비어 있습니다.");
+      }
+      try {
+        return JSON.parse(raw);
+      } catch (error) {
+        throw new Error(`JSON 파싱 실패: ${error.message}`);
+      }
+    }
+
+    function buildPayloadFromJson(parsed, includeTimestamp = false) {
+      const payload = {};
+      fields.forEach(({ key, type, min, max, default: defValue }) => {
+        const rawValue = parsed[key];
+        if (type === "number") {
+          const lower = min ?? 0;
+          const upper = max ?? Number.POSITIVE_INFINITY;
+          payload[key] = clampNumber(rawValue ?? defValue ?? 0, lower, upper);
+        } else if (typeof rawValue === "string") {
+          payload[key] = rawValue.trim();
+        } else {
+          payload[key] = rawValue ?? "";
+        }
+      });
+
+      if (typeof payload.definitionId !== "string" || !payload.definitionId.trim()) {
+        throw new Error("JSON에 definitionId가 필요합니다.");
+      }
+
+      if (typeof payload.name !== "string" || !payload.name.trim()) {
+        throw new Error("JSON에 name이 필요합니다.");
+      }
+
+      if (parsed.tags !== undefined) {
+        if (Array.isArray(parsed.tags)) {
+          payload.tags = parsed.tags.map((t) => String(t).trim()).filter(Boolean);
+        } else if (typeof parsed.tags === "string") {
+          payload.tags = parsed.tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean);
+        } else {
+          throw new Error("tags는 배열 또는 쉼표 문자열이어야 합니다.");
+        }
+      }
+
+      if (parsed.conditions !== undefined && !Array.isArray(parsed.conditions)) {
+        throw new Error("conditions는 배열이어야 합니다.");
+      }
+      if (parsed.modifierTemplates !== undefined && !Array.isArray(parsed.modifierTemplates)) {
+        throw new Error("modifierTemplates는 배열이어야 합니다.");
+      }
+
+      payload.conditions = parsed.conditions ?? [];
+      payload.modifierTemplates = parsed.modifierTemplates ?? [];
+
+      const reserved = new Set([
+        ...fields.map((f) => f.key),
+        "conditions",
+        "modifierTemplates",
+        "tags",
+        "updatedAt",
+      ]);
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (!reserved.has(key)) {
+          payload[key] = value;
+        }
+      });
+
+      if (includeTimestamp) {
+        payload.updatedAt = serverTimestamp();
+      }
+
+      return payload;
+    }
+
+    function applyJsonToForm() {
+      const parsed = parseQuickJsonInput();
+      const payload = buildPayloadFromJson(parsed, false);
+      fillForm(payload);
+      setStatus("JSON을 폼에 적용했습니다.");
+    }
+
+    function formToJson() {
+      const payload = readForm(false);
+      updateQuickJson(payload);
+      setStatus("폼을 JSON으로 변환했습니다.");
     }
 
     function getDefinitionsCollection() {
@@ -511,6 +627,16 @@
       fillForm(data);
       setStatus(`'${targetId}' 정의를 폼에 불러왔습니다.`);
       return data;
+    }
+
+    async function saveJsonDefinition() {
+      const parsed = parseQuickJsonInput();
+      const payload = buildPayloadFromJson(parsed, true);
+      const docId = payload.definitionId.trim();
+      await setDoc(doc(getDefinitionsCollection(), docId), payload, { merge: true });
+      setStatus(`JSON으로 '${docId}' 정의를 저장했습니다.`);
+      fillForm(payload);
+      await loadDefinitions();
     }
 
     async function loadDefinitions() {
@@ -632,6 +758,36 @@
         setStatus(error.message || "definitionId 불러오기 중 오류가 발생했습니다.", 6000);
       } finally {
         fetchBtn.disabled = false;
+      }
+    });
+
+    formToJsonBtn.addEventListener("click", () => {
+      try {
+        formToJson();
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "폼을 JSON으로 변환하지 못했습니다.", 6000);
+      }
+    });
+
+    jsonToFormBtn.addEventListener("click", () => {
+      try {
+        applyJsonToForm();
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "JSON을 폼에 적용하지 못했습니다.", 6000);
+      }
+    });
+
+    saveJsonBtn.addEventListener("click", async () => {
+      saveJsonBtn.disabled = true;
+      try {
+        await saveJsonDefinition();
+      } catch (error) {
+        console.error(error);
+        setStatus(error.message || "JSON 저장 중 오류가 발생했습니다.", 6000);
+      } finally {
+        saveJsonBtn.disabled = false;
       }
     });
 
