@@ -318,19 +318,12 @@
           placeholder='{"5": 200, "10": 500} 또는 5:200, 10:500'
         ></textarea>
         <p class="muted">예: 5:200, 10:500 → 5레벨은 +200, 10레벨은 +500을 추가 요구</p>
-        <div class="grid" style="margin-top: 0.5rem;">
-          <div>
-            <label for="extra-level">단일 레벨</label>
-            <input id="extra-level" type="number" min="1" placeholder="예: 10" />
-          </div>
-          <div>
-            <label for="extra-amount">해당 레벨 추가 XP</label>
-            <input id="extra-amount" type="number" min="0" placeholder="예: 100" />
-          </div>
-          <div style="display: flex; align-items: flex-end;">
-            <button class="secondary" id="apply-extra-xp" style="width: 100%;">레벨 추가 XP 반영</button>
-          </div>
+        <div class="extra-rows" id="extra-rows" style="margin-top: 0.5rem; display: grid; gap: 0.75rem;"></div>
+        <div class="actions" style="margin-top: 0.25rem;">
+          <button class="secondary" id="add-extra-row">단일 레벨 입력 추가</button>
+          <button class="secondary" id="apply-extra-xp">모든 단일 레벨 반영</button>
         </div>
+        <p class="muted">입력 타입을 "직접 입력"(숫자) 또는 "수식"(예: <code>L * 50</code>)으로 설정할 수 있습니다.</p>
       </div>
 
       <div id="param-grid" class="grid" style="margin-top: 0.75rem;"></div>
@@ -402,8 +395,8 @@
     const levelStartInput = document.getElementById("level-start");
     const levelEndInput = document.getElementById("level-end");
     const extraXpInput = document.getElementById("extra-xp");
-    const extraLevelInput = document.getElementById("extra-level");
-    const extraAmountInput = document.getElementById("extra-amount");
+    const extraRowsContainer = document.getElementById("extra-rows");
+    const addExtraRowBtn = document.getElementById("add-extra-row");
     const applyExtraXpBtn = document.getElementById("apply-extra-xp");
     const advancedJson = document.getElementById("advanced-json");
     const testStatus = document.getElementById("test-status");
@@ -683,28 +676,139 @@
       return obj;
     }
 
-    function applyExtraXpInput() {
-      const L = Math.floor(toNumber(extraLevelInput.value, NaN));
-      const xp = Math.floor(toNumber(extraAmountInput.value, NaN));
+    const extraRows = [];
 
-      if (!Number.isFinite(L) || L < 1) {
-        setTestStatus("레벨은 1 이상의 숫자로 입력하세요.");
-        return;
-      }
-      if (!Number.isFinite(xp) || xp < 0) {
-        setTestStatus("추가 XP는 0 이상의 숫자로 입력하세요.");
-        return;
+    function evaluateExtraExpression(expr, L) {
+      const cleaned = expr.trim();
+      if (!cleaned) throw new Error("수식을 입력하세요.");
+
+      const allowed = /^[0-9+\-*/().,\sLMathpowexincosqrtlogabsmaxmin]+$/i;
+      if (!allowed.test(cleaned)) {
+        throw new Error("수식에 허용되지 않는 문자가 있습니다.");
       }
 
+      const fn = new Function("L", "Math", `"use strict"; return ${cleaned};`);
+      const value = fn(L, Math);
+      const xp = Math.floor(value);
+      if (!Number.isFinite(xp)) throw new Error("수식 결과가 유효한 숫자가 아닙니다.");
+      return xp;
+    }
+
+    function createExtraRow(initial = {}) {
+      const row = document.createElement("div");
+      row.className = "grid";
+      row.style.gridTemplateColumns = "repeat(auto-fit, minmax(140px, 1fr))";
+      row.style.gap = "0.35rem 0.65rem";
+
+      const levelWrapper = document.createElement("div");
+      const levelLabel = document.createElement("label");
+      levelLabel.textContent = "단일 레벨";
+      const levelInput = document.createElement("input");
+      levelInput.type = "number";
+      levelInput.min = "1";
+      levelInput.placeholder = "예: 10";
+      if (initial.level) levelInput.value = initial.level;
+      levelWrapper.append(levelLabel, levelInput);
+
+      const typeWrapper = document.createElement("div");
+      const typeLabel = document.createElement("label");
+      typeLabel.textContent = "입력 타입";
+      const typeSelect = document.createElement("select");
+      [
+        { value: "VALUE", label: "직접 입력" },
+        { value: "FORMULA", label: "수식" },
+      ].forEach(({ value, label }) => {
+        const opt = document.createElement("option");
+        opt.value = value;
+        opt.textContent = label;
+        typeSelect.appendChild(opt);
+      });
+      if (initial.type) typeSelect.value = initial.type;
+      typeWrapper.append(typeLabel, typeSelect);
+
+      const valueWrapper = document.createElement("div");
+      const valueLabel = document.createElement("label");
+      valueLabel.textContent = "값/수식";
+      const valueInput = document.createElement("input");
+      valueInput.type = "text";
+      valueInput.placeholder = "예: 100 또는 L * 50";
+      if (initial.value !== undefined) valueInput.value = initial.value;
+      valueWrapper.append(valueLabel, valueInput);
+
+      const removeWrapper = document.createElement("div");
+      removeWrapper.style.display = "flex";
+      removeWrapper.style.alignItems = "flex-end";
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "danger";
+      removeBtn.textContent = "삭제";
+      removeBtn.type = "button";
+      removeBtn.addEventListener("click", () => {
+        extraRowsContainer.removeChild(row);
+        const idx = extraRows.findIndex((item) => item.wrapper === row);
+        if (idx >= 0) extraRows.splice(idx, 1);
+      });
+      removeWrapper.appendChild(removeBtn);
+
+      row.append(levelWrapper, typeWrapper, valueWrapper, removeWrapper);
+      extraRowsContainer.appendChild(row);
+      const entry = { wrapper: row, levelInput, typeSelect, valueInput };
+      extraRows.push(entry);
+      return entry;
+    }
+
+    function applyExtraXpInputs() {
       const map = parseExtraXp(extraXpInput.value);
-      if (xp === 0) {
-        map.delete(L);
-        setTestStatus(`${L}레벨 추가 XP를 제거했습니다.`);
-      } else {
-        map.set(L, xp);
-        setTestStatus(`${L}레벨 추가 XP를 ${xp.toLocaleString()}로 반영했습니다.`);
+      const errors = [];
+      const updates = [];
+
+      extraRows.forEach(({ levelInput, valueInput, typeSelect }) => {
+        const L = Math.floor(toNumber(levelInput.value, NaN));
+        const raw = valueInput.value.trim();
+        const mode = typeSelect.value;
+
+        if (!Number.isFinite(L) || L < 1) {
+          errors.push("레벨은 1 이상의 숫자로 입력하세요.");
+          return;
+        }
+        if (!raw) {
+          errors.push(`${L}레벨 수치를 입력하세요.`);
+          return;
+        }
+
+        let xp = Number.NaN;
+        try {
+          xp = mode === "FORMULA" ? evaluateExtraExpression(raw, L) : Math.floor(toNumber(raw, NaN));
+        } catch (error) {
+          errors.push(`${L}레벨: ${error.message}`);
+          return;
+        }
+
+        if (!Number.isFinite(xp) || xp < 0) {
+          errors.push(`${L}레벨 추가 XP는 0 이상이어야 합니다.`);
+          return;
+        }
+
+        if (xp === 0) {
+          map.delete(L);
+          updates.push(`${L}레벨 제거`);
+        } else {
+          map.set(L, xp);
+          updates.push(`${L}레벨=${xp.toLocaleString()}`);
+        }
+      });
+
+      if (errors.length) {
+        setTestStatus(errors.join("\n"), 6000);
+        return;
       }
+
+      if (!updates.length) {
+        setTestStatus("적용할 단일 레벨 입력이 없습니다.");
+        return;
+      }
+
       extraXpInput.value = formatExtraXp(map);
+      setTestStatus(`단일 레벨 추가 XP 반영: ${updates.join(", ")}`);
     }
 
     function buildFormulaConfig() {
@@ -903,6 +1007,7 @@
 
     function init() {
       renderParamInputs(typeSelect.value);
+      createExtraRow({ level: 10, value: 100, type: "VALUE" });
       resetDocForm();
       loadDocuments().catch((error) => {
         console.error(error);
@@ -926,7 +1031,8 @@
 
     typeSelect.addEventListener("change", () => renderParamInputs(typeSelect.value));
     runTestBtn.addEventListener("click", runTest);
-    applyExtraXpBtn.addEventListener("click", applyExtraXpInput);
+    addExtraRowBtn.addEventListener("click", () => createExtraRow());
+    applyExtraXpBtn.addEventListener("click", applyExtraXpInputs);
     sendTestBtn.addEventListener("click", async () => {
       sendTestBtn.disabled = true;
       try {
