@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XP Curve 구성 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 180px;
+      resize: vertical;
+      line-height: 1.4;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+    }
+
+    .result-table {
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      margin-top: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Curve & Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link active" href="xp-curve-firestore.html">XP Curve 관리</a>
+    </div>
+  </nav>
+
+    <div class="container">
+      <header class="card">
+        <h1>XP Curve 구성 관리</h1>
+        <p class="muted">XP_Curve_Formula_Recommendations.md 기반 구성을 Firestore에 저장·불러오기/삭제하며 관리합니다.</p>
+      </header>
+
+      <section class="card">
+      <h2>구성 입력</h2>
+      <div class="grid">
+        <div>
+          <label for="formula-type">수식 타입</label>
+          <select id="formula-type">
+            <option value="POWER">POWER</option>
+            <option value="PIECEWISE">PIECEWISE</option>
+            <option value="EXPONENTIAL">EXPONENTIAL</option>
+            <option value="LINEAR">LINEAR</option>
+            <option value="LOGISTIC">LOGISTIC</option>
+            <option value="TABLE">TABLE</option>
+          </select>
+        </div>
+        <div>
+          <label for="level-start">레벨 시작</label>
+          <input id="level-start" type="number" min="1" value="1" />
+        </div>
+        <div>
+          <label for="level-end">레벨 끝</label>
+          <input id="level-end" type="number" min="1" value="20" />
+        </div>
+      </div>
+
+      <div style="margin-top: 0.75rem;">
+        <label for="extra-xp">특정 레벨 추가 XP (JSON 또는 쉼표 구분)</label>
+        <textarea
+          id="extra-xp"
+          rows="3"
+          placeholder='{"5": 200, "10": 500} 또는 5:200, 10:500'
+        ></textarea>
+        <p class="muted">예: 5:200, 10:500 → 5레벨은 +200, 10레벨은 +500을 추가 요구</p>
+        <div class="extra-rows" id="extra-rows" style="margin-top: 0.5rem; display: grid; gap: 0.75rem;"></div>
+        <div class="actions" style="margin-top: 0.25rem;">
+          <button class="secondary" id="add-extra-row">단일 레벨 입력 추가</button>
+          <button class="secondary" id="apply-extra-xp">모든 단일 레벨 반영</button>
+        </div>
+        <p class="muted">입력 타입을 "직접 입력"(숫자) 또는 "수식"(예: <code>L * 50</code>)으로 설정할 수 있습니다.</p>
+      </div>
+
+      <div style="margin-top: 1rem;">
+        <label for="conditional-extra-json">조건부 추가 XP 규칙 (조건식이 참이면 XP 추가)</label>
+        <p class="muted">예: <code>L % 10 === 0</code> → 10레벨마다 추가 XP 적용. 각 규칙별로 조건식과 값/수식을 입력한 뒤 "조건 규칙 적용" 버튼을 눌러 JSON을 갱신하세요.</p>
+        <div class="extra-rows" id="conditional-rows" style="margin-top: 0.5rem; display: grid; gap: 0.75rem;"></div>
+        <div class="actions" style="margin-top: 0.25rem;">
+          <button class="secondary" id="add-conditional-row">조건 규칙 추가</button>
+          <button class="secondary" id="apply-conditional-rules">조건 규칙 적용</button>
+        </div>
+        <textarea id="conditional-extra-json" rows="5" placeholder='[
+  {"condition": "L % 10 === 0", "type": "VALUE", "value": 100}
+]'></textarea>
+        <p class="muted">JSON을 직접 편집해도 되며, 조건식은 <code>L</code>과 <code>Math</code> 함수를 사용한 비교/논리 수식을 허용합니다. (예: <code>L % 5 === 0 && L >= 10</code>)</p>
+      </div>
+
+      <div id="param-grid" class="grid" style="margin-top: 0.75rem;"></div>
+
+      <div style="margin-top: 0.75rem;">
+        <label for="advanced-json">고급 설정 (PIECEWISE/TABLE용 JSON)</label>
+        <textarea id="advanced-json" rows="10" placeholder='{"segments": [{"minL":1,"maxL":10,"type":"LINEAR","params":{"m":20,"b":0}}]}'></textarea>
+        <p class="muted">PIECEWISE: <code>{ "segments": [ { "minL": 1, "maxL": 10, "type": "LINEAR", "params": { "m": 20, "b": 0 } } ] }</code><br>TABLE: <code>{ "entries": [ {"level":1, "xp":100}, {"level":2, "xp":120} ] }</code></p>
+      </div>
+
+      <div class="grid" style="margin-top: 0.75rem;">
+        <div>
+          <label for="test-key">구성 키 (Firestore 문서 ID)</label>
+          <input id="test-key" type="text" placeholder="예: default_power_curve" />
+          <p class="muted">특정 키를 지정하면 동일 키 문서를 덮어씁니다. 비워두면 새 문서로 저장합니다.</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="secondary" id="fill-power">POWER 추천값 채우기</button>
+        <button class="secondary" id="fill-piecewise">PIECEWISE 예시 채우기</button>
+        <button class="secondary" id="fill-logistic">LOGISTIC 완화 예시</button>
+        <button class="secondary" id="run-test">미리보기 계산</button>
+        <button class="primary" id="send-test">구성 업로드</button>
+      </div>
+      <div class="status" id="test-status"></div>
+      <div class="result-table" id="result-wrapper" hidden>
+        <table>
+          <thead>
+            <tr>
+              <th>L</th>
+              <th>xp(L)</th>
+              <th>추가XP(L)</th>
+              <th>조건 추가XP(L)</th>
+              <th>TotalXp(L)</th>
+            </tr>
+          </thead>
+          <tbody id="result-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>저장된 구성</h2>
+      <div class="muted">Firestore collection: <code>xpCurveTestRuns</code></div>
+      <div class="actions" style="margin-top: 0.35rem;">
+        <button class="secondary" id="refresh-list">리스트 새로고침</button>
+      </div>
+      <div class="result-table" style="max-height: 260px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>타입</th>
+              <th>레벨 범위</th>
+              <th>업데이트</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody id="test-list-body"><tr><td colspan="5">데이터를 불러오는 중입니다...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="status" id="list-status"></div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      doc,
+      setDoc,
+      deleteDoc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const app = initializeApp(await getFirebaseConfig());
+    const db = getFirestore(app);
+    const testRunsRef = collection(db, "xpCurveTestRuns");
+
+    const paramGrid = document.getElementById("param-grid");
+    const typeSelect = document.getElementById("formula-type");
+    const levelStartInput = document.getElementById("level-start");
+    const levelEndInput = document.getElementById("level-end");
+    const extraXpInput = document.getElementById("extra-xp");
+    const extraRowsContainer = document.getElementById("extra-rows");
+    const addExtraRowBtn = document.getElementById("add-extra-row");
+    const applyExtraXpBtn = document.getElementById("apply-extra-xp");
+    const conditionalRowsContainer = document.getElementById("conditional-rows");
+    const addConditionalRowBtn = document.getElementById("add-conditional-row");
+    const applyConditionalRulesBtn = document.getElementById("apply-conditional-rules");
+    const conditionalRulesInput = document.getElementById("conditional-extra-json");
+    const advancedJson = document.getElementById("advanced-json");
+    const testKeyInput = document.getElementById("test-key");
+    const testStatus = document.getElementById("test-status");
+    const resultWrapper = document.getElementById("result-wrapper");
+    const resultBody = document.getElementById("result-body");
+    const testListBody = document.getElementById("test-list-body");
+    const listStatus = document.getElementById("list-status");
+    const fillPowerBtn = document.getElementById("fill-power");
+    const fillPiecewiseBtn = document.getElementById("fill-piecewise");
+    const fillLogisticBtn = document.getElementById("fill-logistic");
+    const runTestBtn = document.getElementById("run-test");
+    const sendTestBtn = document.getElementById("send-test");
+    const refreshListBtn = document.getElementById("refresh-list");
+    let currentLoadedRun = null;
+    function setTestStatus(message, delay = 4500) {
+      testStatus.textContent = message;
+      if (delay) setTimeout(() => (testStatus.textContent = ""), delay);
+    }
+
+    function setListStatus(message, delay = 4500) {
+      listStatus.textContent = message;
+      if (delay) setTimeout(() => (listStatus.textContent = ""), delay);
+    }
+
+    const paramDefinitions = {
+      POWER: [
+        { key: "A", label: "A (스케일)", defaultValue: 50 },
+        { key: "P", label: "P (곡률)", defaultValue: 1.6 },
+        { key: "B", label: "B (오프셋)", defaultValue: 0 },
+      ],
+      EXPONENTIAL: [
+        { key: "A", label: "A (시작 스케일)", defaultValue: 50 },
+        { key: "R", label: "R (증가율)", defaultValue: 1.06, step: 0.01 },
+        { key: "B", label: "B (오프셋)", defaultValue: 0 },
+      ],
+      LINEAR: [
+        { key: "m", label: "m (기울기)", defaultValue: 20 },
+        { key: "b", label: "b (절편)", defaultValue: 0 },
+      ],
+      LOGISTIC: [
+        { key: "K", label: "K (포화 상한)", defaultValue: 600 },
+        { key: "r", label: "r (기울기)", defaultValue: 0.08, step: 0.01 },
+        { key: "L0", label: "L0 (전환점)", defaultValue: 40 },
+        { key: "B", label: "B (오프셋)", defaultValue: 0 },
+      ],
+    };
+
+    const paramInputs = new Map();
+
+    function renderParamInputs(type) {
+      paramGrid.innerHTML = "";
+      paramInputs.clear();
+      const defs = paramDefinitions[type];
+      if (!defs) {
+        const info = document.createElement("p");
+        info.className = "muted";
+        info.textContent = type === "PIECEWISE" || type === "TABLE"
+          ? "PIECEWISE/TABLE은 아래 JSON 또는 텍스트를 채우세요."
+          : "지원되는 파라미터가 없습니다.";
+        paramGrid.appendChild(info);
+        return;
+      }
+
+      defs.forEach(({ key, label, defaultValue, step }) => {
+        const wrapper = document.createElement("div");
+        const labelEl = document.createElement("label");
+        labelEl.textContent = label;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.id = `param-${key}`;
+        input.value = defaultValue;
+        if (step !== undefined) input.step = step;
+        wrapper.append(labelEl, input);
+        paramGrid.appendChild(wrapper);
+        paramInputs.set(key, input);
+      });
+    }
+
+    function toNumber(value, fallback = 0) {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : fallback;
+    }
+
+    function sanitizeKey(raw) {
+      const trimmed = (raw || "").trim();
+      if (!trimmed) return "";
+      if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+        throw new Error("키는 영문, 숫자, -, _ 만 사용할 수 있습니다.");
+      }
+      return trimmed;
+    }
+
+    function clampLevelRange() {
+      const start = Math.max(1, Math.floor(toNumber(levelStartInput.value, 1)));
+      const end = Math.max(start, Math.floor(toNumber(levelEndInput.value, 20)));
+      levelStartInput.value = start;
+      levelEndInput.value = end;
+      return { start, end };
+    }
+
+    function parseExtraXp(raw) {
+      const map = new Map();
+      const trimmed = raw.trim();
+      if (!trimmed) return map;
+
+      const tryAdd = (level, amount) => {
+        const L = Math.floor(toNumber(level, NaN));
+        const xp = Math.floor(toNumber(amount, NaN));
+        if (!Number.isFinite(L) || !Number.isFinite(xp) || L < 1) return;
+        if (xp === 0) return;
+        map.set(L, xp);
+      };
+
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object") {
+          Object.entries(parsed).forEach(([k, v]) => tryAdd(k, v));
+          return map;
+        }
+      } catch (error) {
+        // fallback below
+      }
+
+      trimmed
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .forEach((pair) => {
+          const [lvl, amt] = pair.split(":").map((p) => p.trim());
+          tryAdd(lvl, amt);
+        });
+
+      return map;
+    }
+
+    function formatExtraXp(map) {
+      const entries = Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+      return entries.map(([lvl, amt]) => `${lvl}:${amt}`).join(", ");
+    }
+
+    function mapToObject(map) {
+      const obj = {};
+      map.forEach((value, key) => {
+        obj[key] = value;
+      });
+      return obj;
+    }
+
+    function objectToExtraMap(obj) {
+      const map = new Map();
+      if (!obj || typeof obj !== "object") return map;
+      Object.entries(obj).forEach(([level, amount]) => {
+        const L = Math.floor(toNumber(level, NaN));
+        const xp = Math.floor(toNumber(amount, NaN));
+        if (!Number.isFinite(L) || !Number.isFinite(xp) || L < 1 || xp === 0) return;
+        map.set(L, xp);
+      });
+      return map;
+    }
+
+    const extraRows = [];
+    const conditionalRows = [];
+
+    function clearDynamicRows() {
+      extraRowsContainer.innerHTML = "";
+      conditionalRowsContainer.innerHTML = "";
+      extraRows.length = 0;
+      conditionalRows.length = 0;
+    }
+
+    function resetForm() {
+      clearDynamicRows();
+      typeSelect.value = "POWER";
+      renderParamInputs("POWER");
+      levelStartInput.value = 1;
+      levelEndInput.value = 20;
+      extraXpInput.value = "";
+      conditionalRulesInput.value = "";
+      advancedJson.value = "";
+      testKeyInput.value = "";
+      resultBody.innerHTML = "";
+      resultWrapper.hidden = true;
+      testStatus.textContent = "";
+      currentLoadedRun = null;
+    }
+
+    function evaluateExtraExpression(expr, L) {
+      const cleaned = expr.trim();
+      if (!cleaned) throw new Error("수식을 입력하세요.");
+
+      const allowed = /^[0-9+\-*/().,\sLMathpowexincosqrtlogabsmaxmin]+$/i;
+      if (!allowed.test(cleaned)) {
+        throw new Error("수식에 허용되지 않는 문자가 있습니다.");
+      }
+
+      const fn = new Function("L", "Math", `"use strict"; return ${cleaned};`);
+      const value = fn(L, Math);
+      const xp = Math.floor(value);
+      if (!Number.isFinite(xp)) throw new Error("수식 결과가 유효한 숫자가 아닙니다.");
+      return xp;
+    }
+
+    function evaluateConditionExpression(expr, L) {
+      const cleaned = expr.trim();
+      if (!cleaned) throw new Error("조건식을 입력하세요.");
+
+      const allowed = /^[0-9+\-*/%<>=!&|?:().\sLMathpowexincosqrtlogabsmaxmin]+$/i;
+      if (!allowed.test(cleaned)) {
+        throw new Error("조건식에 허용되지 않는 문자가 있습니다.");
+      }
+
+      const fn = new Function("L", "Math", `"use strict"; return (${cleaned});`);
+      const result = fn(L, Math);
+      if (typeof result === "boolean") return result;
+      if (result === 0 || result === 1) return Boolean(result);
+      throw new Error("조건식 결과가 불리언이 아닙니다.");
+    }
+
+    function createExtraRow(initial = {}) {
+      const row = document.createElement("div");
+      row.className = "grid";
+      row.style.gridTemplateColumns = "repeat(auto-fit, minmax(140px, 1fr))";
+      row.style.gap = "0.35rem 0.65rem";
+
+      const levelWrapper = document.createElement("div");
+      const levelLabel = document.createElement("label");
+      levelLabel.textContent = "단일 레벨";
+      const levelInput = document.createElement("input");
+      levelInput.type = "number";
+      levelInput.min = "1";
+      levelInput.placeholder = "예: 10";
+      if (initial.level) levelInput.value = initial.level;
+      levelWrapper.append(levelLabel, levelInput);
+
+      const typeWrapper = document.createElement("div");
+      const typeLabel = document.createElement("label");
+      typeLabel.textContent = "입력 타입";
+      const typeSelect = document.createElement("select");
+      [
+        { value: "VALUE", label: "직접 입력" },
+        { value: "FORMULA", label: "수식" },
+      ].forEach(({ value, label }) => {
+        const opt = document.createElement("option");
+        opt.value = value;
+        opt.textContent = label;
+        typeSelect.appendChild(opt);
+      });
+      if (initial.type) typeSelect.value = initial.type;
+      typeWrapper.append(typeLabel, typeSelect);
+
+      const valueWrapper = document.createElement("div");
+      const valueLabel = document.createElement("label");
+      valueLabel.textContent = "값/수식";
+      const valueInput = document.createElement("input");
+      valueInput.type = "text";
+      valueInput.placeholder = "예: 100 또는 L * 50";
+      if (initial.value !== undefined) valueInput.value = initial.value;
+      valueWrapper.append(valueLabel, valueInput);
+
+      const removeWrapper = document.createElement("div");
+      removeWrapper.style.display = "flex";
+      removeWrapper.style.alignItems = "flex-end";
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "danger";
+      removeBtn.textContent = "삭제";
+      removeBtn.type = "button";
+      removeBtn.addEventListener("click", () => {
+        extraRowsContainer.removeChild(row);
+        const idx = extraRows.findIndex((item) => item.wrapper === row);
+        if (idx >= 0) extraRows.splice(idx, 1);
+      });
+      removeWrapper.appendChild(removeBtn);
+
+      row.append(levelWrapper, typeWrapper, valueWrapper, removeWrapper);
+      extraRowsContainer.appendChild(row);
+      const entry = { wrapper: row, levelInput, typeSelect, valueInput };
+      extraRows.push(entry);
+      return entry;
+    }
+
+    function createConditionalRow(initial = {}) {
+      const row = document.createElement("div");
+      row.className = "grid";
+      row.style.gridTemplateColumns = "repeat(auto-fit, minmax(140px, 1fr))";
+      row.style.gap = "0.35rem 0.65rem";
+
+      const condWrapper = document.createElement("div");
+      const condLabel = document.createElement("label");
+      condLabel.textContent = "조건식";
+      const condInput = document.createElement("input");
+      condInput.type = "text";
+      condInput.placeholder = "예: L % 10 === 0";
+      if (initial.condition) condInput.value = initial.condition;
+      condWrapper.append(condLabel, condInput);
+
+      const typeWrapper = document.createElement("div");
+      const typeLabel = document.createElement("label");
+      typeLabel.textContent = "입력 타입";
+      const typeSelect = document.createElement("select");
+      [
+        { value: "VALUE", label: "직접 입력" },
+        { value: "FORMULA", label: "수식" },
+      ].forEach(({ value, label }) => {
+        const opt = document.createElement("option");
+        opt.value = value;
+        opt.textContent = label;
+        typeSelect.appendChild(opt);
+      });
+      if (initial.type) typeSelect.value = initial.type;
+      typeWrapper.append(typeLabel, typeSelect);
+
+      const valueWrapper = document.createElement("div");
+      const valueLabel = document.createElement("label");
+      valueLabel.textContent = "값/수식";
+      const valueInput = document.createElement("input");
+      valueInput.type = "text";
+      valueInput.placeholder = "예: 100 또는 L * 25";
+      if (initial.value !== undefined) valueInput.value = initial.value;
+      valueWrapper.append(valueLabel, valueInput);
+
+      const removeWrapper = document.createElement("div");
+      removeWrapper.style.display = "flex";
+      removeWrapper.style.alignItems = "flex-end";
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "danger";
+      removeBtn.textContent = "삭제";
+      removeBtn.type = "button";
+      removeBtn.addEventListener("click", () => {
+        conditionalRowsContainer.removeChild(row);
+        const idx = conditionalRows.findIndex((item) => item.wrapper === row);
+        if (idx >= 0) conditionalRows.splice(idx, 1);
+      });
+      removeWrapper.appendChild(removeBtn);
+
+      row.append(condWrapper, typeWrapper, valueWrapper, removeWrapper);
+      conditionalRowsContainer.appendChild(row);
+      const entry = { wrapper: row, condInput, typeSelect, valueInput };
+      conditionalRows.push(entry);
+      return entry;
+    }
+
+    function applyExtraXpInputs() {
+      const map = parseExtraXp(extraXpInput.value);
+      const errors = [];
+      const updates = [];
+
+      extraRows.forEach(({ levelInput, valueInput, typeSelect }) => {
+        const L = Math.floor(toNumber(levelInput.value, NaN));
+        const raw = valueInput.value.trim();
+        const mode = typeSelect.value;
+
+        if (!Number.isFinite(L) || L < 1) {
+          errors.push("레벨은 1 이상의 숫자로 입력하세요.");
+          return;
+        }
+        if (!raw) {
+          errors.push(`${L}레벨 수치를 입력하세요.`);
+          return;
+        }
+
+        let xp = Number.NaN;
+        try {
+          xp = mode === "FORMULA" ? evaluateExtraExpression(raw, L) : Math.floor(toNumber(raw, NaN));
+        } catch (error) {
+          errors.push(`${L}레벨: ${error.message}`);
+          return;
+        }
+
+        if (!Number.isFinite(xp) || xp < 0) {
+          errors.push(`${L}레벨 추가 XP는 0 이상이어야 합니다.`);
+          return;
+        }
+
+        if (xp === 0) {
+          map.delete(L);
+          updates.push(`${L}레벨 제거`);
+        } else {
+          map.set(L, xp);
+          updates.push(`${L}레벨=${xp.toLocaleString()}`);
+        }
+      });
+
+      if (errors.length) {
+        setTestStatus(errors.join("\n"), 6000);
+        return;
+      }
+
+      if (!updates.length) {
+        setTestStatus("적용할 단일 레벨 입력이 없습니다.");
+        return;
+      }
+
+      extraXpInput.value = formatExtraXp(map);
+      setTestStatus(`단일 레벨 추가 XP 반영: ${updates.join(", ")}`);
+    }
+
+    function applyConditionalRulesInputs() {
+      const rules = [];
+      const errors = [];
+
+      conditionalRows.forEach(({ condInput, valueInput, typeSelect }, index) => {
+        const condition = (condInput.value || "").trim();
+        const rawValue = (valueInput.value || "").trim();
+        const mode = typeSelect.value;
+        const label = `${index + 1}번 규칙`;
+
+        if (!condition) {
+          errors.push(`${label}: 조건식을 입력하세요.`);
+          return;
+        }
+        if (!rawValue) {
+          errors.push(`${label}: 추가 XP 값/수식을 입력하세요.`);
+          return;
+        }
+
+        try {
+          evaluateConditionExpression(condition, 1);
+        } catch (error) {
+          errors.push(`${label}: ${error.message}`);
+          return;
+        }
+
+        let value = Number.NaN;
+        if (mode === "FORMULA") {
+          try {
+            evaluateExtraExpression(rawValue, 1);
+          } catch (error) {
+            errors.push(`${label}: ${error.message}`);
+            return;
+          }
+          value = rawValue;
+        } else {
+          value = Math.floor(toNumber(rawValue, NaN));
+          if (!Number.isFinite(value) || value < 0) {
+            errors.push(`${label}: 추가 XP는 0 이상 숫자여야 합니다.`);
+            return;
+          }
+        }
+
+        rules.push({ condition, type: mode, value });
+      });
+
+      if (errors.length) {
+        setTestStatus(errors.join("\n"), 6000);
+        return;
+      }
+
+      conditionalRulesInput.value = JSON.stringify(rules, null, 2);
+      setTestStatus(`조건 규칙 ${rules.length}건을 반영했습니다.`);
+    }
+
+    function parseConditionalRules() {
+      const raw = conditionalRulesInput.value.trim();
+      if (!raw) return [];
+
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (error) {
+        throw new Error("조건부 추가 XP JSON을 확인하세요 (파싱 실패).");
+      }
+
+      if (!Array.isArray(parsed)) {
+        throw new Error("조건부 추가 XP는 배열 형태여야 합니다.");
+      }
+
+      return parsed.map((rule, index) => {
+        const label = `${index + 1}번 규칙`;
+        if (!rule || typeof rule !== "object") {
+          throw new Error(`${label}: 객체 형식이어야 합니다.`);
+        }
+        const condition = (rule.condition || "").toString().trim();
+        const type = rule.type === "FORMULA" ? "FORMULA" : "VALUE";
+        const rawValue = rule.value;
+        if (!condition) throw new Error(`${label}: 조건식이 필요합니다.`);
+        evaluateConditionExpression(condition, 1);
+
+        if (type === "FORMULA") {
+          const expr = (rawValue || "").toString();
+          evaluateExtraExpression(expr, 1);
+          return { condition, type, value: expr };
+        }
+
+        const value = Math.floor(toNumber(rawValue, NaN));
+        if (!Number.isFinite(value) || value < 0) {
+          throw new Error(`${label}: 추가 XP는 0 이상 숫자여야 합니다.`);
+        }
+        return { condition, type, value };
+      });
+    }
+
+    function calculateConditionalExtra(config, L) {
+      if (!config.conditionalRules || !config.conditionalRules.length) return 0;
+
+      let total = 0;
+      for (let i = 0; i < config.conditionalRules.length; i++) {
+        const rule = config.conditionalRules[i];
+        let matched = false;
+        try {
+          matched = evaluateConditionExpression(rule.condition, L);
+        } catch (error) {
+          throw new Error(`${i + 1}번 조건식 오류: ${error.message}`);
+        }
+        if (!matched) continue;
+
+        let xp = 0;
+        try {
+          xp = rule.type === "FORMULA" ? evaluateExtraExpression(rule.value, L) : Math.floor(toNumber(rule.value, 0));
+        } catch (error) {
+          throw new Error(`${i + 1}번 조건식의 값 계산 실패: ${error.message}`);
+        }
+
+        if (xp < 0 || !Number.isFinite(xp)) {
+          throw new Error(`${i + 1}번 조건식의 추가 XP가 유효하지 않습니다.`);
+        }
+        total += xp;
+      }
+      return total;
+    }
+
+    function buildFormulaConfig() {
+      const type = typeSelect.value;
+      const extraXp = parseExtraXp(extraXpInput.value);
+      const conditionalRules = parseConditionalRules();
+      if (type === "PIECEWISE" || type === "TABLE") {
+        let parsed = {};
+        if (advancedJson.value.trim()) {
+          try {
+            parsed = JSON.parse(advancedJson.value);
+          } catch (error) {
+            throw new Error("고급 설정 JSON을 파싱하지 못했습니다.");
+          }
+        }
+        return { type, params: parsed, extraXp, conditionalRules };
+      }
+
+      const params = {};
+      const defs = paramDefinitions[type] ?? [];
+      defs.forEach(({ key }) => {
+        params[key] = toNumber(paramInputs.get(key)?.value ?? 0, 0);
+      });
+      return { type, params, extraXp, conditionalRules };
+    }
+
+    function evaluateFormula(config, level) {
+      const { type, params } = config;
+      const round = Math.ceil;
+      const L = level;
+      let xp = Number.NaN;
+
+      switch (type) {
+        case "POWER": {
+          const { A = 0, P = 1, B = 0 } = params;
+          xp = A * Math.pow(L, P) + B;
+          break;
+        }
+        case "EXPONENTIAL": {
+          const { A = 0, R = 1, B = 0 } = params;
+          xp = A * Math.pow(R, L - 1) + B;
+          break;
+        }
+        case "LINEAR": {
+          const { m = 0, b = 0 } = params;
+          xp = m * L + b;
+          break;
+        }
+        case "LOGISTIC": {
+          const { K = 0, r = 0.1, L0 = 0, B = 0 } = params;
+          xp = K / (1 + Math.exp(-r * (L - L0))) + B;
+          break;
+        }
+        case "PIECEWISE": {
+          const segments = params?.segments ?? [];
+          const segment = segments.find((s) => L >= s.minL && L <= s.maxL);
+          if (!segment) return { xp: null, warning: "해당 레벨에 맞는 세그먼트가 없습니다." };
+          const inner = evaluateFormula({ type: segment.type, params: segment.params ?? {} }, level);
+          if (inner.warning) return inner;
+          xp = inner.xp;
+          break;
+        }
+        case "TABLE": {
+          const entry = (params?.entries ?? []).find((e) => e.level === L);
+          if (!entry) return { xp: null, warning: "테이블에 해당 레벨 값이 없습니다." };
+          xp = entry.xp;
+          break;
+        }
+        default:
+          return { xp: null, warning: "지원하지 않는 타입입니다." };
+      }
+
+      if (!Number.isFinite(xp)) {
+        return { xp: null, warning: "수식 결과가 유효하지 않습니다 (NaN/Infinity)." };
+      }
+      const rounded = round(xp);
+      if (rounded <= 0) {
+        return { xp: rounded, warning: "xp(L)이 0 이하입니다. 파라미터를 확인하세요." };
+      }
+      return { xp: rounded };
+    }
+
+    function runTest() {
+      try {
+        const config = buildFormulaConfig();
+        const { start, end } = clampLevelRange();
+        const rows = [];
+        let total = 0;
+        let lastWarning = "";
+
+      for (let L = start; L <= end; L++) {
+        const result = evaluateFormula(config, L);
+        if (result.warning) lastWarning = result.warning;
+        const extra = config.extraXp.get(L) ?? 0;
+        const conditionalExtra = calculateConditionalExtra(config, L);
+        const xpValue = Math.max(0, (result.xp ?? 0) + extra + conditionalExtra);
+        total += xpValue;
+        rows.push({ L, xp: xpValue, extra, conditionalExtra, total });
+      }
+
+        renderResults(rows);
+        setTestStatus(lastWarning ? `경고: ${lastWarning}` : "미리보기를 완료했습니다.");
+      } catch (error) {
+        console.error(error);
+        setTestStatus(error.message || "미리보기 계산 중 오류가 발생했습니다.");
+      }
+    }
+
+    async function sendTestConfigToServer() {
+      try {
+        const config = buildFormulaConfig();
+        const { start, end } = clampLevelRange();
+        let warning = "";
+        const previewEnd = Math.min(end, start + 4);
+
+        for (let L = start; L <= previewEnd; L++) {
+          const result = evaluateFormula(config, L);
+          if (result.warning) warning = result.warning;
+        }
+
+        const key = sanitizeKey(testKeyInput.value);
+
+        const payload = {
+          createdAt: currentLoadedRun?.id === key && currentLoadedRun?.createdAt
+            ? currentLoadedRun.createdAt
+            : new Date().toISOString(),
+          type: config.type,
+          params: config.params,
+          extraXp: mapToObject(config.extraXp),
+          conditionalExtraRules: config.conditionalRules,
+          levelStart: start,
+          levelEnd: end,
+          updatedAt: new Date().toISOString(),
+        };
+        if (warning) payload.warning = warning;
+
+        if (key) {
+          await setDoc(doc(testRunsRef, key), payload, { merge: true });
+          setTestStatus(`구성을 '${key}' 키로 저장했습니다.`);
+          currentLoadedRun = { id: key, ...payload };
+        } else {
+          const ref = await addDoc(testRunsRef, payload);
+          setTestStatus(`구성을 새 문서로 저장했습니다. (key: ${ref.id})`);
+          testKeyInput.value = ref.id;
+          currentLoadedRun = { id: ref.id, ...payload };
+        }
+
+        await refreshTestRunList();
+      } catch (error) {
+        console.error(error);
+        setTestStatus(error.message || "구성을 업로드하지 못했습니다.");
+      }
+    }
+
+    function formatDate(iso) {
+      if (!iso) return "-";
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return iso;
+      return date.toLocaleString();
+    }
+
+    function applyRunToForm(run) {
+      try {
+        resetForm();
+        typeSelect.value = run.type ?? "POWER";
+        renderParamInputs(typeSelect.value);
+        levelStartInput.value = run.levelStart ?? 1;
+        levelEndInput.value = run.levelEnd ?? Math.max(run.levelStart ?? 1, 20);
+
+        if (run.type === "PIECEWISE" || run.type === "TABLE") {
+          advancedJson.value = JSON.stringify(run.params ?? {}, null, 2);
+        } else {
+          const defs = paramDefinitions[run.type] ?? [];
+          defs.forEach(({ key }) => {
+            if (paramInputs.has(key)) {
+              paramInputs.get(key).value = toNumber(run.params?.[key], 0);
+            }
+          });
+          advancedJson.value = "";
+        }
+
+        const extraMap = objectToExtraMap(run.extraXp);
+        extraXpInput.value = formatExtraXp(extraMap);
+        conditionalRulesInput.value = JSON.stringify(run.conditionalExtraRules ?? [], null, 2);
+
+        clearDynamicRows();
+        const extraEntries = Array.from(extraMap.entries()).sort((a, b) => a[0] - b[0]);
+        extraEntries.forEach(([L, xp]) => createExtraRow({ level: L, value: xp, type: "VALUE" }));
+
+        const rules = run.conditionalExtraRules ?? [];
+        rules.forEach((rule) =>
+          createConditionalRow({ condition: rule.condition, value: rule.value, type: rule.type })
+        );
+
+        testKeyInput.value = run.id ?? "";
+        currentLoadedRun = { id: run.id, createdAt: run.createdAt };
+        setTestStatus(run.id ? `'${run.id}' 구성을 불러왔습니다.` : "저장되지 않은 구성을 불러왔습니다.");
+      } catch (error) {
+        console.error(error);
+        setTestStatus(error.message || "구성을 불러오지 못했습니다.", 6000);
+      }
+    }
+
+    async function refreshTestRunList() {
+      testListBody.innerHTML = `<tr><td colspan="5">데이터를 불러오는 중...</td></tr>`;
+      try {
+        const snapshot = await getDocs(testRunsRef);
+        const runs = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          runs.push({ id: docSnap.id, ...data });
+        });
+        runs.sort((a, b) => {
+          const tA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const tB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return tB - tA;
+        });
+        renderTestRunList(runs);
+        setListStatus(`총 ${runs.length}건 불러옴`);
+      } catch (error) {
+        console.error(error);
+        testListBody.innerHTML = `<tr><td colspan="5">불러오기 실패</td></tr>`;
+        setListStatus(error.message || "리스트를 불러오지 못했습니다.", 6000);
+      }
+    }
+
+    async function deleteTestRun(id) {
+      if (!id) return;
+      if (!confirm(`'${id}' 항목을 삭제하시겠습니까?`)) return;
+      try {
+        await deleteDoc(doc(testRunsRef, id));
+        setListStatus(`'${id}' 삭제 완료`);
+        if (currentLoadedRun?.id === id) {
+          resetForm();
+        }
+        await refreshTestRunList();
+      } catch (error) {
+        console.error(error);
+        setListStatus(error.message || "삭제하지 못했습니다.", 6000);
+      }
+    }
+
+    function renderTestRunList(runs) {
+      testListBody.innerHTML = "";
+      if (!runs.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = "저장된 데이터가 없습니다.";
+        tr.appendChild(td);
+        testListBody.appendChild(tr);
+        return;
+      }
+
+      runs.forEach((run) => {
+        const tr = document.createElement("tr");
+        const typeLabel = run.type || "-";
+        const rangeLabel = `${run.levelStart ?? "-"} ~ ${run.levelEnd ?? "-"}`;
+        const updatedLabel = formatDate(run.updatedAt || run.createdAt);
+
+        [run.id, typeLabel, rangeLabel, updatedLabel].forEach((text) => {
+          const td = document.createElement("td");
+          td.textContent = text;
+          tr.appendChild(td);
+        });
+
+        const actionTd = document.createElement("td");
+        const loadBtn = document.createElement("button");
+        loadBtn.className = "secondary";
+        loadBtn.textContent = "불러오기";
+        loadBtn.addEventListener("click", () => applyRunToForm(run));
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "danger";
+        deleteBtn.textContent = "삭제";
+        deleteBtn.style.marginLeft = "0.35rem";
+        deleteBtn.addEventListener("click", () => deleteTestRun(run.id));
+
+        actionTd.append(loadBtn, deleteBtn);
+        tr.appendChild(actionTd);
+        testListBody.appendChild(tr);
+      });
+    }
+
+    function renderResults(rows) {
+      resultBody.innerHTML = "";
+      rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        [row.L, row.xp, row.extra, row.conditionalExtra, row.total].forEach((value) => {
+          const td = document.createElement("td");
+          td.textContent = Number.isFinite(value) ? value.toLocaleString() : "-";
+          tr.appendChild(td);
+        });
+        resultBody.appendChild(tr);
+      });
+      resultWrapper.hidden = rows.length === 0;
+    }
+
+    function applyPreset(type) {
+      resetForm();
+      typeSelect.value = type;
+      renderParamInputs(type);
+      switch (type) {
+        case "POWER": {
+          paramInputs.get("A").value = 50;
+          paramInputs.get("P").value = 1.6;
+          paramInputs.get("B").value = 0;
+          advancedJson.value = "";
+          break;
+        }
+        case "PIECEWISE": {
+          advancedJson.value = JSON.stringify(
+            {
+              segments: [
+                { minL: 1, maxL: 10, type: "LINEAR", params: { m: 20, b: 0 } },
+                { minL: 11, maxL: 30, type: "POWER", params: { A: 30, P: 1.4, B: 0 } },
+                { minL: 31, maxL: 200, type: "POWER", params: { A: 50, P: 1.8, B: 0 } },
+              ],
+            },
+            null,
+            2
+          );
+          break;
+        }
+        case "LOGISTIC": {
+          paramInputs.get("K").value = 600;
+          paramInputs.get("r").value = 0.08;
+          paramInputs.get("L0").value = 45;
+          paramInputs.get("B").value = 0;
+          advancedJson.value = "";
+          break;
+        }
+      }
+    }
+
+    function init() {
+      resetForm();
+      refreshTestRunList();
+    }
+
+    typeSelect.addEventListener("change", () => renderParamInputs(typeSelect.value));
+    runTestBtn.addEventListener("click", runTest);
+    addExtraRowBtn.addEventListener("click", () => createExtraRow());
+    applyExtraXpBtn.addEventListener("click", applyExtraXpInputs);
+    addConditionalRowBtn.addEventListener("click", () => createConditionalRow());
+    applyConditionalRulesBtn.addEventListener("click", applyConditionalRulesInputs);
+    sendTestBtn.addEventListener("click", async () => {
+      sendTestBtn.disabled = true;
+      try {
+        await sendTestConfigToServer();
+      } finally {
+        sendTestBtn.disabled = false;
+      }
+    });
+    fillPowerBtn.addEventListener("click", () => applyPreset("POWER"));
+    fillPiecewiseBtn.addEventListener("click", () => applyPreset("PIECEWISE"));
+    fillLogisticBtn.addEventListener("click", () => applyPreset("LOGISTIC"));
+    refreshListBtn.addEventListener("click", refreshTestRunList);
+
+    init();
+  </script>
+</body>
+</html>
