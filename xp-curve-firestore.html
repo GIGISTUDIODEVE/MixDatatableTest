@@ -318,6 +318,19 @@
           placeholder='{"5": 200, "10": 500} 또는 5:200, 10:500'
         ></textarea>
         <p class="muted">예: 5:200, 10:500 → 5레벨은 +200, 10레벨은 +500을 추가 요구</p>
+        <div class="grid" style="margin-top: 0.5rem;">
+          <div>
+            <label for="extra-level">단일 레벨</label>
+            <input id="extra-level" type="number" min="1" placeholder="예: 10" />
+          </div>
+          <div>
+            <label for="extra-amount">해당 레벨 추가 XP</label>
+            <input id="extra-amount" type="number" min="0" placeholder="예: 100" />
+          </div>
+          <div style="display: flex; align-items: flex-end;">
+            <button class="secondary" id="apply-extra-xp" style="width: 100%;">레벨 추가 XP 반영</button>
+          </div>
+        </div>
       </div>
 
       <div id="param-grid" class="grid" style="margin-top: 0.75rem;"></div>
@@ -333,6 +346,7 @@
         <button class="secondary" id="fill-piecewise">PIECEWISE 예시 채우기</button>
         <button class="secondary" id="fill-logistic">LOGISTIC 완화 예시</button>
         <button class="primary" id="run-test">테스트 실행</button>
+        <button class="secondary" id="send-test">테스트 설정 서버 전송</button>
       </div>
       <div class="status" id="test-status"></div>
       <div class="result-table" id="result-wrapper" hidden>
@@ -357,6 +371,7 @@
       getFirestore,
       collection,
       getDocs,
+      addDoc,
       setDoc,
       deleteDoc,
       doc,
@@ -366,6 +381,7 @@
     const app = initializeApp(await getFirebaseConfig());
     const db = getFirestore(app);
     const docsRef = collection(db, "xpCurveDocs");
+    const testRunsRef = collection(db, "xpCurveTestRuns");
 
     const docInputs = {
       id: document.getElementById("doc-id"),
@@ -386,6 +402,9 @@
     const levelStartInput = document.getElementById("level-start");
     const levelEndInput = document.getElementById("level-end");
     const extraXpInput = document.getElementById("extra-xp");
+    const extraLevelInput = document.getElementById("extra-level");
+    const extraAmountInput = document.getElementById("extra-amount");
+    const applyExtraXpBtn = document.getElementById("apply-extra-xp");
     const advancedJson = document.getElementById("advanced-json");
     const testStatus = document.getElementById("test-status");
     const resultWrapper = document.getElementById("result-wrapper");
@@ -394,6 +413,7 @@
     const fillPiecewiseBtn = document.getElementById("fill-piecewise");
     const fillLogisticBtn = document.getElementById("fill-logistic");
     const runTestBtn = document.getElementById("run-test");
+    const sendTestBtn = document.getElementById("send-test");
 
     function setDocStatus(message, delay = 4500) {
       docStatus.textContent = message;
@@ -650,6 +670,43 @@
       return map;
     }
 
+    function formatExtraXp(map) {
+      const entries = Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+      return entries.map(([lvl, amt]) => `${lvl}:${amt}`).join(", ");
+    }
+
+    function mapToObject(map) {
+      const obj = {};
+      map.forEach((value, key) => {
+        obj[key] = value;
+      });
+      return obj;
+    }
+
+    function applyExtraXpInput() {
+      const L = Math.floor(toNumber(extraLevelInput.value, NaN));
+      const xp = Math.floor(toNumber(extraAmountInput.value, NaN));
+
+      if (!Number.isFinite(L) || L < 1) {
+        setTestStatus("레벨은 1 이상의 숫자로 입력하세요.");
+        return;
+      }
+      if (!Number.isFinite(xp) || xp < 0) {
+        setTestStatus("추가 XP는 0 이상의 숫자로 입력하세요.");
+        return;
+      }
+
+      const map = parseExtraXp(extraXpInput.value);
+      if (xp === 0) {
+        map.delete(L);
+        setTestStatus(`${L}레벨 추가 XP를 제거했습니다.`);
+      } else {
+        map.set(L, xp);
+        setTestStatus(`${L}레벨 추가 XP를 ${xp.toLocaleString()}로 반영했습니다.`);
+      }
+      extraXpInput.value = formatExtraXp(map);
+    }
+
     function buildFormulaConfig() {
       const type = typeSelect.value;
       const rounding = roundingSelect.value;
@@ -755,6 +812,42 @@
       }
     }
 
+    async function sendTestConfigToServer() {
+      try {
+        const config = buildFormulaConfig();
+        const { start, end } = clampLevelRange();
+        const previewRows = [];
+        let warning = "";
+        const previewEnd = Math.min(end, start + 4);
+
+        for (let L = start; L <= previewEnd; L++) {
+          const result = evaluateFormula(config, L);
+          if (result.warning) warning = result.warning;
+          const extra = config.extraXp.get(L) ?? 0;
+          const xpValue = Math.max(0, (result.xp ?? 0) + extra);
+          previewRows.push({ L, xp: xpValue, extra });
+        }
+
+        const payload = {
+          createdAt: new Date().toISOString(),
+          type: config.type,
+          params: config.params,
+          rounding: config.rounding,
+          extraXp: mapToObject(config.extraXp),
+          levelStart: start,
+          levelEnd: end,
+          preview: previewRows,
+        };
+        if (warning) payload.warning = warning;
+
+        await addDoc(testRunsRef, payload);
+        setTestStatus("테스트 설정을 서버로 전송했습니다.");
+      } catch (error) {
+        console.error(error);
+        setTestStatus(error.message || "테스트 설정을 전송하지 못했습니다.");
+      }
+    }
+
     function renderResults(rows) {
       resultBody.innerHTML = "";
       rows.forEach((row) => {
@@ -833,6 +926,15 @@
 
     typeSelect.addEventListener("change", () => renderParamInputs(typeSelect.value));
     runTestBtn.addEventListener("click", runTest);
+    applyExtraXpBtn.addEventListener("click", applyExtraXpInput);
+    sendTestBtn.addEventListener("click", async () => {
+      sendTestBtn.disabled = true;
+      try {
+        await sendTestConfigToServer();
+      } finally {
+        sendTestBtn.disabled = false;
+      }
+    });
     fillPowerBtn.addEventListener("click", () => applyPreset("POWER"));
     fillPiecewiseBtn.addEventListener("click", () => applyPreset("PIECEWISE"));
     fillLogisticBtn.addEventListener("click", () => applyPreset("LOGISTIC"));
