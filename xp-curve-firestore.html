@@ -250,6 +250,7 @@
             <option value="ROUND">ROUND</option>
             <option value="FLOOR">FLOOR</option>
           </select>
+          <p class="muted" style="margin-top: 0.35rem;">테스트용으로만 사용하며 업로드 시에는 저장되지 않습니다.</p>
         </div>
         <div>
           <label for="level-start">레벨 시작</label>
@@ -1028,7 +1029,6 @@
             : new Date().toISOString(),
           type: config.type,
           params: config.params,
-          rounding: config.rounding,
           extraXp: mapToObject(config.extraXp),
           conditionalExtraRules: config.conditionalRules,
           levelStart: start,
