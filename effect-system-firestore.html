@@ -1608,7 +1608,15 @@
         payloadKeys: parseStringArray(document.getElementById("payload-keys").value),
       });
 
-      return { stacking: Object.keys(stacking).length ? stacking : undefined, procRules: Object.keys(procRules).length ? procRules : undefined, emit: Object.keys(emit).length ? emit : undefined };
+      const safeStacking = stacking || {};
+      const safeProcRules = procRules || {};
+      const safeEmit = emit || {};
+
+      return {
+        stacking: Object.keys(safeStacking).length ? safeStacking : undefined,
+        procRules: Object.keys(safeProcRules).length ? safeProcRules : undefined,
+        emit: Object.keys(safeEmit).length ? safeEmit : undefined,
+      };
     }
 
     function pruneEmpty(value) {
