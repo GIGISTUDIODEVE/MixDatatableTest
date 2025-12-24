@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skill/Ability/Effect 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      border: 1px solid #334155;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem 1.25rem;
+    }
+
+    .hint-list {
+      margin: 0.3rem 0 0;
+      padding-left: 1.2rem;
+      color: #cbd5e1;
+    }
+
+    code.inline {
+      background: #0b1220;
+      padding: 0.15rem 0.35rem;
+      border-radius: 6px;
+      border: 1px solid #1f2937;
+      font-size: 0.9em;
+      color: #f8fafc;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link active" href="effect-system-firestore.html">EffectSpec 관리</a>
+    </div>
+  </nav>
+  <div class="container">
+    <header class="card">
+      <h1>Unified Skill/Ability/Effect 관리</h1>
+      <p class="muted">Unified_Global_Skill_System.md 기반 스펙을 Firestore에 저장/불러오기/수정/삭제합니다. 샘플 스키마는 문서의 예제를 그대로 제공합니다.</p>
+      <div class="pill">Firestore collections: <code class="inline">effectSpecs</code> · <code class="inline">abilitySpecs</code> · <code class="inline">skillSpecs</code></div>
+    </header>
+
+    <section class="card">
+      <div class="section-header">
+        <div>
+          <h2>Effect 관리</h2>
+          <p class="muted">가장 작은 실행 단위. OnHit/OnTick 등을 명시하고 selector/적용 규칙을 정의합니다.</p>
+        </div>
+        <span class="pill">spec = Effect</span>
+      </div>
+      <div class="split-grid">
+        <div>
+          <div class="grid">
+            <div>
+              <label for="effect-id">Effect ID</label>
+              <input id="effect-id" type="text" placeholder="Effect_FireBolt_Damage" />
+            </div>
+          </div>
+          <div>
+            <label for="effect-json">Effect JSON</label>
+            <textarea id="effect-json" spellcheck="false"></textarea>
+          </div>
+          <div class="actions">
+            <button class="primary" id="effect-save">저장/업데이트</button>
+            <button class="secondary" id="effect-sample">샘플 불러오기</button>
+            <button class="secondary" id="effect-reset">새로 작성</button>
+            <button class="secondary" id="effect-refresh">목록 새로고침</button>
+          </div>
+          <div class="status" id="effect-status"></div>
+        </div>
+        <div>
+          <p class="muted">저장된 Effect 문서 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>effectId</th>
+                <th>type</th>
+                <th>trigger</th>
+                <th>selector</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="effect-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <div>
+          <h2>Ability 관리</h2>
+          <p class="muted">하나의 스킬 내 실행 버전. cast/delivery 스펙과 묶일 Effect 배열을 정의합니다.</p>
+        </div>
+        <span class="pill">spec = Ability</span>
+      </div>
+      <div class="split-grid">
+        <div>
+          <div class="grid">
+            <div>
+              <label for="ability-id">Ability ID</label>
+              <input id="ability-id" type="text" placeholder="Skill_FireBolt_Default" />
+            </div>
+            <div>
+              <label for="ability-key">Key (선택)</label>
+              <input id="ability-key" type="text" placeholder="Default" />
+            </div>
+          </div>
+          <div>
+            <label for="ability-json">Ability JSON</label>
+            <textarea id="ability-json" spellcheck="false"></textarea>
+          </div>
+          <div class="actions">
+            <button class="primary" id="ability-save">저장/업데이트</button>
+            <button class="secondary" id="ability-sample">샘플 불러오기</button>
+            <button class="secondary" id="ability-reset">새로 작성</button>
+            <button class="secondary" id="ability-refresh">목록 새로고침</button>
+          </div>
+          <div class="status" id="ability-status"></div>
+        </div>
+        <div>
+          <p class="muted">저장된 Ability 문서 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>abilityId</th>
+                <th>key</th>
+                <th>delivery</th>
+                <th>effects</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="ability-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <div>
+          <h2>Skill 관리</h2>
+          <p class="muted">랭크/쿨/코스트와 선택 규칙을 가진 최상위 스펙입니다. Ability 목록을 매핑합니다.</p>
+        </div>
+        <span class="pill">spec = Skill</span>
+      </div>
+      <div class="split-grid">
+        <div>
+          <div class="grid">
+            <div>
+              <label for="skill-id">Skill ID</label>
+              <input id="skill-id" type="text" placeholder="Skill_FireBolt" />
+            </div>
+            <div>
+              <label for="skill-category">Category</label>
+              <select id="skill-category">
+                <option value="">(선택)</option>
+                <option value="BasicAttack">BasicAttack</option>
+                <option value="Passive">Passive</option>
+                <option value="Active">Active</option>
+                <option value="Utility">Utility</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label for="skill-json">Skill JSON</label>
+            <textarea id="skill-json" spellcheck="false"></textarea>
+          </div>
+          <div class="actions">
+            <button class="primary" id="skill-save">저장/업데이트</button>
+            <button class="secondary" id="skill-sample">샘플 불러오기</button>
+            <button class="secondary" id="skill-reset">새로 작성</button>
+            <button class="secondary" id="skill-refresh">목록 새로고침</button>
+          </div>
+          <div class="status" id="skill-status"></div>
+        </div>
+        <div>
+          <p class="muted">저장된 Skill 문서 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>skillId</th>
+                <th>category</th>
+                <th>maxRank</th>
+                <th>abilities</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="skill-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const SAMPLE_EFFECT = {
+      effectId: "Effect_FireBolt_Damage",
+      type: "Damage",
+      trigger: "OnHit",
+      selector: {
+        selectorType: "HitTarget",
+        team: "Enemy",
+      },
+      calc: {
+        flat: { ref: "damage", byRank: true },
+        ratios: {
+          ap: { ref: "ratio" },
+        },
+      },
+      apply: {
+        damageType: "Magic",
+        damageStage: "PostMitigation",
+      },
+      procRules: {
+        cooldown: 10,
+        chance: 1.0,
+        maxPerTrigger: 1,
+      },
+      source: {
+        sourceType: "Skill",
+        sourceId: "Skill_FireBolt",
+      },
+    };
+
+    const SAMPLE_ABILITY = {
+      abilityId: "Skill_FireBolt_Default",
+      key: "Default",
+      castSpec: {
+        castTime: 0.25,
+        canMove: false,
+        isChanneling: false,
+      },
+      deliverySpec: {
+        type: "Projectile",
+        range: 650,
+        speed: 1200,
+        collision: "FirstHit",
+      },
+      paramBindings: {
+        damage: { ref: "damage" },
+        ratio: { ref: "apRatio" },
+      },
+      effects: ["Effect_FireBolt_Damage"],
+    };
+
+    const SAMPLE_SKILL = {
+      skillId: "Skill_FireBolt",
+      skillCategory: "Active",
+      rankRules: {
+        maxRank: 5,
+        cooldownByRank: [8, 7, 6, 5, 4],
+        costByRank: [50, 55, 60, 65, 70],
+      },
+      baseStats: {
+        damage: [80, 120, 160, 200, 240],
+        apRatio: 0.6,
+      },
+      abilities: [
+        { abilityId: "Skill_FireBolt_Default", key: "Default", priority: 0 },
+        {
+          abilityId: "Skill_FireBolt_Empowered",
+          key: "Empowered",
+          priority: 1,
+          selectConditions: ["HasEmpoweredState"],
+        },
+      ],
+    };
+
+    class SpecManager {
+      constructor({
+        entityName,
+        collectionName,
+        idInputId,
+        jsonInputId,
+        statusId,
+        tableBodyId,
+        saveBtnId,
+        resetBtnId,
+        sampleBtnId,
+        refreshBtnId,
+        sampleData,
+        extraFill,
+        summaryExtractor,
+        transformBeforeSave,
+      }) {
+        this.entityName = entityName;
+        this.collectionName = collectionName;
+        this.idInput = document.getElementById(idInputId);
+        this.jsonInput = document.getElementById(jsonInputId);
+        this.statusEl = document.getElementById(statusId);
+        this.tableBody = document.getElementById(tableBodyId);
+        this.sampleData = sampleData;
+        this.extraFill = extraFill;
+        this.summaryExtractor = summaryExtractor;
+        this.transformBeforeSave = transformBeforeSave;
+
+        this.saveBtn = document.getElementById(saveBtnId);
+        this.resetBtn = document.getElementById(resetBtnId);
+        this.sampleBtn = document.getElementById(sampleBtnId);
+        this.refreshBtn = document.getElementById(refreshBtnId);
+
+        this.registerHandlers();
+      }
+
+      attachDb(db) {
+        this.db = db;
+        this.collectionRef = collection(db, this.collectionName);
+      }
+
+      registerHandlers() {
+        this.saveBtn?.addEventListener("click", () => this.handleSave());
+        this.resetBtn?.addEventListener("click", () => this.resetForm());
+        this.sampleBtn?.addEventListener("click", () => this.loadSample());
+        this.refreshBtn?.addEventListener("click", () => this.loadTable());
+      }
+
+      setStatus(message, { persist = false } = {}) {
+        this.statusEl.textContent = message;
+        if (!persist) {
+          clearTimeout(this._statusTimer);
+          this._statusTimer = setTimeout(() => {
+            this.statusEl.textContent = "";
+          }, 4500);
+        }
+      }
+
+      sanitizeId(rawId) {
+        return rawId.trim().replace(/[^A-Za-z0-9_.-]+/g, "_");
+      }
+
+      getDocIdOrWarn() {
+        const raw = this.idInput.value.trim();
+        if (!raw) {
+          this.setStatus(`${this.entityName} ID를 입력하세요.`);
+          return null;
+        }
+        const sanitized = this.sanitizeId(raw);
+        if (!sanitized) {
+          this.setStatus("유효한 ID를 입력하세요 (영문/숫자/._- 조합).");
+          return null;
+        }
+        if (sanitized !== raw) {
+          this.idInput.value = sanitized;
+        }
+        return sanitized;
+      }
+
+      parseJsonOrWarn() {
+        const raw = this.jsonInput.value.trim();
+        if (!raw) return {};
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("JSON 파싱에 실패했습니다. 포맷을 확인하세요.");
+          return null;
+        }
+      }
+
+      fillForm(id, data) {
+        this.idInput.value = id;
+        if (this.extraFill) this.extraFill({ manager: this, data });
+        this.jsonInput.value = JSON.stringify(data, null, 2);
+        this.setStatus(`'${id}' ${this.entityName}를 불러왔습니다.`);
+      }
+
+      resetForm() {
+        this.idInput.value = "";
+        if (this.extraFill) this.extraFill({ manager: this, data: this.sampleData });
+        this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
+        this.setStatus("새 문서를 작성하세요.");
+      }
+
+      loadSample() {
+        this.fillForm(this.sampleData[`${this.entityName.toLowerCase()}Id`] ?? "", this.sampleData);
+        this.setStatus("샘플 데이터를 불러왔습니다.");
+      }
+
+      async handleSave() {
+        if (!this.db) return;
+        const docId = this.getDocIdOrWarn();
+        if (!docId) return;
+        const data = this.parseJsonOrWarn();
+        if (!data) return;
+        const transformed = this.transformBeforeSave
+          ? this.transformBeforeSave({ data, manager: this, docId })
+          : data;
+
+        this.toggleButtons(true);
+        try {
+          await setDoc(doc(this.collectionRef, docId), transformed, { merge: true });
+          this.setStatus(`'${docId}' ${this.entityName}를 저장했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("저장 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async handleDelete(docId, label) {
+        if (!this.db) return;
+        if (!confirm(`'${label}' ${this.entityName}를 삭제할까요?`)) return;
+        this.toggleButtons(true);
+        try {
+          await deleteDoc(doc(this.collectionRef, docId));
+          this.setStatus(`'${label}' ${this.entityName}를 삭제했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("삭제 중 오류가 발생했습니다. 네트워크/권한을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async loadTable() {
+        if (!this.db) return;
+        this.setStatus("목록을 불러오는 중...", { persist: true });
+        try {
+          const snapshot = await getDocs(this.collectionRef);
+          const rows = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            rows.push({ id: docSnap.id, data });
+          });
+          rows.sort((a, b) => a.id.localeCompare(b.id));
+          this.renderTable(rows);
+          this.setStatus(`총 ${rows.length}개 ${this.entityName}를 불러왔습니다.`);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("목록을 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        }
+      }
+
+      renderTable(rows) {
+        this.tableBody.innerHTML = "";
+        if (!rows.length) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 5;
+          td.textContent = "저장된 문서가 없습니다.";
+          tr.appendChild(td);
+          this.tableBody.appendChild(tr);
+          return;
+        }
+
+        rows.forEach(({ id, data }) => {
+          const tr = document.createElement("tr");
+          const summary = this.summaryExtractor ? this.summaryExtractor(data) : {};
+          const cells = summary.cells ?? [];
+          [id, ...cells].forEach((value) => {
+            const td = document.createElement("td");
+            td.textContent = value ?? "-";
+            tr.appendChild(td);
+          });
+
+          const actionsTd = document.createElement("td");
+          const loadBtn = document.createElement("button");
+          loadBtn.className = "secondary";
+          loadBtn.textContent = "불러오기";
+          loadBtn.addEventListener("click", () => this.fillForm(id, data));
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "danger";
+          deleteBtn.textContent = "삭제";
+          deleteBtn.addEventListener("click", () => this.handleDelete(id, summary.label ?? id));
+
+          actionsTd.append(loadBtn, deleteBtn);
+          tr.appendChild(actionsTd);
+          this.tableBody.appendChild(tr);
+        });
+      }
+
+      toggleButtons(disabled) {
+        [this.saveBtn, this.resetBtn, this.sampleBtn, this.refreshBtn].forEach((btn) => {
+          if (btn) btn.disabled = disabled;
+        });
+      }
+    }
+
+    function createManagers() {
+      const effectManager = new SpecManager({
+        entityName: "Effect",
+        collectionName: "effectSpecs",
+        idInputId: "effect-id",
+        jsonInputId: "effect-json",
+        statusId: "effect-status",
+        tableBodyId: "effect-table",
+        saveBtnId: "effect-save",
+        resetBtnId: "effect-reset",
+        sampleBtnId: "effect-sample",
+        refreshBtnId: "effect-refresh",
+        sampleData: SAMPLE_EFFECT,
+        summaryExtractor: (data) => ({
+          label: data.effectId ?? data.type ?? "Effect",
+          cells: [data.type, data.trigger, data.selector?.selectorType],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          return { ...data, effectId: data.effectId ?? docId };
+        },
+      });
+
+      const abilityManager = new SpecManager({
+        entityName: "Ability",
+        collectionName: "abilitySpecs",
+        idInputId: "ability-id",
+        jsonInputId: "ability-json",
+        statusId: "ability-status",
+        tableBodyId: "ability-table",
+        saveBtnId: "ability-save",
+        resetBtnId: "ability-reset",
+        sampleBtnId: "ability-sample",
+        refreshBtnId: "ability-refresh",
+        sampleData: SAMPLE_ABILITY,
+        extraFill: ({ manager, data }) => {
+          const keyField = document.getElementById("ability-key");
+          keyField.value = data.key ?? "";
+        },
+        summaryExtractor: (data) => ({
+          label: data.abilityId ?? data.key ?? "Ability",
+          cells: [data.key, data.deliverySpec?.type, Array.isArray(data.effects) ? data.effects.length : 0],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const keyField = document.getElementById("ability-key");
+          const key = keyField?.value.trim() || data.key;
+          return { ...data, abilityId: data.abilityId ?? docId, key };
+        },
+      });
+
+      const skillManager = new SpecManager({
+        entityName: "Skill",
+        collectionName: "skillSpecs",
+        idInputId: "skill-id",
+        jsonInputId: "skill-json",
+        statusId: "skill-status",
+        tableBodyId: "skill-table",
+        saveBtnId: "skill-save",
+        resetBtnId: "skill-reset",
+        sampleBtnId: "skill-sample",
+        refreshBtnId: "skill-refresh",
+        sampleData: SAMPLE_SKILL,
+        extraFill: ({ manager, data }) => {
+          const categoryField = document.getElementById("skill-category");
+          categoryField.value = data.skillCategory ?? "";
+        },
+        summaryExtractor: (data) => ({
+          label: data.skillId ?? data.skillCategory ?? "Skill",
+          cells: [data.skillCategory, data.rankRules?.maxRank, Array.isArray(data.abilities) ? data.abilities.length : 0],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const categoryField = document.getElementById("skill-category");
+          const categoryValue = categoryField?.value || data.skillCategory;
+          return { ...data, skillId: data.skillId ?? docId, skillCategory: categoryValue || undefined };
+        },
+      });
+
+      return [effectManager, abilityManager, skillManager];
+    }
+
+    async function initialize() {
+      const managers = createManagers();
+      try {
+        const app = initializeApp(await getFirebaseConfig());
+        const db = getFirestore(app);
+        managers.forEach((manager) => {
+          manager.attachDb(db);
+          manager.resetForm();
+          manager.loadTable();
+        });
+      } catch (error) {
+        console.error(error);
+        managers.forEach((manager) => {
+          manager.setStatus("Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.", { persist: true });
+          manager.toggleButtons(true);
+        });
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
