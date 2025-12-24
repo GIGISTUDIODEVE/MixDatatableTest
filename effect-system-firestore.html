@@ -243,16 +243,16 @@
         gap: 1rem;
       }
 
-      .helper {
-        color: #9ca3af;
-        font-size: 0.9rem;
-        margin-top: 0.25rem;
-        line-height: 1.5;
-      }
+    .helper {
+      color: #9ca3af;
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+      line-height: 1.5;
+    }
 
-      .preview-card {
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(14, 165, 233, 0.08));
-        border: 1px solid #1f2937;
+    .preview-card {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(14, 165, 233, 0.08));
+      border: 1px solid #1f2937;
       }
 
       .preview-title {
@@ -276,11 +276,11 @@
         color: #fca5a5;
         font-weight: 700;
         font-size: 0.8rem;
-        border: 1px solid rgba(248, 113, 113, 0.35);
-      }
+      border: 1px solid rgba(248, 113, 113, 0.35);
+    }
 
-      .stepper {
-        display: flex;
+    .stepper {
+      display: flex;
         align-items: center;
         gap: 0.5rem;
         flex-wrap: wrap;
@@ -308,9 +308,15 @@
         flex-wrap: wrap;
       }
 
-      .step-hidden {
-        display: none !important;
-      }
+    .step-hidden {
+      display: none !important;
+    }
+
+    .tag-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.35rem 0.75rem;
+    }
     </style>
   </head>
   <body>
@@ -396,8 +402,8 @@
         </div>
         <div>
           <label for="effect-tags">tags (쉼표로 구분)</label>
-          <input id="effect-tags" type="text" placeholder="Spell, SingleTarget" />
-          <p class="helper">효과 검색/중복 방지/툴팁 자동화에 쓰이는 분류용 태그입니다.</p>
+          <div id="tag-options" class="tag-grid"></div>
+          <p class="helper">LoL에서 자주 쓰는 태그를 선택하세요. (복수 선택)</p>
         </div>
       </div>
     </section>
@@ -1019,6 +1025,40 @@
     const unitFilterOptions = ["Champion", "Minion", "Monster", "Structure", "Summon"];
     const sortRuleOptions = ["None", "Nearest", "LowestHP", "HighestMaxHP", "Custom"];
     const centerRefOptions = ["", "CasterPos", "TargetPos", "ImpactPos", "CursorPos", "ZoneCenter"];
+    const tagOptions = [
+      "Spell",
+      "Basic",
+      "AoE",
+      "DoT",
+      "CC",
+      "Slow",
+      "Stun",
+      "Root",
+      "Silence",
+      "Shield",
+      "Heal",
+      "Buff",
+      "Debuff",
+      "Execute",
+      "OnHit",
+      "Periodic",
+      "Zone",
+      "Projectile",
+      "Dash",
+      "Blink",
+      "Knockup",
+      "Knockback",
+      "Pull",
+      "Summon",
+      "Reveal",
+      "Stealth",
+      "Burn",
+      "Lifesteal",
+      "SpellVamp",
+      "Passive",
+      "Ultimate",
+      "Pierce",
+    ];
 
     const valueModelOptions = [
       "Flat",
@@ -1040,6 +1080,7 @@
     const timingFields = document.getElementById("timing-fields");
     const calcFields = document.querySelectorAll(".calc-field");
     const shapeFields = document.querySelectorAll(".shape-field");
+    const tagContainer = document.getElementById("tag-options");
 
     const statusEl = document.getElementById("status");
     const previewEl = document.getElementById("effect-preview");
@@ -1084,6 +1125,16 @@
       checkbox.value = value;
       label.append(checkbox, document.createTextNode(value));
       unitFilterContainer.appendChild(label);
+    });
+
+    tagOptions.forEach((value) => {
+      const label = document.createElement("label");
+      label.className = "field-row";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = value;
+      label.append(checkbox, document.createTextNode(value));
+      tagContainer.appendChild(label);
     });
 
     const calcVisibilityMap = {
@@ -1214,6 +1265,72 @@
           calc: { model: "FlatPlusRatio", flat: 35, ratios: { ap: 0.2 }, damageType: "" },
           apply: { applicationMode: "OverTime" },
           stacking: { stackingRule: "RefreshDuration" },
+        },
+      },
+      {
+        label: "선형 관통 물리 피해 (크리티컬 가능)",
+        effect: {
+          effectId: "Q_PiercingArrow",
+          type: "Damage",
+          tags: ["Spell", "Line", "Pierce"],
+          trigger: { triggerType: "OnProjectileHit" },
+          targeting: { selectorType: "Line", teamFilter: "Enemy", unitFilter: ["Champion", "Minion"], maxTargets: 5, width: 100, length: 1200 },
+          calc: { model: "FlatPlusRatio", flat: 90, ratios: { ad: 1.0 }, damageType: "Physical", critAllowed: true },
+          apply: { applicationMode: "Instant", hitRules: { collisionRule: "Pierce" } },
+          procRules: { procCoefficient: 1, procsAllowed: { allowLifesteal: true } },
+        },
+      },
+      {
+        label: "돌진 + 충돌 피해",
+        effect: {
+          effectId: "E_DashImpact",
+          type: "Dash",
+          tags: ["Mobility", "Dash", "Spell"],
+          trigger: { triggerType: "OnCastCommit" },
+          targeting: { selectorType: "SelectedTarget", teamFilter: "Enemy", unitFilter: ["Champion"], maxTargets: 1 },
+          timing: { duration: 0.75 },
+          apply: { applicationMode: "Instant", hitRules: { canMiss: false, collisionRule: "StopOnUnit" } },
+          emit: { emitOnApply: true, payloadKeys: ["dashDistance"] },
+        },
+      },
+      {
+        label: "광역 넉업 + 마법 피해",
+        effect: {
+          effectId: "R_KnockupSlam",
+          type: "ApplyStatus",
+          tags: ["CC", "Knockup", "AoE", "Spell"],
+          trigger: { triggerType: "OnCastCommit" },
+          targeting: { selectorType: "Area", teamFilter: "Enemy", unitFilter: ["Champion", "Minion"], maxTargets: 5, radius: 400, centerRef: "CasterPos" },
+          timing: { duration: 0.75 },
+          calc: { model: "FlatPlusRatio", flat: 200, ratios: { ap: 0.7 }, damageType: "Magic" },
+          apply: { applicationMode: "Instant" },
+          stacking: { stackingRule: "RefreshDuration", uniqueGroup: "KNOCKUP" },
+        },
+      },
+      {
+        label: "연쇄 번개",
+        effect: {
+          effectId: "Passive_ChainLightning",
+          type: "Damage",
+          tags: ["OnHit", "Chain", "Magic"],
+          trigger: { triggerType: "OnHit", filters: { sourceFilter: "BasicAttack" } },
+          targeting: { selectorType: "Chain", teamFilter: "Enemy", unitFilter: ["Champion", "Minion", "Monster"], maxTargets: 3, bounces: 2, searchRadius: 500 },
+          calc: { model: "FlatPlusRatio", flat: 40, ratios: { ap: 0.2 }, damageType: "Magic" },
+          apply: { applicationMode: "Instant" },
+          procRules: { internalCooldown: 2, procCoefficient: 0.5 },
+        },
+      },
+      {
+        label: "지속 적중 스택 버프",
+        effect: {
+          effectId: "Passive_OnHitStacks",
+          type: "AddStack",
+          tags: ["OnHit", "Stack", "Buff"],
+          trigger: { triggerType: "OnHit", filters: { sourceFilter: "BasicAttack" } },
+          targeting: { selectorType: "HitTarget", teamFilter: "Enemy", unitFilter: ["Champion"], maxTargets: 1 },
+          stacking: { stackingRule: "AddStacks", maxStacks: 6, stackDecay: { decayType: "Time", decayValue: 4 } },
+          apply: { applicationMode: "Instant" },
+          emit: { emitOnApply: true, payloadKeys: ["stacks"] },
         },
       },
     ];
@@ -1528,6 +1645,10 @@
       return Number.isFinite(num) ? num : undefined;
     }
 
+    function readTags() {
+      return Array.from(tagContainer.querySelectorAll("input[type='checkbox']")).filter((el) => el.checked).map((el) => el.value);
+    }
+
     function parseNumberInput(id) {
       const value = document.getElementById(id).value.trim();
       return value === "" ? undefined : parseNumber(value);
@@ -1756,7 +1877,7 @@
         effectId: document.getElementById("effect-id").value.trim(),
         type: selects.effectType.value,
         enabled: document.getElementById("effect-enabled").checked,
-        tags: parseStringArray(document.getElementById("effect-tags").value),
+        tags: readTags(),
         trigger: buildTrigger(),
         targeting: buildTargeting(),
         conditions: parseJSONSafe(document.getElementById("conditions").value, { silent: silentJSON }) ?? [],
@@ -1807,7 +1928,9 @@
       document.getElementById("effect-id").value = effect.effectId ?? "";
       fillSelect(selects.effectType, effect.type ?? "");
       setCheckbox("effect-enabled", effect.enabled ?? true);
-      document.getElementById("effect-tags").value = (effect.tags ?? []).join(", ");
+      tagContainer.querySelectorAll("input[type='checkbox']").forEach((el) => {
+        el.checked = (effect.tags ?? []).includes(el.value);
+      });
 
       fillSelect(selects.triggerType, effect.trigger?.triggerType ?? "");
       if (effect.trigger?.filters) {
