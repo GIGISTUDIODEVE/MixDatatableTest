@@ -1567,10 +1567,13 @@
         spellShieldInteraction: selects.spellShieldInteraction.value || undefined,
       });
 
+      const safeHitRules = hitRules || {};
+      const safeInteractionRules = interactionRules || {};
+
       return pruneEmpty({
         applicationMode: selects.applicationMode.value || undefined,
-        hitRules: Object.keys(hitRules).length ? hitRules : undefined,
-        interactionRules: Object.keys(interactionRules).length ? interactionRules : undefined,
+        hitRules: Object.keys(safeHitRules).length ? safeHitRules : undefined,
+        interactionRules: Object.keys(safeInteractionRules).length ? safeInteractionRules : undefined,
       });
     }
 
