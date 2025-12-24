@@ -335,7 +335,7 @@
     <section class="card preview-card">
       <h2 class="preview-title">현재 Effect 설명 (리그오브레전드식 서술)</h2>
       <p class="helper">입력값이 바뀔 때마다 자동으로 갱신됩니다. 선택한 트리거, 대상, 수치 모델, 적용 규칙을 한 문장으로 정리해 툴팁 스타일로 보여줍니다.</p>
-      <div class="preview-body" id="effect-preview">필수 필드를 채우면 요약이 여기에 표시됩니다.</div>
+      <div class="preview-body" id="effect-preview">이름 미설정 — 발동/대상/수치 정보를 입력하면 여기서 실시간으로 설명합니다.</div>
     </section>
 
     <section class="card">
@@ -1381,6 +1381,7 @@
 
     function buildLolStyleDescription(effect) {
       if (!effect || (!effect.effectId && !effect.type && !effect.trigger?.triggerType)) return "";
+      const name = effect.effectId || "이름 미설정";
       const triggerText = describeTrigger(effect.trigger) || "발동 시";
       const targetText = describeTargeting(effect.targeting) || "대상";
       const timingText = describeTiming(effect.timing);
@@ -1389,7 +1390,7 @@
       const stackingText = effect.stacking?.stackingRule ? `스택: ${effect.stacking.stackingRule}` : "";
 
       const lines = [];
-      lines.push(`${triggerText}, ${targetText}에게 ${damageText}.`);
+      lines.push(`${name}: ${triggerText}, ${targetText}에게 ${damageText}.`);
       if (conditionText) lines.push(conditionText + ".");
       if (timingText) lines.push(timingText + ".");
       if (stackingText) lines.push(stackingText + ".");
@@ -1929,7 +1930,7 @@
     function attachPreviewListeners() {
       const elements = Array.from(document.querySelectorAll("input, select, textarea"));
       elements.forEach((el) => {
-        const eventName = el.tagName === "SELECT" ? "change" : "input";
+        const eventName = el.tagName === "SELECT" || el.type === "checkbox" ? "change" : "input";
         el.addEventListener(eventName, refreshPreview);
       });
     }
