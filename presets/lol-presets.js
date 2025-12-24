@@ -96,9 +96,9 @@ const championPresets = CHAMPION_KEYS.map((key) =>
   buildChampionPreset({
     key,
     label: `${key} 시그니처`,
-    damage: 70 + Math.floor(Math.random() * 30),
-    ratio: 0.6 + Math.random() * 0.4,
-    range: 550 + Math.floor(Math.random() * 150),
+    damage: 90,
+    ratio: 0.7,
+    range: 600,
   })
 );
 

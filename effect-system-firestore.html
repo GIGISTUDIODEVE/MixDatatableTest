@@ -259,6 +259,9 @@
       flex: 1;
       min-width: 220px;
     }
+    .preset-controls select {
+      min-width: 200px;
+    }
 
     .small {
       font-size: 0.85rem;
@@ -375,13 +378,23 @@
       <p class="muted">Unified_Global_Skill_System.md 기반 스펙을 Firestore에 저장/불러오기/수정/삭제합니다. 샘플 스키마는 문서의 예제를 그대로 제공합니다.</p>
       <div class="pill">Firestore collections: <code class="inline">effectSpecs</code> · <code class="inline">abilitySpecs</code> · <code class="inline">skillSpecs</code></div>
       <div class="preset-bar">
-        <label for="preset-search" class="muted">프리셋 검색/적용 (주문검 · 점화 · 생명선)</label>
         <div class="preset-controls">
-          <input id="preset-search" list="preset-list" type="text" placeholder="스킬명 입력 (예: 주문검)" />
-          <datalist id="preset-list"></datalist>
+          <label class="muted" for="preset-group">프리셋 그룹</label>
+          <select id="preset-group">
+            <option value="">전체 (챔피언+아이템+유틸)</option>
+          </select>
+          <label class="muted" for="preset-select">프리셋 선택</label>
+          <select id="preset-select">
+            <option value="">프리셋을 선택하세요</option>
+          </select>
           <button class="secondary" id="preset-apply">프리셋 적용</button>
         </div>
-        <p class="muted small">프리셋을 적용하면 Effect/Ability/Skill JSON과 ID가 모두 채워집니다.</p>
+        <div class="preset-controls">
+          <label class="muted" for="preset-search">검색</label>
+          <input id="preset-search" list="preset-list" type="text" placeholder="스킬명 입력 (예: 주문검, 아리)" />
+          <datalist id="preset-list"></datalist>
+        </div>
+        <p class="muted small" id="preset-summary">프리셋을 적용하면 Effect/Ability/Skill JSON과 ID가 모두 채워집니다.</p>
       </div>
     </header>
 
@@ -1334,13 +1347,33 @@
 
     function populatePresetList() {
       const datalist = document.getElementById("preset-list");
-      if (!datalist) return;
-      datalist.innerHTML = "";
-      PRESETS.forEach((preset) => {
-        const option = document.createElement("option");
-        option.value = preset.label;
-        datalist.appendChild(option);
-      });
+      const groupSelect = document.getElementById("preset-group");
+      const presetSelect = document.getElementById("preset-select");
+      if (datalist) {
+        datalist.innerHTML = "";
+        PRESETS.forEach((preset) => {
+          const option = document.createElement("option");
+          option.value = preset.label;
+          datalist.appendChild(option);
+        });
+      }
+      if (groupSelect) {
+        ["", "champions", "items", "utilities"].forEach((groupKey) => {
+          const option = document.createElement("option");
+          option.value = groupKey;
+          option.textContent =
+            groupKey === ""
+              ? "전체 (챔피언+아이템+유틸)"
+              : groupKey === "champions"
+                ? "챔피언 (17명)"
+                : groupKey === "items"
+                  ? "아이템"
+                  : "유틸리티";
+          groupSelect.appendChild(option);
+        });
+      }
+      updatePresetSelect();
+      updatePresetSummary();
     }
 
     function findPresetByName(name) {
@@ -1350,6 +1383,51 @@
           p.aliases.some((alias) => alias.toLowerCase() === query || alias.toLowerCase().includes(query)) ||
           p.label.toLowerCase().includes(query)
       );
+    }
+
+    function updatePresetSelect() {
+      const presetSelect = document.getElementById("preset-select");
+      const groupSelect = document.getElementById("preset-group");
+      if (!presetSelect) return;
+      const group = groupSelect?.value;
+      presetSelect.innerHTML = "";
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "프리셋을 선택하세요";
+      presetSelect.appendChild(defaultOption);
+      const source =
+        group && PRESET_GROUPS[group]
+          ? PRESET_GROUPS[group]
+          : PRESETS;
+      source.forEach((preset) => {
+        const option = document.createElement("option");
+        option.value = preset.key;
+        option.textContent = preset.label;
+        presetSelect.appendChild(option);
+      });
+    }
+
+    function applyPresetBySelect(managers) {
+      const presetSelect = document.getElementById("preset-select");
+      if (!presetSelect || !presetSelect.value) {
+        managers.forEach((m) => m.setStatus("프리셋을 선택하세요."));
+        return;
+      }
+      const preset = PRESETS.find((p) => p.key === presetSelect.value);
+      if (!preset) {
+        managers.forEach((m) => m.setStatus("선택한 프리셋을 찾지 못했습니다."));
+        return;
+      }
+      applyPresetToManagers(preset.label, managers);
+    }
+
+    function updatePresetSummary() {
+      const summaryEl = document.getElementById("preset-summary");
+      if (!summaryEl) return;
+      const championCount = PRESET_GROUPS.champions?.length ?? 0;
+      const itemCount = PRESET_GROUPS.items?.length ?? 0;
+      const utilCount = PRESET_GROUPS.utilities?.length ?? 0;
+      summaryEl.textContent = `챔피언 ${championCount}종 · 아이템 ${itemCount}종 · 유틸 ${utilCount}종 프리셋을 제공합니다.`;
     }
 
     function applyPresetToManagers(name, [effectManager, abilityManager, skillManager]) {
@@ -1628,13 +1706,17 @@
       populatePresetList();
       const presetInput = document.getElementById("preset-search");
       const presetBtn = document.getElementById("preset-apply");
+      const presetGroup = document.getElementById("preset-group");
+      const presetSelect = document.getElementById("preset-select");
       if (presetBtn) {
         presetBtn.addEventListener("click", () => {
-          if (!presetInput?.value) {
-            managers.forEach((m) => m.setStatus("프리셋 이름을 입력하세요. (예: 주문검)"));
-            return;
+          if (presetSelect?.value) {
+            applyPresetBySelect(managers);
+          } else if (presetInput?.value) {
+            applyPresetToManagers(presetInput.value, managers);
+          } else {
+            managers.forEach((m) => m.setStatus("프리셋을 선택하거나 검색하세요."));
           }
-          applyPresetToManagers(presetInput.value, managers);
         });
       }
       presetInput?.addEventListener("keydown", (event) => {
@@ -1642,6 +1724,13 @@
           event.preventDefault();
           presetBtn?.click();
         }
+      });
+      presetGroup?.addEventListener("change", () => {
+        updatePresetSelect();
+      });
+      presetSelect?.addEventListener("change", () => {
+        const selected = PRESETS.find((p) => p.key === presetSelect.value);
+        presetInput.value = selected?.label ?? "";
       });
       const previewInputs = [
         "effect-json",
