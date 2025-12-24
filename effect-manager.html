@@ -91,6 +91,42 @@
       font-size: 0.95rem;
     }
 
+    .stepper {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+
+    .step-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.45rem 0.7rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .step-chip.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+      font-weight: 800;
+    }
+
+    .step-chip.done {
+      border-color: #1d4ed8;
+      color: #bfdbfe;
+    }
+
+    .step-chip:hover {
+      transform: translateY(-1px);
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -231,6 +267,16 @@
       line-height: 1.4;
     }
 
+    .human-preview {
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      padding: 0.65rem 0.8rem;
+      line-height: 1.5;
+      color: #e2e8f0;
+      min-height: 100px;
+    }
+
     .two-column {
       display: grid;
       grid-template-columns: 2fr 1fr;
@@ -266,8 +312,11 @@
         <div>
           <h2>Effect 입력</h2>
           <p class="muted">필수 필드는 effectId, type, trigger.triggerType, targeting.selectorType 입니다.</p>
+          <div id="stepper" class="stepper"></div>
           <div id="form-sections" class="container"></div>
           <div class="actions">
+            <button class="secondary" id="prev-step-btn">이전 단계</button>
+            <button class="secondary" id="next-step-btn">다음 단계</button>
             <button class="primary" id="save-btn">Effect 저장/업데이트</button>
             <button class="secondary" id="reset-btn">새로 작성</button>
           </div>
@@ -277,6 +326,9 @@
           <h2>미리보기</h2>
           <p class="muted">저장될 EffectSpec JSON</p>
           <pre class="preview" id="preview">{} </pre>
+          <h3>요약 미리보기</h3>
+          <p class="muted">선택한 옵션이 실제로 무엇을 의미하는지 간단히 확인하세요.</p>
+          <div class="human-preview" id="human-preview">필수 필드(EffectId, type, trigger, targeting)를 채우면 요약이 표시됩니다.</div>
         </div>
       </div>
     </section>
@@ -313,10 +365,14 @@
 
     const statusEl = document.getElementById("status");
     const previewEl = document.getElementById("preview");
+    const humanPreviewEl = document.getElementById("human-preview");
     const tableBody = document.getElementById("effect-table-body");
     const formSections = document.getElementById("form-sections");
+    const stepperEl = document.getElementById("stepper");
     const saveBtn = document.getElementById("save-btn");
     const resetBtn = document.getElementById("reset-btn");
+    const prevStepBtn = document.getElementById("prev-step-btn");
+    const nextStepBtn = document.getElementById("next-step-btn");
 
     const effectTypes = [
       "Damage", "DamagePercentHP", "ExecuteDamage", "DamageOverTime", "ConvertDamageType",
@@ -471,6 +527,8 @@
     const inputs = new Map();
     const fieldWrappers = new Map();
     let effectsCollection;
+    let currentStepIndex = 0;
+    const sectionElements = [];
 
     function setStatus(message, { persist = false } = {}) {
       statusEl.textContent = message;
@@ -611,8 +669,68 @@
           grid.appendChild(createField(field));
         });
         sectionEl.append(title, desc, grid);
+        sectionEl.dataset.step = String(sectionElements.length);
         formSections.appendChild(sectionEl);
+        sectionElements.push(sectionEl);
       });
+    }
+
+    function renderStepper() {
+      stepperEl.innerHTML = "";
+      fieldSectionsConfig.forEach((section, index) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "step-chip";
+        chip.textContent = `${index + 1}. ${section.title}`;
+        chip.addEventListener("click", () => {
+          goToStep(index);
+        });
+        stepperEl.appendChild(chip);
+      });
+      updateStepVisibility();
+    }
+
+    function updateStepperState() {
+      const chips = stepperEl.querySelectorAll(".step-chip");
+      chips.forEach((chip, index) => {
+        chip.classList.toggle("active", index === currentStepIndex);
+        chip.classList.toggle("done", index < currentStepIndex);
+      });
+    }
+
+    function updateStepVisibility() {
+      sectionElements.forEach((sectionEl, index) => {
+        const isActive = index === currentStepIndex;
+        sectionEl.style.display = isActive ? "" : "none";
+      });
+      updateStepperState();
+      updateStepNavigation();
+    }
+
+    function hasValueForField(field) {
+      const el = inputs.get(field.path);
+      if (!el) return false;
+      if (field.type === "checkbox") return true;
+      if (field.type === "list" || field.type === "list-number" || field.type === "json") {
+        return Boolean(el.value.trim());
+      }
+      return el.value.trim() !== "";
+    }
+
+    function isStepValid(stepIndex) {
+      const section = fieldSectionsConfig[stepIndex];
+      if (!section) return true;
+      return section.fields.every((field) => !field.required || hasValueForField(field));
+    }
+
+    function updateStepNavigation() {
+      prevStepBtn.disabled = currentStepIndex === 0;
+      nextStepBtn.disabled = currentStepIndex >= fieldSectionsConfig.length - 1 || !isStepValid(currentStepIndex);
+    }
+
+    function goToStep(index) {
+      currentStepIndex = Math.max(0, Math.min(index, fieldSectionsConfig.length - 1));
+      updateStepVisibility();
     }
 
     function attachInputListeners() {
@@ -627,6 +745,17 @@
           updateTargetingVisibility(selectorInput.value);
         });
       }
+
+      prevStepBtn.addEventListener("click", () => {
+        goToStep(currentStepIndex - 1);
+      });
+      nextStepBtn.addEventListener("click", () => {
+        if (!isStepValid(currentStepIndex)) {
+          setStatus("현재 단계의 필수 값을 먼저 채워주세요.", { persist: true });
+          return;
+        }
+        goToStep(currentStepIndex + 1);
+      });
     }
 
     const targetingShapeFields = [
@@ -668,6 +797,8 @@
       });
       updatePreview();
       updateTargetingVisibility(inputs.get("targeting.selectorType")?.value);
+      currentStepIndex = 0;
+      updateStepVisibility();
       setStatus("새 Effect 입력을 시작하세요.");
     }
 
@@ -777,11 +908,60 @@
       try {
         const effect = buildEffectSpec({ skipRequired: true });
         previewEl.textContent = JSON.stringify(effect, null, 2);
+        humanPreviewEl.textContent = buildHumanSummary(effect);
+        updateStepNavigation();
         return effect;
       } catch (error) {
         previewEl.textContent = `⚠️ ${error.message}`;
+        humanPreviewEl.textContent = "필수 필드가 비어있거나 형식이 잘못되었습니다.";
         return null;
       }
+    }
+
+    function buildHumanSummary(effect) {
+      if (!effect.effectId && !effect.type) {
+        return "필수 필드(EffectId, type, trigger, targeting)를 입력하면 사람 친화적 요약이 표시됩니다.";
+      }
+      const parts = [];
+      if (effect.effectId) parts.push(`ID: ${effect.effectId}`);
+      if (effect.type) parts.push(`타입: ${effect.type}`);
+      const trigger = getByPath(effect, "trigger.triggerType");
+      if (trigger) parts.push(`트리거: ${trigger}`);
+      const selector = getByPath(effect, "targeting.selectorType");
+      if (selector) parts.push(`타겟팅: ${selector}`);
+
+      const calcModel = getByPath(effect, "calc.model");
+      const calcFlat = getByPath(effect, "calc.flat");
+      const calcRatio = getByPath(effect, "calc.ratios.ap") || getByPath(effect, "calc.ratios.ad");
+      if (calcModel) {
+        const calcDetails = [];
+        if (calcFlat !== undefined) calcDetails.push(`기본값 ${calcFlat}`);
+        if (calcRatio !== undefined) calcDetails.push(`계수 포함`);
+        parts.push(`계산: ${calcModel}${calcDetails.length ? ` (${calcDetails.join(", ")})` : ""}`);
+      }
+
+      const applicationMode = getByPath(effect, "apply.applicationMode");
+      if (applicationMode) {
+        parts.push(`적용 방식: ${applicationMode}`);
+      }
+
+      const stackingRule = getByPath(effect, "stacking.stackingRule");
+      const maxStacks = getByPath(effect, "stacking.maxStacks");
+      if (stackingRule) {
+        parts.push(`중첩: ${stackingRule}${maxStacks ? ` (최대 ${maxStacks})` : ""}`);
+      }
+
+      const procICD = getByPath(effect, "procRules.internalCooldown");
+      if (procICD !== undefined) {
+        parts.push(`프로크 내부 쿨다운: ${procICD}s`);
+      }
+
+      const emitKeys = getByPath(effect, "emit.payloadKeys");
+      if (Array.isArray(emitKeys) && emitKeys.length) {
+        parts.push(`이벤트 페이로드: ${emitKeys.join(", ")}`);
+      }
+
+      return parts.join(" · ") || "입력된 정보를 기반으로 요약을 생성할 수 없습니다.";
     }
 
     function fillForm(effect) {
@@ -808,6 +988,8 @@
         }
       });
       updateTargetingVisibility(inputs.get("targeting.selectorType")?.value);
+      currentStepIndex = 0;
+      updateStepVisibility();
       updatePreview();
     }
 
@@ -915,6 +1097,7 @@
     async function bootstrap() {
       try {
         createForm();
+        renderStepper();
         attachInputListeners();
         resetForm();
         const app = initializeApp(await getFirebaseConfig());
