@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skill/Ability/Effect 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      border: 1px solid #334155;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem 1.25rem;
+    }
+
+    .hint-list {
+      margin: 0.3rem 0 0;
+      padding-left: 1.2rem;
+      color: #cbd5e1;
+    }
+
+    code.inline {
+      background: #0b1220;
+      padding: 0.15rem 0.35rem;
+      border-radius: 6px;
+      border: 1px solid #1f2937;
+      font-size: 0.9em;
+      color: #f8fafc;
+    }
+
+    .preset-bar {
+      margin-top: 1rem;
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      display: grid;
+      gap: 0.4rem;
+    }
+
+    .preset-controls {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .preset-controls input {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .small {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+
+    .fieldset {
+      margin-top: 0.75rem;
+      padding: 0.75rem 0.9rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+    }
+
+    .fieldset h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .package-card {
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .package-summary {
+      display: grid;
+      gap: 0.4rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 999px;
+      background: #111827;
+      border: 1px solid #1f2937;
+      color: #e2e8f0;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .badge.ok {
+      border-color: #16a34a;
+      color: #bbf7d0;
+      background: rgba(22, 163, 74, 0.15);
+    }
+
+    .badge.warn {
+      border-color: #f59e0b;
+      color: #fef08a;
+      background: rgba(245, 158, 11, 0.15);
+    }
+
+    .badge.error {
+      border-color: #ef4444;
+      color: #fecdd3;
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    .package-list {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: #cbd5e1;
+    }
+
+    .package-list li {
+      margin-bottom: 0.2rem;
+    }
+
+    .preview-card {
+      margin-top: 0.75rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .preview-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .preview-card .label {
+      color: #cbd5e1;
+    }
+
+    .preview-card .value {
+      color: #f8fafc;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link active" href="effect-system-firestore.html">EffectSpec 관리</a>
+    </div>
+  </nav>
+  <div class="container">
+    <header class="card">
+      <h1>Unified Skill/Ability/Effect 관리</h1>
+      <p class="muted">Unified_Global_Skill_System.md 기반 스펙을 Firestore에 저장/불러오기/수정/삭제합니다. 샘플 스키마는 문서의 예제를 그대로 제공합니다.</p>
+      <div class="pill">Firestore collections: <code class="inline">effectSpecs</code> · <code class="inline">abilitySpecs</code> · <code class="inline">skillSpecs</code></div>
+      <div class="preset-bar">
+        <label for="preset-search" class="muted">프리셋 검색/적용 (주문검 · 점화 · 생명선)</label>
+        <div class="preset-controls">
+          <input id="preset-search" list="preset-list" type="text" placeholder="스킬명 입력 (예: 주문검)" />
+          <datalist id="preset-list"></datalist>
+          <button class="secondary" id="preset-apply">프리셋 적용</button>
+        </div>
+        <p class="muted small">프리셋을 적용하면 Effect/Ability/Skill JSON과 ID가 모두 채워집니다.</p>
+      </div>
+    </header>
+
+    <section class="package-card">
+      <div class="section-header">
+        <div>
+          <h2>LoL 스킬 빌더 체크리스트</h2>
+          <p class="muted">Effect → Ability → Skill로 연결되어야 패키지가 온전합니다. 아래 상태가 자동으로 갱신됩니다.</p>
+        </div>
+        <div id="package-status-badge" class="badge warn">점검 필요</div>
+      </div>
+      <div class="package-summary">
+        <div class="label">통합 프리뷰</div>
+        <div class="value" id="package-preview-text">필드 입력 후 프리뷰가 표시됩니다.</div>
+      </div>
+      <ul class="package-list" id="package-checklist"></ul>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <div>
+          <h2>Effect 관리</h2>
+          <p class="muted">가장 작은 실행 단위. OnHit/OnTick 등을 명시하고 selector/적용 규칙을 정의합니다.</p>
+        </div>
+        <span class="pill">spec = Effect</span>
+      </div>
+      <div class="preview-card" id="effect-preview">
+        <h3>Effect 프리뷰</h3>
+        <div class="label">플레이버</div>
+        <div class="value" id="effect-preview-text">-</div>
+      </div>
+      <div class="split-grid">
+        <div>
+          <div class="grid">
+            <div>
+              <label for="effect-id">Effect ID</label>
+              <input id="effect-id" type="text" placeholder="Effect_FireBolt_Damage" />
+            </div>
+          </div>
+          <div class="fieldset">
+            <h3>드롭다운 빠른 설정</h3>
+            <div class="grid">
+              <div>
+                <label for="effect-type">type</label>
+                <select id="effect-type">
+                  <option value="">(선택)</option>
+                  <option>Damage</option>
+                  <option>Heal</option>
+                  <option>Shield</option>
+                  <option>Buff</option>
+                  <option>Debuff</option>
+                  <option>CC</option>
+                  <option>Summon</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-trigger">trigger</label>
+                <select id="effect-trigger">
+                  <option value="">(선택)</option>
+                  <option>OnHit</option>
+                  <option>OnAttack</option>
+                  <option>OnCast</option>
+                  <option>OnTick</option>
+                  <option>OnEnter</option>
+                  <option>OnExit</option>
+                  <option>OnDamageTaken</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-selector">selector.selectorType</label>
+                <select id="effect-selector">
+                  <option value="">(선택)</option>
+                  <option>HitTarget</option>
+                  <option>Self</option>
+                  <option>Area</option>
+                  <option>Target</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-team">selector.team</label>
+                <select id="effect-team">
+                  <option value="">(선택)</option>
+                  <option>Enemy</option>
+                  <option>Ally</option>
+                  <option>Both</option>
+                  <option>Self</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-damage-type">apply.damageType</label>
+                <select id="effect-damage-type">
+                  <option value="">(선택)</option>
+                  <option>Physical</option>
+                  <option>Magic</option>
+                  <option>True</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-damage-stage">apply.damageStage</label>
+                <select id="effect-damage-stage">
+                  <option value="">(선택)</option>
+                  <option>PreMitigation</option>
+                  <option>PostMitigation</option>
+                  <option>Final</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-flat">calc.flat (숫자)</label>
+                <input id="effect-flat" type="number" placeholder="예: 100" />
+              </div>
+              <div>
+                <label for="effect-ratio-key">calc.ratios key</label>
+                <select id="effect-ratio-key">
+                  <option value="">(선택)</option>
+                  <option value="ap">ap</option>
+                  <option value="ad">ad</option>
+                  <option value="hp">hp</option>
+                </select>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="effect-apply-fields">필드값을 JSON에 반영</button>
+            </div>
+          </div>
+          <div>
+            <label for="effect-json">Effect JSON</label>
+            <textarea id="effect-json" spellcheck="false"></textarea>
+          </div>
+          <div class="actions">
+            <button class="primary" id="effect-save">저장/업데이트</button>
+            <button class="secondary" id="effect-sample">샘플 불러오기</button>
+            <button class="secondary" id="effect-reset">새로 작성</button>
+            <button class="secondary" id="effect-refresh">목록 새로고침</button>
+          </div>
+          <div class="status" id="effect-status"></div>
+        </div>
+      </div>
+      <div>
+        <p class="muted">저장된 Effect 문서 목록</p>
+        <table>
+          <thead>
+            <tr>
+              <th>effectId</th>
+              <th>type</th>
+              <th>trigger</th>
+              <th>selector</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody id="effect-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <div>
+          <h2>Ability 관리</h2>
+          <p class="muted">하나의 스킬 내 실행 버전. cast/delivery 스펙과 묶일 Effect 배열을 정의합니다.</p>
+        </div>
+        <span class="pill">spec = Ability</span>
+      </div>
+      <div class="preview-card" id="ability-preview">
+        <h3>Ability 프리뷰</h3>
+        <div class="label">플레이버</div>
+        <div class="value" id="ability-preview-text">-</div>
+      </div>
+      <div class="split-grid">
+        <div>
+          <div class="grid">
+            <div>
+              <label for="ability-id">Ability ID</label>
+              <input id="ability-id" type="text" placeholder="Skill_FireBolt_Default" />
+            </div>
+            <div>
+              <label for="ability-key">Key (선택)</label>
+              <input id="ability-key" type="text" placeholder="Default" />
+            </div>
+          </div>
+          <div class="fieldset">
+            <h3>드롭다운 빠른 설정</h3>
+            <div class="grid">
+              <div>
+                <label for="ability-cast-time">castSpec.castTime</label>
+                <input id="ability-cast-time" type="number" step="0.01" placeholder="0.25" />
+              </div>
+              <div>
+                <label for="ability-can-move">castSpec.canMove</label>
+                <select id="ability-can-move">
+                  <option value="">(선택)</option>
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </select>
+              </div>
+              <div>
+                <label for="ability-channel">castSpec.isChanneling</label>
+                <select id="ability-channel">
+                  <option value="">(선택)</option>
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </select>
+              </div>
+              <div>
+                <label for="ability-delivery-type">deliverySpec.type</label>
+                <select id="ability-delivery-type">
+                  <option value="">(선택)</option>
+                  <option>Projectile</option>
+                  <option>Instant</option>
+                  <option>Area</option>
+                  <option>OnHit</option>
+                  <option>Dash</option>
+                </select>
+              </div>
+              <div>
+                <label for="ability-range">deliverySpec.range</label>
+                <input id="ability-range" type="number" placeholder="650" />
+              </div>
+              <div>
+                <label for="ability-speed">deliverySpec.speed</label>
+                <input id="ability-speed" type="number" placeholder="1200" />
+              </div>
+              <div>
+                <label for="ability-collision">deliverySpec.collision</label>
+                <select id="ability-collision">
+                  <option value="">(선택)</option>
+                  <option>FirstHit</option>
+                  <option>None</option>
+                  <option>MultiHit</option>
+                </select>
+              </div>
+              <div>
+                <label for="ability-effects">effects (콤마 구분)</label>
+                <input id="ability-effects" type="text" placeholder="Effect_FireBolt_Damage, Effect_FireBolt_Explosion" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="ability-apply-fields">필드값을 JSON에 반영</button>
+            </div>
+          </div>
+          <div>
+            <label for="ability-json">Ability JSON</label>
+            <textarea id="ability-json" spellcheck="false"></textarea>
+          </div>
+          <div class="actions">
+            <button class="primary" id="ability-save">저장/업데이트</button>
+            <button class="secondary" id="ability-sample">샘플 불러오기</button>
+            <button class="secondary" id="ability-reset">새로 작성</button>
+            <button class="secondary" id="ability-refresh">목록 새로고침</button>
+          </div>
+          <div class="status" id="ability-status"></div>
+        </div>
+      </div>
+      <div>
+        <p class="muted">저장된 Ability 문서 목록</p>
+        <table>
+          <thead>
+            <tr>
+              <th>abilityId</th>
+              <th>key</th>
+              <th>delivery</th>
+              <th>effects</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody id="ability-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <div>
+          <h2>Skill 관리</h2>
+          <p class="muted">랭크/쿨/코스트와 선택 규칙을 가진 최상위 스펙입니다. Ability 목록을 매핑합니다.</p>
+        </div>
+        <span class="pill">spec = Skill</span>
+      </div>
+      <div class="preview-card" id="skill-preview">
+        <h3>Skill 프리뷰</h3>
+        <div class="label">플레이버</div>
+        <div class="value" id="skill-preview-text">-</div>
+      </div>
+      <div class="split-grid">
+        <div>
+          <div class="grid">
+            <div>
+              <label for="skill-id">Skill ID</label>
+              <input id="skill-id" type="text" placeholder="Skill_FireBolt" />
+            </div>
+            <div>
+              <label for="skill-category">Category</label>
+              <select id="skill-category">
+                <option value="">(선택)</option>
+                <option value="BasicAttack">BasicAttack</option>
+                <option value="Passive">Passive</option>
+                <option value="Active">Active</option>
+                <option value="Utility">Utility</option>
+              </select>
+            </div>
+          </div>
+          <div class="fieldset">
+            <h3>드롭다운 빠른 설정</h3>
+            <div class="grid">
+              <div>
+                <label for="skill-max-rank">rankRules.maxRank</label>
+                <input id="skill-max-rank" type="number" min="1" placeholder="5" />
+              </div>
+              <div>
+                <label for="skill-cooldowns">cooldownByRank (콤마)</label>
+                <input id="skill-cooldowns" type="text" placeholder="8,7,6,5,4" />
+              </div>
+              <div>
+                <label for="skill-costs">costByRank (콤마)</label>
+                <input id="skill-costs" type="text" placeholder="50,55,60,65,70" />
+              </div>
+              <div>
+                <label for="skill-abilities">abilities (abilityId 콤마)</label>
+                <input id="skill-abilities" type="text" placeholder="Skill_FireBolt_Default, Skill_FireBolt_Empowered" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="skill-apply-fields">필드값을 JSON에 반영</button>
+            </div>
+          </div>
+          <div>
+            <label for="skill-json">Skill JSON</label>
+            <textarea id="skill-json" spellcheck="false"></textarea>
+          </div>
+          <div class="actions">
+            <button class="primary" id="skill-save">저장/업데이트</button>
+            <button class="secondary" id="skill-sample">샘플 불러오기</button>
+            <button class="secondary" id="skill-reset">새로 작성</button>
+            <button class="secondary" id="skill-refresh">목록 새로고침</button>
+          </div>
+          <div class="status" id="skill-status"></div>
+        </div>
+      </div>
+      <div>
+        <p class="muted">저장된 Skill 문서 목록</p>
+        <table>
+          <thead>
+            <tr>
+              <th>skillId</th>
+              <th>category</th>
+              <th>maxRank</th>
+              <th>abilities</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody id="skill-table"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const SAMPLE_EFFECT = {
+      effectId: "Effect_FireBolt_Damage",
+      type: "Damage",
+      trigger: "OnHit",
+      selector: {
+        selectorType: "HitTarget",
+        team: "Enemy",
+      },
+      calc: {
+        flat: { ref: "damage", byRank: true },
+        ratios: {
+          ap: { ref: "ratio" },
+        },
+      },
+      apply: {
+        damageType: "Magic",
+        damageStage: "PostMitigation",
+      },
+      procRules: {
+        cooldown: 10,
+        chance: 1.0,
+        maxPerTrigger: 1,
+      },
+      source: {
+        sourceType: "Skill",
+        sourceId: "Skill_FireBolt",
+      },
+    };
+
+    const SAMPLE_ABILITY = {
+      abilityId: "Skill_FireBolt_Default",
+      key: "Default",
+      castSpec: {
+        castTime: 0.25,
+        canMove: false,
+        isChanneling: false,
+      },
+      deliverySpec: {
+        type: "Projectile",
+        range: 650,
+        speed: 1200,
+        collision: "FirstHit",
+      },
+      paramBindings: {
+        damage: { ref: "damage" },
+        ratio: { ref: "apRatio" },
+      },
+      effects: ["Effect_FireBolt_Damage"],
+    };
+
+    const SAMPLE_SKILL = {
+      skillId: "Skill_FireBolt",
+      skillCategory: "Active",
+      rankRules: {
+        maxRank: 5,
+        cooldownByRank: [8, 7, 6, 5, 4],
+        costByRank: [50, 55, 60, 65, 70],
+      },
+      baseStats: {
+        damage: [80, 120, 160, 200, 240],
+        apRatio: 0.6,
+      },
+      abilities: [
+        { abilityId: "Skill_FireBolt_Default", key: "Default", priority: 0 },
+        {
+          abilityId: "Skill_FireBolt_Empowered",
+          key: "Empowered",
+          priority: 1,
+          selectConditions: ["HasEmpoweredState"],
+        },
+      ],
+    };
+
+    const PRESETS = [
+      {
+        key: "주문검",
+        aliases: ["주문검", "spellblade", "sheen"],
+        label: "주문검 (Spellblade)",
+        effect: {
+          effectId: "Effect_Spellblade_BonusDamage",
+          type: "Damage",
+          trigger: "OnHit",
+          selector: { selectorType: "HitTarget", team: "Enemy" },
+          calc: { flat: { ref: "bonusDamage" }, ratios: { ad: { ref: "bonusAD" } } },
+          apply: { damageType: "Physical", damageStage: "PostMitigation" },
+          unique: { groupId: "Spellblade", policy: "Replace" },
+          procRules: { cooldown: 1.5, chance: 1, maxPerTrigger: 1 },
+          source: { sourceType: "Item", sourceId: "Item_Spellblade" },
+        },
+        ability: {
+          abilityId: "Item_Spellblade_Passive",
+          key: "Spellblade",
+          castSpec: { castTime: 0, canMove: true, isChanneling: false },
+          deliverySpec: { type: "OnHit", range: 0, speed: 0, collision: "None" },
+          paramBindings: { bonusDamage: { ref: "bonusDamage" }, bonusAD: { ref: "bonusAD" } },
+          effects: ["Effect_Spellblade_BonusDamage"],
+        },
+        skill: {
+          skillId: "Item_Spellblade",
+          skillCategory: "Passive",
+          rankRules: { maxRank: 1, cooldownByRank: [1.5], costByRank: [0] },
+          baseStats: { bonusDamage: 100, bonusAD: 1.0 },
+          abilities: [{ abilityId: "Item_Spellblade_Passive", key: "Passive", priority: 0 }],
+        },
+      },
+      {
+        key: "점화",
+        aliases: ["ignite", "점화"],
+        label: "점화 (Ignite)",
+        effect: {
+          effectId: "Effect_Ignite_DoT",
+          type: "Damage",
+          trigger: "OnTick",
+          selector: { selectorType: "Target", team: "Enemy" },
+          calc: { flat: { ref: "dot", byRank: true } },
+          timing: { tickInterval: 1, duration: 5 },
+          apply: { damageType: "True", damageStage: "Final" },
+          source: { sourceType: "Summoner", sourceId: "Summoner_Ignite" },
+        },
+        ability: {
+          abilityId: "Summoner_Ignite_Cast",
+          key: "Default",
+          castSpec: { castTime: 0, canMove: false, isChanneling: false },
+          deliverySpec: { type: "Target", range: 600, speed: 0, collision: "None" },
+          paramBindings: { dot: { ref: "dot" } },
+          effects: ["Effect_Ignite_DoT"],
+        },
+        skill: {
+          skillId: "Summoner_Ignite",
+          skillCategory: "Active",
+          rankRules: { maxRank: 1, cooldownByRank: [180], costByRank: [0] },
+          baseStats: { dot: [50] },
+          abilities: [{ abilityId: "Summoner_Ignite_Cast", key: "Default", priority: 0 }],
+        },
+      },
+      {
+        key: "생명선",
+        aliases: ["lifeline", "생명선"],
+        label: "생명선 (Lifeline)",
+        effect: {
+          effectId: "Effect_Lifeline_Shield",
+          type: "Shield",
+          trigger: "OnDamageTaken",
+          selector: { selectorType: "Self", team: "Self" },
+          calc: { flat: { ref: "shieldValue", byRank: true } },
+          apply: { duration: 3 },
+          source: { sourceType: "Item", sourceId: "Item_Lifeline" },
+        },
+        ability: {
+          abilityId: "Item_Lifeline_Passive",
+          key: "Lifeline",
+          castSpec: { castTime: 0, canMove: true, isChanneling: false },
+          deliverySpec: { type: "Passive", range: 0, speed: 0, collision: "None" },
+          paramBindings: { shieldValue: { ref: "shieldValue" } },
+          effects: ["Effect_Lifeline_Shield"],
+        },
+        skill: {
+          skillId: "Item_Lifeline",
+          skillCategory: "Passive",
+          rankRules: { maxRank: 3, cooldownByRank: [90, 75, 60], costByRank: [0, 0, 0] },
+          baseStats: { shieldValue: [250, 300, 350] },
+          abilities: [{ abilityId: "Item_Lifeline_Passive", key: "Passive", priority: 0 }],
+        },
+      },
+    ];
+
+    function toNumberArray(value) {
+      return value
+        .split(",")
+        .map((v) => Number(v.trim()))
+        .filter((v) => !Number.isNaN(v));
+    }
+
+    function toStringArray(value) {
+      return value
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    }
+
+    function safeParseJson(value) {
+      if (!value || !value.trim()) return {};
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function fillEffectQuickFields(data) {
+      const selector = data.selector ?? {};
+      const apply = data.apply ?? {};
+      const calc = data.calc ?? {};
+      document.getElementById("effect-type").value = data.type ?? "";
+      document.getElementById("effect-trigger").value = data.trigger ?? "";
+      document.getElementById("effect-selector").value = selector.selectorType ?? "";
+      document.getElementById("effect-team").value = selector.team ?? "";
+      document.getElementById("effect-damage-type").value = apply.damageType ?? "";
+      document.getElementById("effect-damage-stage").value = apply.damageStage ?? "";
+      const flatValue =
+        typeof calc.flat === "number"
+          ? calc.flat
+          : typeof calc.flat === "object"
+            ? calc.flat.value ?? calc.flat.ref ?? ""
+            : "";
+      document.getElementById("effect-flat").value = flatValue ?? "";
+      const ratioKeys = calc.ratios ? Object.keys(calc.ratios) : [];
+      document.getElementById("effect-ratio-key").value = ratioKeys[0] ?? "";
+    }
+
+    function fillAbilityQuickFields(data) {
+      const cast = data.castSpec ?? {};
+      const delivery = data.deliverySpec ?? {};
+      document.getElementById("ability-cast-time").value = cast.castTime ?? "";
+      document.getElementById("ability-can-move").value =
+        typeof cast.canMove === "boolean" ? String(cast.canMove) : "";
+      document.getElementById("ability-channel").value =
+        typeof cast.isChanneling === "boolean" ? String(cast.isChanneling) : "";
+      document.getElementById("ability-delivery-type").value = delivery.type ?? "";
+      document.getElementById("ability-range").value = delivery.range ?? "";
+      document.getElementById("ability-speed").value = delivery.speed ?? "";
+      document.getElementById("ability-collision").value = delivery.collision ?? "";
+      const effects = Array.isArray(data.effects) ? data.effects.join(", ") : "";
+      document.getElementById("ability-effects").value = effects;
+    }
+
+    function fillSkillQuickFields(data) {
+      const rankRules = data.rankRules ?? {};
+      document.getElementById("skill-max-rank").value = rankRules.maxRank ?? "";
+      document.getElementById("skill-cooldowns").value = Array.isArray(rankRules.cooldownByRank)
+        ? rankRules.cooldownByRank.join(",")
+        : "";
+      document.getElementById("skill-costs").value = Array.isArray(rankRules.costByRank)
+        ? rankRules.costByRank.join(",")
+        : "";
+      document.getElementById("skill-abilities").value = Array.isArray(data.abilities)
+        ? data.abilities
+            .map((a) => (typeof a === "string" ? a : a.abilityId))
+            .filter(Boolean)
+            .join(", ")
+        : "";
+    }
+
+    class SpecManager {
+      constructor({
+        entityName,
+        collectionName,
+        idInputId,
+        jsonInputId,
+        statusId,
+        tableBodyId,
+        saveBtnId,
+        resetBtnId,
+        sampleBtnId,
+        refreshBtnId,
+        sampleData,
+        extraFill,
+        summaryExtractor,
+        transformBeforeSave,
+      }) {
+        this.entityName = entityName;
+        this.collectionName = collectionName;
+        this.idInput = document.getElementById(idInputId);
+        this.jsonInput = document.getElementById(jsonInputId);
+        this.statusEl = document.getElementById(statusId);
+        this.tableBody = document.getElementById(tableBodyId);
+        this.sampleData = sampleData;
+        this.extraFill = extraFill;
+        this.summaryExtractor = summaryExtractor;
+        this.transformBeforeSave = transformBeforeSave;
+
+        this.saveBtn = document.getElementById(saveBtnId);
+        this.resetBtn = document.getElementById(resetBtnId);
+        this.sampleBtn = document.getElementById(sampleBtnId);
+        this.refreshBtn = document.getElementById(refreshBtnId);
+
+        this.registerHandlers();
+      }
+
+      attachDb(db) {
+        this.db = db;
+        this.collectionRef = collection(db, this.collectionName);
+      }
+
+      registerHandlers() {
+        this.saveBtn?.addEventListener("click", () => this.handleSave());
+        this.resetBtn?.addEventListener("click", () => this.resetForm());
+        this.sampleBtn?.addEventListener("click", () => this.loadSample());
+        this.refreshBtn?.addEventListener("click", () => this.loadTable());
+      }
+
+      setStatus(message, { persist = false } = {}) {
+        this.statusEl.textContent = message;
+        if (!persist) {
+          clearTimeout(this._statusTimer);
+          this._statusTimer = setTimeout(() => {
+            this.statusEl.textContent = "";
+          }, 4500);
+        }
+      }
+
+      sanitizeId(rawId) {
+        return rawId.trim().replace(/[^A-Za-z0-9_.-]+/g, "_");
+      }
+
+      getDocIdOrWarn() {
+        const raw = this.idInput.value.trim();
+        if (!raw) {
+          this.setStatus(`${this.entityName} ID를 입력하세요.`);
+          return null;
+        }
+        const sanitized = this.sanitizeId(raw);
+        if (!sanitized) {
+          this.setStatus("유효한 ID를 입력하세요 (영문/숫자/._- 조합).");
+          return null;
+        }
+        if (sanitized !== raw) {
+          this.idInput.value = sanitized;
+        }
+        return sanitized;
+      }
+
+      parseJsonOrWarn() {
+        const raw = this.jsonInput.value.trim();
+        if (!raw) return {};
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("JSON 파싱에 실패했습니다. 포맷을 확인하세요.");
+          return null;
+        }
+      }
+
+      fillForm(id, data) {
+        this.idInput.value = id;
+        if (this.extraFill) this.extraFill({ manager: this, data });
+        this.jsonInput.value = JSON.stringify(data, null, 2);
+        this.setStatus(`'${id}' ${this.entityName}를 불러왔습니다.`);
+        updatePreviews();
+      }
+
+      resetForm() {
+        this.idInput.value = "";
+        if (this.extraFill) this.extraFill({ manager: this, data: this.sampleData });
+        this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
+        this.setStatus("새 문서를 작성하세요.");
+        updatePreviews();
+      }
+
+      loadSample() {
+        this.fillForm(this.sampleData[`${this.entityName.toLowerCase()}Id`] ?? "", this.sampleData);
+        this.setStatus("샘플 데이터를 불러왔습니다.");
+      }
+
+      async handleSave() {
+        if (!this.db) return;
+        const docId = this.getDocIdOrWarn();
+        if (!docId) return;
+        const data = this.parseJsonOrWarn();
+        if (!data) return;
+        const transformed = this.transformBeforeSave
+          ? this.transformBeforeSave({ data, manager: this, docId })
+          : data;
+
+        this.toggleButtons(true);
+        try {
+          await setDoc(doc(this.collectionRef, docId), transformed, { merge: true });
+          this.setStatus(`'${docId}' ${this.entityName}를 저장했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("저장 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async handleDelete(docId, label) {
+        if (!this.db) return;
+        if (!confirm(`'${label}' ${this.entityName}를 삭제할까요?`)) return;
+        this.toggleButtons(true);
+        try {
+          await deleteDoc(doc(this.collectionRef, docId));
+          this.setStatus(`'${label}' ${this.entityName}를 삭제했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("삭제 중 오류가 발생했습니다. 네트워크/권한을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async loadTable() {
+        if (!this.db) return;
+        this.setStatus("목록을 불러오는 중...", { persist: true });
+        try {
+          const snapshot = await getDocs(this.collectionRef);
+          const rows = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            rows.push({ id: docSnap.id, data });
+          });
+          rows.sort((a, b) => a.id.localeCompare(b.id));
+          this.renderTable(rows);
+          this.setStatus(`총 ${rows.length}개 ${this.entityName}를 불러왔습니다.`);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("목록을 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        }
+      }
+
+      renderTable(rows) {
+        this.tableBody.innerHTML = "";
+        if (!rows.length) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 5;
+          td.textContent = "저장된 문서가 없습니다.";
+          tr.appendChild(td);
+          this.tableBody.appendChild(tr);
+          return;
+        }
+
+        rows.forEach(({ id, data }) => {
+          const tr = document.createElement("tr");
+          const summary = this.summaryExtractor ? this.summaryExtractor(data) : {};
+          const cells = summary.cells ?? [];
+          [id, ...cells].forEach((value) => {
+            const td = document.createElement("td");
+            td.textContent = value ?? "-";
+            tr.appendChild(td);
+          });
+
+          const actionsTd = document.createElement("td");
+          const loadBtn = document.createElement("button");
+          loadBtn.className = "secondary";
+          loadBtn.textContent = "불러오기";
+          loadBtn.addEventListener("click", () => this.fillForm(id, data));
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "danger";
+          deleteBtn.textContent = "삭제";
+          deleteBtn.addEventListener("click", () => this.handleDelete(id, summary.label ?? id));
+
+          actionsTd.append(loadBtn, deleteBtn);
+          tr.appendChild(actionsTd);
+          this.tableBody.appendChild(tr);
+        });
+      }
+
+      toggleButtons(disabled) {
+        [this.saveBtn, this.resetBtn, this.sampleBtn, this.refreshBtn].forEach((btn) => {
+          if (btn) btn.disabled = disabled;
+        });
+      }
+    }
+
+    function createManagers() {
+      const effectManager = new SpecManager({
+        entityName: "Effect",
+        collectionName: "effectSpecs",
+        idInputId: "effect-id",
+        jsonInputId: "effect-json",
+        statusId: "effect-status",
+        tableBodyId: "effect-table",
+        saveBtnId: "effect-save",
+        resetBtnId: "effect-reset",
+        sampleBtnId: "effect-sample",
+        refreshBtnId: "effect-refresh",
+        sampleData: SAMPLE_EFFECT,
+        extraFill: ({ data }) => {
+          fillEffectQuickFields(data);
+        },
+        summaryExtractor: (data) => ({
+          label: data.effectId ?? data.type ?? "Effect",
+          cells: [data.type, data.trigger, data.selector?.selectorType],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          return { ...data, effectId: data.effectId ?? docId };
+        },
+      });
+
+      const abilityManager = new SpecManager({
+        entityName: "Ability",
+        collectionName: "abilitySpecs",
+        idInputId: "ability-id",
+        jsonInputId: "ability-json",
+        statusId: "ability-status",
+        tableBodyId: "ability-table",
+        saveBtnId: "ability-save",
+        resetBtnId: "ability-reset",
+        sampleBtnId: "ability-sample",
+        refreshBtnId: "ability-refresh",
+        sampleData: SAMPLE_ABILITY,
+        extraFill: ({ manager, data }) => {
+          const keyField = document.getElementById("ability-key");
+          keyField.value = data.key ?? "";
+          fillAbilityQuickFields(data);
+        },
+        summaryExtractor: (data) => ({
+          label: data.abilityId ?? data.key ?? "Ability",
+          cells: [data.key, data.deliverySpec?.type, Array.isArray(data.effects) ? data.effects.length : 0],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const keyField = document.getElementById("ability-key");
+          const key = keyField?.value.trim() || data.key;
+          return { ...data, abilityId: data.abilityId ?? docId, key };
+        },
+      });
+
+      const skillManager = new SpecManager({
+        entityName: "Skill",
+        collectionName: "skillSpecs",
+        idInputId: "skill-id",
+        jsonInputId: "skill-json",
+        statusId: "skill-status",
+        tableBodyId: "skill-table",
+        saveBtnId: "skill-save",
+        resetBtnId: "skill-reset",
+        sampleBtnId: "skill-sample",
+        refreshBtnId: "skill-refresh",
+        sampleData: SAMPLE_SKILL,
+        extraFill: ({ manager, data }) => {
+          const categoryField = document.getElementById("skill-category");
+          categoryField.value = data.skillCategory ?? "";
+          fillSkillQuickFields(data);
+        },
+        summaryExtractor: (data) => ({
+          label: data.skillId ?? data.skillCategory ?? "Skill",
+          cells: [data.skillCategory, data.rankRules?.maxRank, Array.isArray(data.abilities) ? data.abilities.length : 0],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const categoryField = document.getElementById("skill-category");
+          const categoryValue = categoryField?.value || data.skillCategory;
+          return { ...data, skillId: data.skillId ?? docId, skillCategory: categoryValue || undefined };
+        },
+      });
+
+      return [effectManager, abilityManager, skillManager];
+    }
+
+    function applyEffectFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.type = document.getElementById("effect-type").value || next.type;
+      next.trigger = document.getElementById("effect-trigger").value || next.trigger;
+      next.selector = next.selector ?? {};
+      const selectorType = document.getElementById("effect-selector").value;
+      const selectorTeam = document.getElementById("effect-team").value;
+      if (selectorType) next.selector.selectorType = selectorType;
+      if (selectorTeam) next.selector.team = selectorTeam;
+      next.apply = next.apply ?? {};
+      const dmgType = document.getElementById("effect-damage-type").value;
+      const dmgStage = document.getElementById("effect-damage-stage").value;
+      if (dmgType) next.apply.damageType = dmgType;
+      if (dmgStage) next.apply.damageStage = dmgStage;
+      const flatRaw = document.getElementById("effect-flat").value.trim();
+      const ratioKey = document.getElementById("effect-ratio-key").value;
+      if (flatRaw !== "") {
+        const flat = Number(flatRaw);
+        if (!Number.isNaN(flat)) {
+          next.calc = next.calc ?? {};
+          next.calc.flat = typeof next.calc.flat === "object" ? { ...next.calc.flat, value: flat } : flat;
+        }
+      }
+      if (ratioKey) {
+        next.calc = next.calc ?? {};
+        next.calc.ratios = next.calc.ratios ?? {};
+        next.calc.ratios[ratioKey] = next.calc.ratios[ratioKey] ?? { ref: ratioKey };
+      }
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("드롭다운 값이 JSON에 반영되었습니다.");
+      fillEffectQuickFields(next);
+    }
+
+    function applyAbilityFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.castSpec = next.castSpec ?? {};
+      const castTimeRaw = document.getElementById("ability-cast-time").value.trim();
+      if (castTimeRaw !== "") {
+        const castTime = Number(castTimeRaw);
+        if (!Number.isNaN(castTime)) next.castSpec.castTime = castTime;
+      }
+      const canMove = document.getElementById("ability-can-move").value;
+      if (canMove) next.castSpec.canMove = canMove === "true";
+      const isChannel = document.getElementById("ability-channel").value;
+      if (isChannel) next.castSpec.isChanneling = isChannel === "true";
+
+      next.deliverySpec = next.deliverySpec ?? {};
+      const deliveryType = document.getElementById("ability-delivery-type").value;
+      if (deliveryType) next.deliverySpec.type = deliveryType;
+      const rangeRaw = document.getElementById("ability-range").value.trim();
+      if (rangeRaw !== "") {
+        const range = Number(rangeRaw);
+        if (!Number.isNaN(range)) next.deliverySpec.range = range;
+      }
+      const speedRaw = document.getElementById("ability-speed").value.trim();
+      if (speedRaw !== "") {
+        const speed = Number(speedRaw);
+        if (!Number.isNaN(speed)) next.deliverySpec.speed = speed;
+      }
+      const collision = document.getElementById("ability-collision").value;
+      if (collision) next.deliverySpec.collision = collision;
+
+      const effectList = document.getElementById("ability-effects").value;
+      const parsedEffects = toStringArray(effectList);
+      if (parsedEffects.length) next.effects = parsedEffects;
+
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("드롭다운 값이 JSON에 반영되었습니다.");
+      fillAbilityQuickFields(next);
+    }
+
+    function applySkillFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.skillCategory = document.getElementById("skill-category").value || next.skillCategory;
+      next.rankRules = next.rankRules ?? {};
+      const maxRankRaw = document.getElementById("skill-max-rank").value.trim();
+      if (maxRankRaw !== "") {
+        const maxRank = Number(maxRankRaw);
+        if (!Number.isNaN(maxRank) && maxRank > 0) next.rankRules.maxRank = maxRank;
+      }
+      const cooldownsRaw = document.getElementById("skill-cooldowns").value;
+      const costsRaw = document.getElementById("skill-costs").value;
+      const abilitiesRaw = document.getElementById("skill-abilities").value;
+      const cooldowns = cooldownsRaw ? toNumberArray(cooldownsRaw) : [];
+      const costs = costsRaw ? toNumberArray(costsRaw) : [];
+      if (cooldowns.length) next.rankRules.cooldownByRank = cooldowns;
+      if (costs.length) next.rankRules.costByRank = costs;
+      const abilityIds = toStringArray(abilitiesRaw);
+      if (abilityIds.length) {
+        next.abilities = abilityIds.map((abilityId, index) => ({
+          abilityId,
+          key: index === 0 ? "Default" : undefined,
+          priority: index,
+        }));
+      }
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("드롭다운 값이 JSON에 반영되었습니다.");
+      fillSkillQuickFields(next);
+    }
+
+    function registerFieldButtons([effectManager, abilityManager, skillManager]) {
+      document.getElementById("effect-apply-fields")?.addEventListener("click", () => applyEffectFields(effectManager));
+      document.getElementById("ability-apply-fields")?.addEventListener("click", () => applyAbilityFields(abilityManager));
+      document.getElementById("skill-apply-fields")?.addEventListener("click", () => applySkillFields(skillManager));
+    }
+
+    function populatePresetList() {
+      const datalist = document.getElementById("preset-list");
+      if (!datalist) return;
+      datalist.innerHTML = "";
+      PRESETS.forEach((preset) => {
+        const option = document.createElement("option");
+        option.value = preset.label;
+        datalist.appendChild(option);
+      });
+    }
+
+    function findPresetByName(name) {
+      const query = name.trim().toLowerCase();
+      return PRESETS.find(
+        (p) =>
+          p.aliases.some((alias) => alias.toLowerCase() === query || alias.toLowerCase().includes(query)) ||
+          p.label.toLowerCase().includes(query)
+      );
+    }
+
+    function applyPresetToManagers(name, [effectManager, abilityManager, skillManager]) {
+      const preset = findPresetByName(name);
+      if (!preset) {
+        const message = "프리셋을 찾지 못했습니다. (주문검/점화/생명선을 입력)";
+        effectManager.setStatus(message);
+        abilityManager.setStatus(message);
+        skillManager.setStatus(message);
+        return;
+      }
+      if (preset.effect) effectManager.fillForm(preset.effect.effectId ?? "", preset.effect);
+      if (preset.ability) abilityManager.fillForm(preset.ability.abilityId ?? "", preset.ability);
+      if (preset.skill) skillManager.fillForm(preset.skill.skillId ?? "", preset.skill);
+      effectManager.setStatus(`${preset.label} 프리셋을 적용했습니다.`);
+      abilityManager.setStatus(`${preset.label} 프리셋을 적용했습니다.`);
+      skillManager.setStatus(`${preset.label} 프리셋을 적용했습니다.`);
+    }
+
+    function buildEffectPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 드롭다운을 적용하세요.";
+      const id = data.effectId ?? "-";
+      const type = data.type ?? "Effect";
+      const trigger = data.trigger ?? "Trigger 미정";
+      const selector = data.selector?.selectorType ?? "Selector 미정";
+      const team = data.selector?.team ? ` (${data.selector.team})` : "";
+      const dmgType = data.apply?.damageType ? `, ${data.apply.damageType}` : "";
+      const dmgStage = data.apply?.damageStage ? ` @${data.apply.damageStage}` : "";
+      const flat =
+        typeof data.calc?.flat === "number"
+          ? data.calc.flat
+          : typeof data.calc?.flat === "object"
+            ? data.calc.flat.value ?? data.calc.flat.ref
+            : null;
+      const ratioKeys = data.calc?.ratios ? Object.keys(data.calc.ratios) : [];
+      const ratio = ratioKeys.length ? ` +(${ratioKeys.join(",")} 계수)` : "";
+      const flatText = flat !== null && flat !== undefined ? ` ${flat}` : "";
+      return `[${id}] ${trigger} → ${selector}${team} | ${type}${dmgType}${dmgStage}${flatText}${ratio}`;
+    }
+
+    function buildAbilityPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 드롭다운을 적용하세요.";
+      const id = data.abilityId ?? "-";
+      const key = data.key ? ` (${data.key})` : "";
+      const cast = data.castSpec ?? {};
+      const delivery = data.deliverySpec ?? {};
+      const castText = `시전 ${cast.castTime ?? 0}s ${cast.canMove ? "이동 가능" : "이동 불가"}`;
+      const channel = cast.isChanneling ? "채널링" : "즉발";
+      const deliveryText = `${delivery.type ?? "Delivery"} ${delivery.range ? `R${delivery.range}` : ""} ${
+        delivery.speed ? `S${delivery.speed}` : ""
+      }`;
+      const effects = Array.isArray(data.effects) ? data.effects.join(", ") : "-";
+      return `[${id}${key}] ${castText} · ${channel} · ${deliveryText} | Effects: ${effects}`;
+    }
+
+    function buildSkillPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 드롭다운을 적용하세요.";
+      const id = data.skillId ?? "-";
+      const category = data.skillCategory ?? "카테고리 미정";
+      const rank = data.rankRules?.maxRank ?? 1;
+      const cd = Array.isArray(data.rankRules?.cooldownByRank)
+        ? data.rankRules.cooldownByRank.join("/")
+        : data.rankRules?.cooldownByRank ?? "-";
+      const cost = Array.isArray(data.rankRules?.costByRank)
+        ? data.rankRules.costByRank.join("/")
+        : data.rankRules?.costByRank ?? "-";
+      const abilityCount = Array.isArray(data.abilities) ? data.abilities.length : 0;
+      return `[${id}] ${category} | 랭크 ${rank} | 쿨타임 ${cd} | 코스트 ${cost} | Abilities ${abilityCount}개`;
+    }
+
+    function mergeEffectInputs() {
+      const base = safeParseJson(document.getElementById("effect-json").value);
+      if (base === null) return null;
+      const merged = { ...(base || {}) };
+      const selector = merged.selector ?? {};
+      const apply = merged.apply ?? {};
+      const calc = merged.calc ?? {};
+      const ratioKey = document.getElementById("effect-ratio-key").value;
+      const flatRaw = document.getElementById("effect-flat").value.trim();
+      if (document.getElementById("effect-type").value) merged.type = document.getElementById("effect-type").value;
+      if (document.getElementById("effect-trigger").value)
+        merged.trigger = document.getElementById("effect-trigger").value;
+      if (document.getElementById("effect-selector").value)
+        selector.selectorType = document.getElementById("effect-selector").value;
+      if (document.getElementById("effect-team").value) selector.team = document.getElementById("effect-team").value;
+      if (document.getElementById("effect-damage-type").value)
+        apply.damageType = document.getElementById("effect-damage-type").value;
+      if (document.getElementById("effect-damage-stage").value)
+        apply.damageStage = document.getElementById("effect-damage-stage").value;
+      if (flatRaw !== "") {
+        const flat = Number(flatRaw);
+        if (!Number.isNaN(flat)) calc.flat = flat;
+      }
+      if (ratioKey) {
+        calc.ratios = calc.ratios ?? {};
+        calc.ratios[ratioKey] = calc.ratios[ratioKey] ?? { ref: ratioKey };
+      }
+      merged.selector = selector;
+      merged.apply = apply;
+      merged.calc = calc;
+      merged.effectId = document.getElementById("effect-id").value.trim() || merged.effectId;
+      return merged;
+    }
+
+    function mergeAbilityInputs() {
+      const base = safeParseJson(document.getElementById("ability-json").value);
+      if (base === null) return null;
+      const merged = { ...(base || {}) };
+      merged.abilityId = document.getElementById("ability-id").value.trim() || merged.abilityId;
+      merged.key = document.getElementById("ability-key").value.trim() || merged.key;
+      merged.castSpec = merged.castSpec ?? {};
+      merged.deliverySpec = merged.deliverySpec ?? {};
+      const castTime = document.getElementById("ability-cast-time").value.trim();
+      if (castTime !== "") {
+        const num = Number(castTime);
+        if (!Number.isNaN(num)) merged.castSpec.castTime = num;
+      }
+      const canMove = document.getElementById("ability-can-move").value;
+      if (canMove) merged.castSpec.canMove = canMove === "true";
+      const channel = document.getElementById("ability-channel").value;
+      if (channel) merged.castSpec.isChanneling = channel === "true";
+      const deliveryType = document.getElementById("ability-delivery-type").value;
+      if (deliveryType) merged.deliverySpec.type = deliveryType;
+      const range = document.getElementById("ability-range").value.trim();
+      if (range !== "") {
+        const num = Number(range);
+        if (!Number.isNaN(num)) merged.deliverySpec.range = num;
+      }
+      const speed = document.getElementById("ability-speed").value.trim();
+      if (speed !== "") {
+        const num = Number(speed);
+        if (!Number.isNaN(num)) merged.deliverySpec.speed = num;
+      }
+      const collision = document.getElementById("ability-collision").value;
+      if (collision) merged.deliverySpec.collision = collision;
+      const effects = toStringArray(document.getElementById("ability-effects").value);
+      if (effects.length) merged.effects = effects;
+      return merged;
+    }
+
+    function mergeSkillInputs() {
+      const base = safeParseJson(document.getElementById("skill-json").value);
+      if (base === null) return null;
+      const merged = { ...(base || {}) };
+      merged.skillId = document.getElementById("skill-id").value.trim() || merged.skillId;
+      const category = document.getElementById("skill-category").value;
+      if (category) merged.skillCategory = category;
+      merged.rankRules = merged.rankRules ?? {};
+      const maxRank = document.getElementById("skill-max-rank").value.trim();
+      if (maxRank !== "") {
+        const num = Number(maxRank);
+        if (!Number.isNaN(num)) merged.rankRules.maxRank = num;
+      }
+      const cooldowns = toNumberArray(document.getElementById("skill-cooldowns").value);
+      const costs = toNumberArray(document.getElementById("skill-costs").value);
+      if (cooldowns.length) merged.rankRules.cooldownByRank = cooldowns;
+      if (costs.length) merged.rankRules.costByRank = costs;
+      const abilities = toStringArray(document.getElementById("skill-abilities").value);
+      if (abilities.length) {
+        merged.abilities = abilities.map((abilityId, idx) => ({
+          abilityId,
+          key: idx === 0 ? "Default" : undefined,
+          priority: idx,
+        }));
+      }
+      return merged;
+    }
+
+    function buildPackageChecks(effectData, abilityData, skillData) {
+      const checks = [];
+      const messages = [];
+      let okCount = 0;
+
+      if (effectData) {
+        okCount += 1;
+        messages.push(`Effect 준비됨: ${effectData.effectId ?? "-"}`);
+      } else {
+        messages.push("Effect JSON을 입력하거나 드롭다운으로 작성하세요.");
+      }
+
+      if (abilityData) {
+        okCount += 1;
+        const hasEffectLink =
+          Array.isArray(abilityData.effects) &&
+          abilityData.effects.length > 0 &&
+          (!!effectData ? abilityData.effects.includes(effectData.effectId) : true);
+        checks.push({
+          ok: hasEffectLink,
+          text: hasEffectLink ? "Ability가 Effect를 참조합니다." : "Ability.effects에 Effect ID를 추가하세요.",
+        });
+        messages.push(`Ability 준비됨: ${abilityData.abilityId ?? "-"}`);
+      } else {
+        messages.push("Ability JSON을 입력하거나 드롭다운으로 작성하세요.");
+      }
+
+      if (skillData) {
+        okCount += 1;
+        const abilityIds = Array.isArray(skillData.abilities)
+          ? skillData.abilities.map((a) => (typeof a === "string" ? a : a.abilityId))
+          : [];
+        const hasAbilityLink = abilityIds.length > 0 && (!!abilityData ? abilityIds.includes(abilityData.abilityId) : true);
+        checks.push({
+          ok: hasAbilityLink,
+          text: hasAbilityLink ? "Skill이 Ability를 참조합니다." : "Skill.abilities에 Ability ID를 추가하세요.",
+        });
+        const hasRank = Number(skillData.rankRules?.maxRank) > 0;
+        checks.push({ ok: hasRank, text: hasRank ? "maxRank 설정 완료." : "랭크/쿨타임 정보를 채우세요." });
+        messages.push(`Skill 준비됨: ${skillData.skillId ?? "-"}`);
+      } else {
+        messages.push("Skill JSON을 입력하거나 드롭다운으로 작성하세요.");
+      }
+
+      const allLinked =
+        checks.every((c) => c.ok) && effectData && abilityData && skillData && okCount === 3;
+
+      return {
+        allLinked,
+        checks,
+        messages,
+      };
+    }
+
+    function updatePreviews() {
+      const effectData = mergeEffectInputs();
+      const abilityData = mergeAbilityInputs();
+      const skillData = mergeSkillInputs();
+      const effectPreview = document.getElementById("effect-preview-text");
+      const abilityPreview = document.getElementById("ability-preview-text");
+      const skillPreview = document.getElementById("skill-preview-text");
+      effectPreview.textContent = effectData ? buildEffectPreview(effectData) : "JSON 파싱 오류: Effect";
+      abilityPreview.textContent = abilityData ? buildAbilityPreview(abilityData) : "JSON 파싱 오류: Ability";
+      skillPreview.textContent = skillData ? buildSkillPreview(skillData) : "JSON 파싱 오류: Skill";
+
+      const packageResult = buildPackageChecks(effectData, abilityData, skillData);
+      const badge = document.getElementById("package-status-badge");
+      const checklist = document.getElementById("package-checklist");
+      const packagePreview = document.getElementById("package-preview-text");
+      const allMessages = packageResult.messages.join(" · ");
+      packagePreview.textContent = `${buildSkillPreview(skillData) || ""} / ${buildAbilityPreview(abilityData) || ""} / ${
+        buildEffectPreview(effectData) || ""
+      }`;
+      checklist.innerHTML = "";
+      if (packageResult.checks.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "입력된 정보가 없습니다.";
+        checklist.appendChild(li);
+      } else {
+        packageResult.checks.forEach((check) => {
+          const li = document.createElement("li");
+          li.textContent = check.text;
+          li.style.color = check.ok ? "#bbf7d0" : "#fef08a";
+          checklist.appendChild(li);
+        });
+      }
+      if (badge) {
+        badge.classList.remove("ok", "warn", "error");
+        if (packageResult.allLinked) {
+          badge.classList.add("ok");
+          badge.textContent = "준비 완료";
+        } else if (packageResult.checks.some((c) => !c.ok)) {
+          badge.classList.add("warn");
+          badge.textContent = "점검 필요";
+        } else {
+          badge.classList.add("warn");
+          badge.textContent = "작성 중";
+        }
+      }
+      if (packagePreview && allMessages) {
+        packagePreview.textContent = `${packagePreview.textContent} (${allMessages})`;
+      }
+    }
+
+    async function initialize() {
+      const managers = createManagers();
+      registerFieldButtons(managers);
+      populatePresetList();
+      const presetInput = document.getElementById("preset-search");
+      const presetBtn = document.getElementById("preset-apply");
+      if (presetBtn) {
+        presetBtn.addEventListener("click", () => {
+          if (!presetInput?.value) {
+            managers.forEach((m) => m.setStatus("프리셋 이름을 입력하세요. (예: 주문검)"));
+            return;
+          }
+          applyPresetToManagers(presetInput.value, managers);
+        });
+      }
+      presetInput?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          presetBtn?.click();
+        }
+      });
+      const previewInputs = [
+        "effect-json",
+        "effect-id",
+        "effect-type",
+        "effect-trigger",
+        "effect-selector",
+        "effect-team",
+        "effect-damage-type",
+        "effect-damage-stage",
+        "effect-flat",
+        "effect-ratio-key",
+        "ability-json",
+        "ability-id",
+        "ability-key",
+        "ability-cast-time",
+        "ability-can-move",
+        "ability-channel",
+        "ability-delivery-type",
+        "ability-range",
+        "ability-speed",
+        "ability-collision",
+        "ability-effects",
+        "skill-json",
+        "skill-id",
+        "skill-category",
+        "skill-max-rank",
+        "skill-cooldowns",
+        "skill-costs",
+        "skill-abilities",
+      ];
+      previewInputs.forEach((id) => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", updatePreviews);
+        el?.addEventListener("change", updatePreviews);
+      });
+      try {
+        const app = initializeApp(await getFirebaseConfig());
+        const db = getFirestore(app);
+        managers.forEach((manager) => {
+          manager.attachDb(db);
+          manager.resetForm();
+          manager.loadTable();
+        });
+        updatePreviews();
+      } catch (error) {
+        console.error(error);
+        managers.forEach((manager) => {
+          manager.setStatus("Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.", { persist: true });
+          manager.toggleButtons(true);
+        });
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
