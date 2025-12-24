@@ -1,117 +1,152 @@
-// 리그 오브 레전드 프리셋 모음 (아이템 전용)
-// - 챔피언/유틸리티 프리셋은 제거했습니다.
-// - deliverySpec.type 은 Firestore UI 드롭다운(Projectile/Instant/Area/OnHit/Dash) 기준으로 맞췄습니다.
+// 리그 오브 레전드 프리셋 모음
+// 데이터는 간략화된 샘플 스펙이며, 지속적으로 확장 가능하도록 그룹/배열 구조로 분리했습니다.
 
-function buildItemPreset({
-  key,
-  label,
-  mode = "OnHit",          // "OnHit" | "Aura" | "Lifeline"
-  flat = 100,
-  ratio = 1.0,
-  cooldown = 2,
-  tickInterval = 1,
-  auraRadius = 450,
-}) {
-  const effectId = `Effect_${key}_Passive`;
-  const abilityId = `Ability_${key}_Passive`;
-  const skillId = `Skill_${key}_Passive`;
-  const itemId = `Item_${key}`;
-
-  // mode -> runtime spec
-  const isAura = mode === "Aura";
-  const isLifeline = mode === "Lifeline";
-
-  const effectType = isLifeline ? "Shield" : "Damage";
-  const trigger = isAura ? "OnTick" : (isLifeline ? "OnDamageTaken" : "OnHit");
-  const selector =
-    isAura ? { selectorType: "Area", team: "Enemy" } :
-    isLifeline ? { selectorType: "Self", team: "Ally" } :
-    { selectorType: "HitTarget", team: "Enemy" };
-
-  const deliveryType = isAura ? "Area" : (isLifeline ? "Instant" : "OnHit");
-
-  const calc =
-    isLifeline
-      ? { flat: { ref: "shieldAmount" } }
-      : { flat: { ref: "bonusDamage" }, ratios: { ad: { ref: "bonusRatio" } } };
-
-  const apply =
-    isLifeline
-      ? { shieldType: "Normal" }
-      : { damageType: "Physical", damageStage: "PostMitigation" };
-
-  const timing = isAura ? { tickInterval } : undefined;
-
+function buildChampionPreset({ key, label, damage = 80, ratio = 0.8, range = 600 }) {
+  const effectId = `Effect_${key}_Burst`;
+  const abilityId = `Ability_${key}_Strike`;
+  const skillId = `Skill_${key}_Signature`;
   return {
     key,
     label,
     aliases: [key.toLowerCase(), label.toLowerCase()],
-
     effect: {
       effectId,
-      type: effectType,
-      source: { sourceType: "Item", sourceId: itemId },
-
-      trigger,
-      selector,
-      calc,
-      apply,
-      ...(timing ? { timing } : {}),
-
-      procRules: { cooldown, chance: 1, maxPerTrigger: 1 },
+      type: "Damage",
+      trigger: "OnHit",
+      selector: { selectorType: "HitTarget", team: "Enemy" },
+      calc: { flat: { ref: "damage", byRank: true }, ratios: { ap: { ref: "ratio" } } },
+      apply: { damageType: "Magic", damageStage: "PostMitigation" },
+      source: { sourceType: "Skill", sourceId: skillId },
     },
+    ability: {
+      abilityId,
+      key: "Default",
+      castSpec: { castTime: 0.25, canMove: false, isChanneling: false },
+      deliverySpec: { type: "Projectile", range, speed: 1200, collision: "FirstHit" },
+      paramBindings: { damage: { ref: "damage" }, ratio: { ref: "ratio" } },
+      effects: [effectId],
+    },
+    skill: {
+      skillId,
+      skillCategory: "Active",
+      rankRules: { maxRank: 5, cooldownByRank: [8, 7, 6, 5, 4], costByRank: [50, 55, 60, 65, 70] },
+      baseStats: { damage: [damage, damage + 20, damage + 40, damage + 60, damage + 80], ratio },
+      abilities: [{ abilityId, key: "Default", priority: 0 }],
+    },
+  };
+}
 
+function buildItemPreset({ key, label, type = "OnHit", flat = 100, ratio = 1.0, cooldown = 2 }) {
+  const effectId = `Effect_${key}_Passive`;
+  const abilityId = `Ability_${key}_Passive`;
+  const skillId = `Skill_${key}_Passive`;
+  return {
+    key,
+    label,
+    aliases: [key.toLowerCase(), label.toLowerCase()],
+    effect: {
+      effectId,
+      type: "Damage",
+      trigger: type === "Aura" ? "OnTick" : "OnHit",
+      selector: { selectorType: type === "Aura" ? "Area" : "HitTarget", team: "Enemy" },
+      calc: { flat: { ref: "bonusDamage" }, ratios: { ad: { ref: "bonusRatio" } } },
+      apply: { damageType: "Physical", damageStage: "PostMitigation" },
+      procRules: { cooldown, chance: 1, maxPerTrigger: 1 },
+      source: { sourceType: "Item", sourceId: skillId },
+    },
     ability: {
       abilityId,
       key: "Passive",
       castSpec: { castTime: 0, canMove: true, isChanneling: false },
-
-      // UI 드롭다운 기준의 deliveryType 사용
-      deliverySpec: {
-        type: deliveryType,
-        range: isAura ? auraRadius : 0,
-        speed: 0,
-        collision: "None",
-      },
-
-      paramBindings: isLifeline
-        ? { shieldAmount: { ref: "shieldAmount" } }
-        : { bonusDamage: { ref: "bonusDamage" }, bonusRatio: { ref: "bonusRatio" } },
-
+      deliverySpec: { type, range: type === "Aura" ? 450 : 0, speed: 0, collision: "None" },
+      paramBindings: { bonusDamage: { ref: "bonusDamage" }, bonusRatio: { ref: "bonusRatio" } },
       effects: [effectId],
     },
-
     skill: {
       skillId,
       skillCategory: "Passive",
       rankRules: { maxRank: 1, cooldownByRank: [cooldown], costByRank: [0] },
-
-      baseStats: isLifeline
-        ? { shieldAmount: flat }
-        : { bonusDamage: flat, bonusRatio: ratio },
-
+      baseStats: { bonusDamage: flat, bonusRatio: ratio },
       abilities: [{ abilityId, key: "Passive", priority: 0 }],
     },
   };
 }
 
-const itemPresetConfigs = [
-  // 주문검(예: Sheen) 류: OnHit 추가 피해
-  { key: "Sheen", label: "주문검", mode: "OnHit", flat: 100, ratio: 1.0, cooldown: 1.5 },
-
-  // 생명선(예: Lifeline) 류: 피해를 받을 때 보호막 (샘플)
-  { key: "Lifeline", label: "생명선", mode: "Lifeline", flat: 250, ratio: 0, cooldown: 90 },
-
-  // 오라(예: Sunfire) 류: 주기적으로 주변 적에게 피해
-  { key: "Sunfire", label: "불사르기(오라)", mode: "Aura", flat: 20, ratio: 0.02, cooldown: 1, tickInterval: 1, auraRadius: 450 },
-
-  { key: "Kraken", label: "크라켄 학살자", mode: "OnHit", flat: 80, ratio: 0.6, cooldown: 3 },
-  { key: "Bloodrazor", label: "블러드레이저", mode: "OnHit", flat: 30, ratio: 0.025, cooldown: 1 },
+const CHAMPION_KEYS = [
+  "Alistar",
+  "Annie",
+  "Ashe",
+  "Fiddlesticks",
+  "Jax",
+  "Kayle",
+  "MasterYi",
+  "Morgana",
+  "Nunu",
+  "Ryze",
+  "Sion",
+  "Sivir",
+  "Soraka",
+  "Teemo",
+  "Tristana",
+  "TwistedFate",
+  "Warwick",
 ];
 
-export const itemPresets = itemPresetConfigs.map(buildItemPreset);
+const championPresets = CHAMPION_KEYS.map((key) =>
+  buildChampionPreset({
+    key,
+    label: `${key} 시그니처`,
+    damage: 90,
+    ratio: 0.7,
+    range: 600,
+  })
+);
 
-// 그룹도 아이템만 노출
+const itemPresetConfigs = [
+  { key: "Sheen", label: "주문검", flat: 100, ratio: 1.0, cooldown: 1.5, type: "OnHit" },
+  { key: "Lifeline", label: "생명선", flat: 0, ratio: 0, cooldown: 90, type: "Passive" },
+  { key: "Sunfire", label: "불사르기(오라)", flat: 20, ratio: 0.02, cooldown: 1, type: "Aura" },
+  { key: "Kraken", label: "크라켄 학살자", flat: 80, ratio: 0.6, cooldown: 3, type: "OnHit" },
+  { key: "Bloodrazor", label: "블러드레이저", flat: 30, ratio: 0.025, cooldown: 1, type: "OnHit" },
+];
+
+const itemPresets = itemPresetConfigs.map(buildItemPreset);
+
+const utilityPresets = [
+  {
+    key: "Ignite",
+    aliases: ["ignite", "점화"],
+    label: "점화 (Ignite)",
+    effect: {
+      effectId: "Effect_Ignite_DoT",
+      type: "Damage",
+      trigger: "OnTick",
+      selector: { selectorType: "Target", team: "Enemy" },
+      calc: { flat: { ref: "dot", byRank: true } },
+      timing: { tickInterval: 1, duration: 5 },
+      apply: { damageType: "True", damageStage: "Final" },
+      source: { sourceType: "Summoner", sourceId: "Summoner_Ignite" },
+    },
+    ability: {
+      abilityId: "Summoner_Ignite_Cast",
+      key: "Default",
+      castSpec: { castTime: 0, canMove: false, isChanneling: false },
+      deliverySpec: { type: "Target", range: 600, speed: 0, collision: "None" },
+      paramBindings: { dot: { ref: "dot" } },
+      effects: ["Effect_Ignite_DoT"],
+    },
+    skill: {
+      skillId: "Summoner_Ignite",
+      skillCategory: "Active",
+      rankRules: { maxRank: 1, cooldownByRank: [180], costByRank: [0] },
+      baseStats: { dot: [50] },
+      abilities: [{ abilityId: "Summoner_Ignite_Cast", key: "Default", priority: 0 }],
+    },
+  },
+];
+
 export const PRESET_GROUPS = {
+  champions: championPresets,
   items: itemPresets,
+  utilities: utilityPresets,
 };
