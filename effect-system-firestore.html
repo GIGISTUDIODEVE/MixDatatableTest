@@ -400,19 +400,23 @@
       <ul class="package-list" id="package-checklist"></ul>
     </section>
 
-    <section class="card">
-      <div class="section-header">
-        <div>
-          <h2>Effect 관리</h2>
-          <p class="muted">가장 작은 실행 단위. OnHit/OnTick 등을 명시하고 selector/적용 규칙을 정의합니다.</p>
-        </div>
+    <details class="card collapsible" open>
+      <summary>
+        <span>Effect 관리</span>
         <span class="pill">spec = Effect</span>
-      </div>
-      <div class="preview-card" id="effect-preview">
-        <h3>Effect 프리뷰</h3>
-        <div class="label">플레이버</div>
-        <div class="value" id="effect-preview-text">-</div>
-      </div>
+      </summary>
+      <div class="content">
+        <div class="section-header">
+          <div>
+            <h2>Effect 관리</h2>
+            <p class="muted">가장 작은 실행 단위. OnHit/OnTick 등을 명시하고 selector/적용 규칙을 정의합니다.</p>
+          </div>
+        </div>
+        <div class="preview-card" id="effect-preview">
+          <h3>Effect 프리뷰</h3>
+          <div class="label">플레이버</div>
+          <div class="value" id="effect-preview-text">-</div>
+        </div>
       <div class="split-grid">
         <div>
           <div class="grid">
@@ -534,21 +538,26 @@
           <tbody id="effect-table"></tbody>
         </table>
       </div>
-    </section>
+      </div>
+    </details>
 
-    <section class="card">
-      <div class="section-header">
-        <div>
-          <h2>Ability 관리</h2>
-          <p class="muted">하나의 스킬 내 실행 버전. cast/delivery 스펙과 묶일 Effect 배열을 정의합니다.</p>
-        </div>
+    <details class="card collapsible" open>
+      <summary>
+        <span>Ability 관리</span>
         <span class="pill">spec = Ability</span>
-      </div>
-      <div class="preview-card" id="ability-preview">
-        <h3>Ability 프리뷰</h3>
-        <div class="label">플레이버</div>
-        <div class="value" id="ability-preview-text">-</div>
-      </div>
+      </summary>
+      <div class="content">
+        <div class="section-header">
+          <div>
+            <h2>Ability 관리</h2>
+            <p class="muted">하나의 스킬 내 실행 버전. cast/delivery 스펙과 묶일 Effect 배열을 정의합니다.</p>
+          </div>
+        </div>
+        <div class="preview-card" id="ability-preview">
+          <h3>Ability 프리뷰</h3>
+          <div class="label">플레이버</div>
+          <div class="value" id="ability-preview-text">-</div>
+        </div>
       <div class="split-grid">
         <div>
           <div class="grid">
@@ -649,21 +658,26 @@
           <tbody id="ability-table"></tbody>
         </table>
       </div>
-    </section>
+      </div>
+    </details>
 
-    <section class="card">
-      <div class="section-header">
-        <div>
-          <h2>Skill 관리</h2>
-          <p class="muted">랭크/쿨/코스트와 선택 규칙을 가진 최상위 스펙입니다. Ability 목록을 매핑합니다.</p>
-        </div>
+    <details class="card collapsible" open>
+      <summary>
+        <span>Skill 관리</span>
         <span class="pill">spec = Skill</span>
-      </div>
-      <div class="preview-card" id="skill-preview">
-        <h3>Skill 프리뷰</h3>
-        <div class="label">플레이버</div>
-        <div class="value" id="skill-preview-text">-</div>
-      </div>
+      </summary>
+      <div class="content">
+        <div class="section-header">
+          <div>
+            <h2>Skill 관리</h2>
+            <p class="muted">랭크/쿨/코스트와 선택 규칙을 가진 최상위 스펙입니다. Ability 목록을 매핑합니다.</p>
+          </div>
+        </div>
+        <div class="preview-card" id="skill-preview">
+          <h3>Skill 프리뷰</h3>
+          <div class="label">플레이버</div>
+          <div class="value" id="skill-preview-text">-</div>
+        </div>
       <div class="split-grid">
         <div>
           <div class="grid">
