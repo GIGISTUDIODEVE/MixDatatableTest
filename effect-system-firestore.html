@@ -264,6 +264,20 @@
         color: #e5e7eb;
         white-space: pre-line;
       }
+
+      .required-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.1rem 0.4rem;
+        margin-left: 0.35rem;
+        border-radius: 999px;
+        background: rgba(248, 113, 113, 0.15);
+        color: #fca5a5;
+        font-weight: 700;
+        font-size: 0.8rem;
+        border: 1px solid rgba(248, 113, 113, 0.35);
+      }
     </style>
   </head>
   <body>
@@ -297,12 +311,12 @@
       <p class="section-subtitle">effectId는 유니크해야 합니다. type은 <strong>EffectType</strong> 카탈로그 중 하나를 선택합니다.</p>
       <div class="grid">
         <div>
-          <label for="effect-id">effectId (필수)</label>
+          <label for="effect-id">effectId <span class="required-pill">필수</span></label>
           <input id="effect-id" type="text" placeholder="예: Q_HitDamage" />
           <p class="helper">툴팁/로그/중복 방지에 사용되는 고유 이름입니다. 공백 없이 짓거나 저장 시 자동 변환됩니다.</p>
         </div>
         <div>
-          <label for="effect-type">type</label>
+          <label for="effect-type">type <span class="required-pill">필수</span></label>
           <select id="effect-type"></select>
           <p class="helper">EffectSystem.md의 EffectType 카탈로그 중 하나를 고릅니다. 효과 계산/적용 로직을 결정합니다.</p>
         </div>
@@ -325,7 +339,7 @@
       <p class="section-subtitle">예) OnHit + damageTypeFilter=Magic → <span class="pill">명중 시</span> 마법 피해만 후속 파이프라인으로 보냅니다.</p>
       <div class="grid">
         <div>
-          <label for="trigger-type">trigger.triggerType</label>
+          <label for="trigger-type">trigger.triggerType <span class="required-pill">필수</span></label>
           <select id="trigger-type"></select>
           <p class="helper">발동 시점. 시전, 투사체, 명중, 죽음 이벤트 등 언제 효과가 출발하는지 정의합니다.</p>
         </div>
@@ -365,7 +379,7 @@
       <p class="section-subtitle">예) selectorType=Area + centerRef=CasterPos, radius=300 → <span class="pill">시전자 기준 원형 300</span> 내 적을 고릅니다.</p>
       <div class="grid">
         <div>
-          <label for="selector-type">selectorType</label>
+          <label for="selector-type">selectorType <span class="required-pill">필수</span></label>
           <select id="selector-type"></select>
           <p class="helper">효과 대상 선정 방식. 자기 자신, 명중 대상, 범위, 라인, 체인 등 선택 로직을 결정합니다.</p>
         </div>
@@ -508,7 +522,7 @@
       <p class="section-subtitle">예) model=FlatPlusRatio, flatByRank=80/120…, ratios.ap=0.6 → <span class="pill">레벨별 계수 포함 마법 피해</span>를 의미합니다.</p>
       <div class="grid">
         <div>
-          <label for="value-model">model</label>
+          <label for="value-model">model <span class="required-pill">필수</span></label>
           <select id="value-model"></select>
           <p class="helper">Flat/Ratio/Percent 등 수치 계산 모델을 선택합니다.</p>
         </div>
