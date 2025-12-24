@@ -277,6 +277,30 @@
       margin: 0 0 0.35rem;
       font-size: 1rem;
     }
+
+    .preview-card {
+      margin-top: 0.75rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .preview-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .preview-card .label {
+      color: #cbd5e1;
+    }
+
+    .preview-card .value {
+      color: #f8fafc;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -418,6 +442,11 @@
             <button class="secondary" id="effect-refresh">목록 새로고침</button>
           </div>
           <div class="status" id="effect-status"></div>
+          <div class="preview-card" id="effect-preview">
+            <h3>Effect 프리뷰</h3>
+            <div class="label">플레이버</div>
+            <div class="value" id="effect-preview-text">-</div>
+          </div>
         </div>
         <div>
           <p class="muted">저장된 Effect 문서 목록</p>
@@ -528,6 +557,11 @@
             <button class="secondary" id="ability-refresh">목록 새로고침</button>
           </div>
           <div class="status" id="ability-status"></div>
+          <div class="preview-card" id="ability-preview">
+            <h3>Ability 프리뷰</h3>
+            <div class="label">플레이버</div>
+            <div class="value" id="ability-preview-text">-</div>
+          </div>
         </div>
         <div>
           <p class="muted">저장된 Ability 문서 목록</p>
@@ -608,6 +642,11 @@
             <button class="secondary" id="skill-refresh">목록 새로고침</button>
           </div>
           <div class="status" id="skill-status"></div>
+          <div class="preview-card" id="skill-preview">
+            <h3>Skill 프리뷰</h3>
+            <div class="label">플레이버</div>
+            <div class="value" id="skill-preview-text">-</div>
+          </div>
         </div>
         <div>
           <p class="muted">저장된 Skill 문서 목록</p>
@@ -820,6 +859,15 @@
         .filter((v) => v.length > 0);
     }
 
+    function safeParseJson(value) {
+      if (!value || !value.trim()) return {};
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        return null;
+      }
+    }
+
     function fillEffectQuickFields(data) {
       const selector = data.selector ?? {};
       const apply = data.apply ?? {};
@@ -970,6 +1018,7 @@
         if (this.extraFill) this.extraFill({ manager: this, data });
         this.jsonInput.value = JSON.stringify(data, null, 2);
         this.setStatus(`'${id}' ${this.entityName}를 불러왔습니다.`);
+        updatePreviews();
       }
 
       resetForm() {
@@ -977,6 +1026,7 @@
         if (this.extraFill) this.extraFill({ manager: this, data: this.sampleData });
         this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
         this.setStatus("새 문서를 작성하세요.");
+        updatePreviews();
       }
 
       loadSample() {
@@ -1321,6 +1371,167 @@
       skillManager.setStatus(`${preset.label} 프리셋을 적용했습니다.`);
     }
 
+    function buildEffectPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 드롭다운을 적용하세요.";
+      const id = data.effectId ?? "-";
+      const type = data.type ?? "Effect";
+      const trigger = data.trigger ?? "Trigger 미정";
+      const selector = data.selector?.selectorType ?? "Selector 미정";
+      const team = data.selector?.team ? ` (${data.selector.team})` : "";
+      const dmgType = data.apply?.damageType ? `, ${data.apply.damageType}` : "";
+      const dmgStage = data.apply?.damageStage ? ` @${data.apply.damageStage}` : "";
+      const flat =
+        typeof data.calc?.flat === "number"
+          ? data.calc.flat
+          : typeof data.calc?.flat === "object"
+            ? data.calc.flat.value ?? data.calc.flat.ref
+            : null;
+      const ratioKeys = data.calc?.ratios ? Object.keys(data.calc.ratios) : [];
+      const ratio = ratioKeys.length ? ` +(${ratioKeys.join(",")} 계수)` : "";
+      const flatText = flat !== null && flat !== undefined ? ` ${flat}` : "";
+      return `[${id}] ${trigger} → ${selector}${team} | ${type}${dmgType}${dmgStage}${flatText}${ratio}`;
+    }
+
+    function buildAbilityPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 드롭다운을 적용하세요.";
+      const id = data.abilityId ?? "-";
+      const key = data.key ? ` (${data.key})` : "";
+      const cast = data.castSpec ?? {};
+      const delivery = data.deliverySpec ?? {};
+      const castText = `시전 ${cast.castTime ?? 0}s ${cast.canMove ? "이동 가능" : "이동 불가"}`;
+      const channel = cast.isChanneling ? "채널링" : "즉발";
+      const deliveryText = `${delivery.type ?? "Delivery"} ${delivery.range ? `R${delivery.range}` : ""} ${
+        delivery.speed ? `S${delivery.speed}` : ""
+      }`;
+      const effects = Array.isArray(data.effects) ? data.effects.join(", ") : "-";
+      return `[${id}${key}] ${castText} · ${channel} · ${deliveryText} | Effects: ${effects}`;
+    }
+
+    function buildSkillPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 드롭다운을 적용하세요.";
+      const id = data.skillId ?? "-";
+      const category = data.skillCategory ?? "카테고리 미정";
+      const rank = data.rankRules?.maxRank ?? 1;
+      const cd = Array.isArray(data.rankRules?.cooldownByRank)
+        ? data.rankRules.cooldownByRank.join("/")
+        : data.rankRules?.cooldownByRank ?? "-";
+      const cost = Array.isArray(data.rankRules?.costByRank)
+        ? data.rankRules.costByRank.join("/")
+        : data.rankRules?.costByRank ?? "-";
+      const abilityCount = Array.isArray(data.abilities) ? data.abilities.length : 0;
+      return `[${id}] ${category} | 랭크 ${rank} | 쿨타임 ${cd} | 코스트 ${cost} | Abilities ${abilityCount}개`;
+    }
+
+    function mergeEffectInputs() {
+      const base = safeParseJson(document.getElementById("effect-json").value);
+      if (base === null) return null;
+      const merged = { ...(base || {}) };
+      const selector = merged.selector ?? {};
+      const apply = merged.apply ?? {};
+      const calc = merged.calc ?? {};
+      const ratioKey = document.getElementById("effect-ratio-key").value;
+      const flatRaw = document.getElementById("effect-flat").value.trim();
+      if (document.getElementById("effect-type").value) merged.type = document.getElementById("effect-type").value;
+      if (document.getElementById("effect-trigger").value)
+        merged.trigger = document.getElementById("effect-trigger").value;
+      if (document.getElementById("effect-selector").value)
+        selector.selectorType = document.getElementById("effect-selector").value;
+      if (document.getElementById("effect-team").value) selector.team = document.getElementById("effect-team").value;
+      if (document.getElementById("effect-damage-type").value)
+        apply.damageType = document.getElementById("effect-damage-type").value;
+      if (document.getElementById("effect-damage-stage").value)
+        apply.damageStage = document.getElementById("effect-damage-stage").value;
+      if (flatRaw !== "") {
+        const flat = Number(flatRaw);
+        if (!Number.isNaN(flat)) calc.flat = flat;
+      }
+      if (ratioKey) {
+        calc.ratios = calc.ratios ?? {};
+        calc.ratios[ratioKey] = calc.ratios[ratioKey] ?? { ref: ratioKey };
+      }
+      merged.selector = selector;
+      merged.apply = apply;
+      merged.calc = calc;
+      merged.effectId = document.getElementById("effect-id").value.trim() || merged.effectId;
+      return merged;
+    }
+
+    function mergeAbilityInputs() {
+      const base = safeParseJson(document.getElementById("ability-json").value);
+      if (base === null) return null;
+      const merged = { ...(base || {}) };
+      merged.abilityId = document.getElementById("ability-id").value.trim() || merged.abilityId;
+      merged.key = document.getElementById("ability-key").value.trim() || merged.key;
+      merged.castSpec = merged.castSpec ?? {};
+      merged.deliverySpec = merged.deliverySpec ?? {};
+      const castTime = document.getElementById("ability-cast-time").value.trim();
+      if (castTime !== "") {
+        const num = Number(castTime);
+        if (!Number.isNaN(num)) merged.castSpec.castTime = num;
+      }
+      const canMove = document.getElementById("ability-can-move").value;
+      if (canMove) merged.castSpec.canMove = canMove === "true";
+      const channel = document.getElementById("ability-channel").value;
+      if (channel) merged.castSpec.isChanneling = channel === "true";
+      const deliveryType = document.getElementById("ability-delivery-type").value;
+      if (deliveryType) merged.deliverySpec.type = deliveryType;
+      const range = document.getElementById("ability-range").value.trim();
+      if (range !== "") {
+        const num = Number(range);
+        if (!Number.isNaN(num)) merged.deliverySpec.range = num;
+      }
+      const speed = document.getElementById("ability-speed").value.trim();
+      if (speed !== "") {
+        const num = Number(speed);
+        if (!Number.isNaN(num)) merged.deliverySpec.speed = num;
+      }
+      const collision = document.getElementById("ability-collision").value;
+      if (collision) merged.deliverySpec.collision = collision;
+      const effects = toStringArray(document.getElementById("ability-effects").value);
+      if (effects.length) merged.effects = effects;
+      return merged;
+    }
+
+    function mergeSkillInputs() {
+      const base = safeParseJson(document.getElementById("skill-json").value);
+      if (base === null) return null;
+      const merged = { ...(base || {}) };
+      merged.skillId = document.getElementById("skill-id").value.trim() || merged.skillId;
+      const category = document.getElementById("skill-category").value;
+      if (category) merged.skillCategory = category;
+      merged.rankRules = merged.rankRules ?? {};
+      const maxRank = document.getElementById("skill-max-rank").value.trim();
+      if (maxRank !== "") {
+        const num = Number(maxRank);
+        if (!Number.isNaN(num)) merged.rankRules.maxRank = num;
+      }
+      const cooldowns = toNumberArray(document.getElementById("skill-cooldowns").value);
+      const costs = toNumberArray(document.getElementById("skill-costs").value);
+      if (cooldowns.length) merged.rankRules.cooldownByRank = cooldowns;
+      if (costs.length) merged.rankRules.costByRank = costs;
+      const abilities = toStringArray(document.getElementById("skill-abilities").value);
+      if (abilities.length) {
+        merged.abilities = abilities.map((abilityId, idx) => ({
+          abilityId,
+          key: idx === 0 ? "Default" : undefined,
+          priority: idx,
+        }));
+      }
+      return merged;
+    }
+
+    function updatePreviews() {
+      const effectData = mergeEffectInputs();
+      const abilityData = mergeAbilityInputs();
+      const skillData = mergeSkillInputs();
+      const effectPreview = document.getElementById("effect-preview-text");
+      const abilityPreview = document.getElementById("ability-preview-text");
+      const skillPreview = document.getElementById("skill-preview-text");
+      effectPreview.textContent = effectData ? buildEffectPreview(effectData) : "JSON 파싱 오류: Effect";
+      abilityPreview.textContent = abilityData ? buildAbilityPreview(abilityData) : "JSON 파싱 오류: Ability";
+      skillPreview.textContent = skillData ? buildSkillPreview(skillData) : "JSON 파싱 오류: Skill";
+    }
+
     async function initialize() {
       const managers = createManagers();
       registerFieldButtons(managers);
@@ -1342,6 +1553,41 @@
           presetBtn?.click();
         }
       });
+      const previewInputs = [
+        "effect-json",
+        "effect-id",
+        "effect-type",
+        "effect-trigger",
+        "effect-selector",
+        "effect-team",
+        "effect-damage-type",
+        "effect-damage-stage",
+        "effect-flat",
+        "effect-ratio-key",
+        "ability-json",
+        "ability-id",
+        "ability-key",
+        "ability-cast-time",
+        "ability-can-move",
+        "ability-channel",
+        "ability-delivery-type",
+        "ability-range",
+        "ability-speed",
+        "ability-collision",
+        "ability-effects",
+        "skill-json",
+        "skill-id",
+        "skill-category",
+        "skill-max-rank",
+        "skill-cooldowns",
+        "skill-costs",
+        "skill-abilities",
+      ];
+      previewInputs.forEach((id) => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", updatePreviews);
+        el?.addEventListener("change", updatePreviews);
+      });
       try {
         const app = initializeApp(await getFirebaseConfig());
         const db = getFirestore(app);
@@ -1350,6 +1596,7 @@
           manager.resetForm();
           manager.loadTable();
         });
+        updatePreviews();
       } catch (error) {
         console.error(error);
         managers.forEach((manager) => {
