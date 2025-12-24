@@ -278,6 +278,39 @@
         font-size: 0.8rem;
         border: 1px solid rgba(248, 113, 113, 0.35);
       }
+
+      .stepper {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .step-chip {
+        border: 1px solid #1f2937;
+        background: #0b1220;
+        color: #e5e7eb;
+        border-radius: 10px;
+        padding: 0.45rem 0.8rem;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      }
+
+      .step-chip.active {
+        border-color: #3b82f6;
+        color: #bfdbfe;
+        background: rgba(59, 130, 246, 0.12);
+      }
+
+      .step-nav {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .step-hidden {
+        display: none !important;
+      }
     </style>
   </head>
   <body>
@@ -306,6 +339,17 @@
     </section>
 
     <section class="card">
+      <div class="step-label">단계 안내</div>
+      <h2>단계별 입력</h2>
+      <p class="section-subtitle">한 번에 한 단계씩 입력합니다. 이전/다음 버튼 또는 칩을 눌러 이동하세요.</p>
+      <div class="stepper" id="step-indicator"></div>
+      <div class="step-nav">
+        <button class="secondary" id="prev-step-btn">이전 단계</button>
+        <button class="secondary" id="next-step-btn">다음 단계</button>
+      </div>
+    </section>
+
+    <section class="card" data-step="1">
       <div class="step-label">1단계 · 정체성</div>
       <h2>Effect ID / Type</h2>
       <p class="section-subtitle">effectId는 유니크해야 합니다. type은 <strong>EffectType</strong> 카탈로그 중 하나를 선택합니다.</p>
@@ -333,7 +377,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" data-step="2">
       <div class="step-label">2단계 · 트리거</div>
       <h2>TriggerSpec</h2>
       <p class="section-subtitle">예) OnHit + damageTypeFilter=Magic → <span class="pill">명중 시</span> 마법 피해만 후속 파이프라인으로 보냅니다.</p>
@@ -373,7 +417,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" data-step="3">
       <div class="step-label">3단계 · 타게팅</div>
       <h2>TargetingSpec</h2>
       <p class="section-subtitle">예) selectorType=Area + centerRef=CasterPos, radius=300 → <span class="pill">시전자 기준 원형 300</span> 내 적을 고릅니다.</p>
@@ -456,7 +500,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" data-step="4">
       <div class="step-label">4단계 · 조건/타이밍</div>
       <h2>Condition · Timing</h2>
       <p class="section-subtitle">예) OnceRules.oncePerTarget=true → <span class="pill">대상당 1회만 적용</span>. duration/tick은 지속 효과일 때만 노출됩니다.</p>
@@ -516,7 +560,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" data-step="5">
       <div class="step-label">5단계 · 수치 모델</div>
       <h2>CalcSpec</h2>
       <p class="section-subtitle">예) model=FlatPlusRatio, flatByRank=80/120…, ratios.ap=0.6 → <span class="pill">레벨별 계수 포함 마법 피해</span>를 의미합니다.</p>
@@ -628,7 +672,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" data-step="6">
       <div class="step-label">6단계 · 적용 규칙</div>
       <h2>Apply / Stacking / Proc / Emit</h2>
       <p class="section-subtitle">예) hitRules.canBeBlocked=false → <span class="pill">방어 불가</span>. stackingRule=RefreshDuration → <span class="pill">지속시간 갱신</span>.</p>
@@ -788,7 +832,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" data-step="7">
       <h2>저장 / 로드</h2>
       <div class="actions">
         <button class="primary" id="save-btn">Effect 저장/업데이트</button>
@@ -797,7 +841,7 @@
       <div class="status" id="status"></div>
     </section>
 
-    <section class="card">
+    <section class="card" data-step="8">
       <h2>저장된 Effect 목록</h2>
       <div class="muted">Firestore collection: <code>effectSpecs</code>. 불러오면 단계별 필드가 자동으로 노출됩니다.</div>
       <table id="effect-table">
@@ -977,6 +1021,11 @@
     const effectTableBody = document.querySelector("#effect-table tbody");
     const saveBtn = document.getElementById("save-btn");
     const resetBtn = document.getElementById("reset-btn");
+    const stepSections = Array.from(document.querySelectorAll("[data-step]"));
+    const stepIndicator = document.getElementById("step-indicator");
+    const prevStepBtn = document.getElementById("prev-step-btn");
+    const nextStepBtn = document.getElementById("next-step-btn");
+    let currentStepIndex = 0;
 
     function populateSelect(selectEl, options) {
       selectEl.innerHTML = "";
@@ -1067,6 +1116,47 @@
       HighestMaxHP: "체력이 높은 대상",
       PriorityByTag: "우선 태그 대상",
     };
+
+    function formatNumber(value) {
+      if (value === undefined || value === null || Number.isNaN(Number(value))) return "";
+      return Number(value).toFixed(Number.isInteger(Number(value)) ? 0 : 2).replace(/\.00$/, "");
+    }
+
+    function renderStepIndicator() {
+      stepIndicator.innerHTML = "";
+      stepSections.forEach((section, index) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "step-chip";
+        chip.textContent = `${index + 1}단계`;
+        chip.addEventListener("click", () => showStep(index));
+        stepIndicator.appendChild(chip);
+      });
+      updateStepChips();
+    }
+
+    function updateStepChips() {
+      const chips = stepIndicator.querySelectorAll(".step-chip");
+      chips.forEach((chip, index) => {
+        chip.classList.toggle("active", index === currentStepIndex);
+      });
+    }
+
+    function showStep(index) {
+      currentStepIndex = Math.max(0, Math.min(stepSections.length - 1, index));
+      stepSections.forEach((section, idx) => {
+        section.classList.toggle("step-hidden", idx !== currentStepIndex);
+      });
+      updateStepChips();
+    }
+
+    prevStepBtn.addEventListener("click", () => {
+      showStep(currentStepIndex - 1);
+    });
+
+    nextStepBtn.addEventListener("click", () => {
+      showStep(currentStepIndex + 1);
+    });
 
     function toggleHidden(element, hidden) {
       element.classList.toggle("hidden", hidden);
@@ -1227,6 +1317,74 @@
       if (timing.snapshotPolicy) parts.push(`스냅샷=${timing.snapshotPolicy}`);
       if (timing.cancelPolicy) parts.push(`취소=${timing.cancelPolicy}`);
       return parts.length ? `타이밍: ${parts.join(", ")}` : "";
+    }
+
+    function buildDamagePhrase(effect) {
+      const calc = effect.calc || {};
+      const flatCandidates = [calc.flat, calc.flatByRank?.[0], calc.flatByLevel?.[0]].filter((v) => v !== undefined);
+      const flat = flatCandidates.length ? flatCandidates[0] : undefined;
+      const ratioMap = {
+        ap: "주문력",
+        ad: "공격력",
+        bonusAd: "추가 공격력",
+        hp: "체력",
+        armor: "방어력",
+        mr: "마법 저항력",
+      };
+      const ratioEntries = Object.entries(calc.ratios || {}).filter(([, v]) => v);
+      const ratioText = ratioEntries
+        .map(([key, value]) => `${formatNumber(value * 100)}% ${ratioMap[key] || key}`)
+        .join(" + ");
+      const percentText = calc.percent !== undefined ? `${formatNumber(calc.percent)}%` : "";
+      const pieces = [];
+      if (flat !== undefined) pieces.push(formatNumber(flat));
+      if (ratioText) pieces.push(ratioText);
+      if (percentText && !ratioText && !flat) pieces.push(percentText);
+
+      let damageTypeText = "";
+      if (calc.damageType === "Magic") damageTypeText = "마법 피해";
+      else if (calc.damageType === "Physical") damageTypeText = "물리 피해";
+      else if (calc.damageType === "True") damageTypeText = "고정 피해";
+
+      const core =
+        pieces.length > 1
+          ? `${pieces.join(" + ")}`
+          : pieces.length === 1
+          ? pieces[0]
+          : damageTypeText || "효과";
+
+      if (damageTypeText) {
+        return `${core}의 ${damageTypeText}를 입힙니다`;
+      }
+
+      if (["Heal", "HealOverTime"].includes(effect.type)) {
+        return `${core}만큼 회복시킵니다`;
+      }
+      if (effect.type === "Shield") {
+        return `${core} 보호막을 부여합니다`;
+      }
+      if (effect.type === "ApplyStatus") {
+        return `상태 효과를 적용합니다`;
+      }
+      return `효과를 적용합니다 (${core})`;
+    }
+
+    function buildLolStyleDescription(effect) {
+      if (!effect || (!effect.effectId && !effect.type && !effect.trigger?.triggerType)) return "";
+      const triggerText = describeTrigger(effect.trigger) || "발동 시";
+      const targetText = describeTargeting(effect.targeting) || "대상";
+      const timingText = describeTiming(effect.timing);
+      const damageText = buildDamagePhrase(effect);
+      const conditionText = effect.conditions?.length ? `조건 ${effect.conditions.length}개 충족 시에만` : "";
+      const stackingText = effect.stacking?.stackingRule ? `스택: ${effect.stacking.stackingRule}` : "";
+
+      const lines = [];
+      lines.push(`${triggerText}, ${targetText}에게 ${damageText}.`);
+      if (conditionText) lines.push(conditionText + ".");
+      if (timingText) lines.push(timingText + ".");
+      if (stackingText) lines.push(stackingText + ".");
+
+      return lines.join("\n");
     }
 
     function describeEffect(effect) {
@@ -1743,7 +1901,8 @@
 
     function refreshPreview() {
       const draft = assembleEffect({ silentJSON: true }) || {};
-      previewEl.textContent = describeEffect(draft);
+      const lol = buildLolStyleDescription(draft);
+      previewEl.textContent = lol || describeEffect(draft);
     }
 
     function attachPreviewListeners() {
@@ -1768,6 +1927,8 @@
 
     resetBtn.addEventListener("click", resetForm);
 
+    renderStepIndicator();
+    showStep(0);
     attachPreviewListeners();
     resetForm();
     loadEffects().catch((error) => {
