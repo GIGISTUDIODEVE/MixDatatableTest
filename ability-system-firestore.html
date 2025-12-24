@@ -398,18 +398,23 @@
       <section class="card" data-step="3">
         <div class="step-label">3단계 · Effect 구성</div>
         <h2>effects</h2>
-        <p class="section-subtitle">Ability를 구성하는 EffectSpec 배열을 입력합니다. effect-system-firestore.html에서 만든 effectId를 참조하세요.</p>
+        <p class="section-subtitle">저장된 EffectSpec을 불러와 선택하세요. 여러 효과를 순서대로 포함할 수 있습니다.</p>
         <div class="grid">
           <div>
-            <label for="effect-ids">effectId 목록 (쉼표로 구분)</label>
-            <input id="effect-ids" type="text" placeholder="예: A1_Damage, A1_Slow" />
-            <p class="helper">간단히 effectId만 입력하면 자동으로 객체 배열로 변환됩니다.</p>
+            <label for="effect-search">Effect 검색</label>
+            <input id="effect-search" type="text" placeholder="effectId, type으로 필터" />
+            <p class="helper">effect-system-firestore.html에서 저장된 Effect를 실시간으로 불러와 표시합니다.</p>
           </div>
           <div>
             <label for="effects-json">effects JSON (선택)</label>
             <textarea id="effects-json" placeholder='예: [{"effectId":"A1_Damage","type":"Damage"}]'></textarea>
-            <p class="helper">정교한 설정이 필요하면 JSON 배열로 직접 입력하세요. effectId 중복은 방지됩니다.</p>
+            <p class="helper">특수 설정이 필요한 경우에만 JSON으로 직접 작성하세요. 선택된 Effect가 기본값입니다.</p>
           </div>
+        </div>
+        <div class="card" style="margin-top: 0.75rem;">
+          <h3>Effect 목록 (Firestore)</h3>
+          <div class="muted" id="effect-list-status">불러오는 중...</div>
+          <div id="effect-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.5rem;"></div>
         </div>
       </section>
 
@@ -529,6 +534,9 @@
 
       const presetSelect = document.getElementById("preset-select");
       const applyPresetBtn = document.getElementById("apply-preset-btn");
+      const effectListContainer = document.getElementById("effect-list");
+      const effectListStatus = document.getElementById("effect-list-status");
+      const effectSearchInput = document.getElementById("effect-search");
       const statusEl = document.getElementById("status");
       const previewEl = document.getElementById("ability-preview");
       const abilityTableBody = document.querySelector("#ability-table tbody");
@@ -539,6 +547,7 @@
       const prevStepBtn = document.getElementById("prev-step-btn");
       const nextStepBtn = document.getElementById("next-step-btn");
       let currentStepIndex = 0;
+      let cachedEffects = [];
 
       const abilityPresets = [
         {
@@ -677,18 +686,15 @@
       }
 
       function buildEffects() {
-        const ids = document.getElementById("effect-ids").value;
         const json = parseJSONSafe(document.getElementById("effects-json").value, { silent: true });
-        let effects = [];
+        const selected = Array.from(effectListContainer.querySelectorAll("input[type='checkbox']:checked")).map((el) => {
+          const found = cachedEffects.find((e) => e.id === el.value);
+          return found ? { effectId: found.effectId || found.id, type: found.type, trigger: found.trigger } : { effectId: el.value };
+        });
+        let effects = selected;
 
-        if (Array.isArray(json)) {
+        if (Array.isArray(json) && json.length) {
           effects = json;
-        } else if (ids.trim()) {
-          effects = ids
-            .split(",")
-            .map((id) => id.trim())
-            .filter(Boolean)
-            .map((id) => ({ effectId: id }));
         }
 
         if (!Array.isArray(effects)) {
@@ -842,8 +848,10 @@
         document.getElementById("max-rank").value = ability.rankRules?.maxRank ?? "";
         document.getElementById("cooldown-by-rank").value = (ability.rankRules?.cooldownByRank ?? []).join(", ");
         document.getElementById("cost-by-rank").value = (ability.rankRules?.costByRank ?? []).join(", ");
-        document.getElementById("effect-ids").value = (ability.effects ?? []).map((e) => e.effectId).filter(Boolean).join(", ");
         document.getElementById("effects-json").value = ability.effects?.length ? JSON.stringify(ability.effects, null, 2) : "";
+        effectListContainer.querySelectorAll("input[type='checkbox']").forEach((el) => {
+          el.checked = (ability.effects ?? []).some((e) => e.effectId === el.value);
+        });
 
         selects.deliveryType.value = ability.deliverySpec?.type ?? "";
         document.getElementById("delivery-range").value = ability.deliverySpec?.range ?? "";
@@ -867,6 +875,9 @@
         selects.deliveryType.value = "";
         selects.centerRef.value = "";
         selects.collisionRule.value = "";
+        effectListContainer.querySelectorAll("input[type='checkbox']").forEach((el) => {
+          el.checked = false;
+        });
         setStatus("새 Ability 입력을 시작하세요.");
         refreshPreview();
       }
@@ -933,6 +944,75 @@
         setStatus(`총 ${rows.length}개 Ability를 불러왔습니다.`);
       }
 
+      function renderEffectList(effects, { preserveSelection = true } = {}) {
+        const checkedIds = preserveSelection
+          ? new Set(Array.from(effectListContainer.querySelectorAll("input[type='checkbox']:checked")).map((el) => el.value))
+          : new Set();
+        if (!checkedIds.size) {
+          const textareaEffects = parseJSONSafe(document.getElementById("effects-json").value, { silent: true });
+          if (Array.isArray(textareaEffects)) {
+            textareaEffects.forEach((e) => {
+              if (e?.effectId) checkedIds.add(e.effectId);
+            });
+          }
+        }
+        effectListContainer.innerHTML = "";
+        if (!effects.length) {
+          effectListStatus.textContent = "불러온 Effect가 없습니다. effect-system-firestore.html에서 먼저 저장하세요.";
+          return;
+        }
+        effectListStatus.textContent = `총 ${effects.length}개 Effect 불러옴. 체크하여 Ability에 포함하세요.`;
+
+        effects.forEach((effect) => {
+          const wrapper = document.createElement("label");
+          wrapper.className = "field-row";
+          wrapper.style.border = "1px solid #1f2937";
+          wrapper.style.borderRadius = "8px";
+          wrapper.style.padding = "0.5rem";
+          wrapper.style.background = "#0b1220";
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.value = effect.effectId || effect.id;
+          if (checkedIds.has(checkbox.value)) checkbox.checked = true;
+
+          const text = document.createElement("div");
+          text.style.display = "grid";
+          text.style.gap = "0.1rem";
+          text.innerHTML = `<strong>${effect.effectId || effect.id}</strong><span class="muted">${effect.type || "-"} / ${effect.trigger?.triggerType || "-"}</span>`;
+
+          wrapper.append(checkbox, text);
+          effectListContainer.appendChild(wrapper);
+        });
+      }
+
+      async function loadEffectPresetsFromDB() {
+        effectListStatus.textContent = "Effect 목록을 불러오는 중...";
+        try {
+          const effectRef = collection(db, "effectSpecs");
+          const snapshot = await getDocs(effectRef);
+          const rows = [];
+          snapshot.forEach((docSnap) => {
+            rows.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          cachedEffects = rows;
+          renderEffectList(rows, { preserveSelection: false });
+        } catch (error) {
+          console.error(error);
+          effectListStatus.textContent = "Effect를 불러오는 중 오류가 발생했습니다.";
+        }
+      }
+
+      function filterEffectList() {
+        const keyword = effectSearchInput.value.toLowerCase().trim();
+        const filtered = cachedEffects.filter((effect) => {
+          const id = (effect.effectId || effect.id || "").toLowerCase();
+          const type = (effect.type || "").toLowerCase();
+          return !keyword || id.includes(keyword) || type.includes(keyword);
+        });
+        renderEffectList(filtered);
+      }
+
       async function saveAbility() {
         const ability = assembleAbility();
         if (!ability) return;
@@ -949,6 +1029,8 @@
           const eventName = el.tagName === "SELECT" ? "change" : "input";
           el.addEventListener(eventName, refreshPreview);
         });
+        effectSearchInput.addEventListener("input", filterEffectList);
+        effectListContainer.addEventListener("change", refreshPreview);
       }
 
       function applyPreset(label) {
@@ -979,6 +1061,7 @@
       showStep(0);
       attachPreviewListeners();
       resetForm();
+      loadEffectPresetsFromDB();
       loadAbilities().catch((error) => {
         console.error(error);
         setStatus("Ability를 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.");
