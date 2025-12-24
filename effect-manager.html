@@ -469,6 +469,7 @@
     ];
 
     const inputs = new Map();
+    const fieldWrappers = new Map();
     let effectsCollection;
 
     function setStatus(message, { persist = false } = {}) {
@@ -522,6 +523,12 @@
       return Number.isFinite(parsed) ? parsed : undefined;
     }
 
+    function setFieldVisibility(path, visible) {
+      const wrapper = fieldWrappers.get(path);
+      if (!wrapper) return;
+      wrapper.style.display = visible ? "" : "none";
+    }
+
     function createField(field) {
       const wrapper = document.createElement("div");
       if (field.type !== "checkbox") {
@@ -558,19 +565,20 @@
         case "checkbox":
           input = document.createElement("input");
           input.type = "checkbox";
-          input.id = field.path;
-          input.checked = Boolean(field.default);
-          input.className = "checkbox-input";
-          const checkboxLabel = document.createElement("label");
-          checkboxLabel.className = "checkbox-row";
-          checkboxLabel.htmlFor = field.path;
-          const textSpan = document.createElement("span");
-          textSpan.textContent = field.label;
-          checkboxLabel.prepend(input);
-          checkboxLabel.appendChild(textSpan);
-          wrapper.appendChild(checkboxLabel);
-          inputs.set(field.path, input);
-          return wrapper;
+        input.id = field.path;
+        input.checked = Boolean(field.default);
+        input.className = "checkbox-input";
+        const checkboxLabel = document.createElement("label");
+        checkboxLabel.className = "checkbox-row";
+        checkboxLabel.htmlFor = field.path;
+        const textSpan = document.createElement("span");
+        textSpan.textContent = field.label;
+        checkboxLabel.prepend(input);
+        checkboxLabel.appendChild(textSpan);
+        wrapper.appendChild(checkboxLabel);
+        inputs.set(field.path, input);
+        fieldWrappers.set(field.path, wrapper);
+        return wrapper;
         default:
           input = document.createElement("input");
           input.type = field.type === "number" ? "number" : "text";
@@ -584,6 +592,7 @@
       if (field.required) input.required = true;
       wrapper.appendChild(input);
       inputs.set(field.path, input);
+      fieldWrappers.set(field.path, wrapper);
       return wrapper;
     }
 
@@ -611,6 +620,39 @@
         const eventType = input.type === "checkbox" ? "change" : "input";
         input.addEventListener(eventType, updatePreview);
       });
+
+      const selectorInput = inputs.get("targeting.selectorType");
+      if (selectorInput) {
+        selectorInput.addEventListener("change", () => {
+          updateTargetingVisibility(selectorInput.value);
+        });
+      }
+    }
+
+    const targetingShapeFields = [
+      "targeting.centerRef",
+      "targeting.radius",
+      "targeting.angle",
+      "targeting.range",
+      "targeting.width",
+      "targeting.length",
+      "targeting.bounces",
+      "targeting.searchRadius",
+    ];
+
+    const targetingVisibilityBySelector = {
+      Area: ["targeting.centerRef", "targeting.radius"],
+      Cone: ["targeting.centerRef", "targeting.angle", "targeting.range"],
+      Line: ["targeting.centerRef", "targeting.width", "targeting.length"],
+      Chain: ["targeting.centerRef", "targeting.range", "targeting.bounces", "targeting.searchRadius"],
+      NearestN: ["targeting.searchRadius"],
+    };
+
+    function updateTargetingVisibility(selectorType) {
+      const visibleSet = new Set(targetingVisibilityBySelector[selectorType] ?? []);
+      targetingShapeFields.forEach((path) => {
+        setFieldVisibility(path, visibleSet.has(path));
+      });
     }
 
     function resetForm() {
@@ -625,6 +667,7 @@
         }
       });
       updatePreview();
+      updateTargetingVisibility(inputs.get("targeting.selectorType")?.value);
       setStatus("새 Effect 입력을 시작하세요.");
     }
 
@@ -764,6 +807,7 @@
             input.value = value ?? "";
         }
       });
+      updateTargetingVisibility(inputs.get("targeting.selectorType")?.value);
       updatePreview();
     }
 
