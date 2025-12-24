@@ -237,6 +237,46 @@
       font-size: 0.9em;
       color: #f8fafc;
     }
+
+    .preset-bar {
+      margin-top: 1rem;
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      display: grid;
+      gap: 0.4rem;
+    }
+
+    .preset-controls {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .preset-controls input {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .small {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+
+    .fieldset {
+      margin-top: 0.75rem;
+      padding: 0.75rem 0.9rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+    }
+
+    .fieldset h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -255,6 +295,15 @@
       <h1>Unified Skill/Ability/Effect 관리</h1>
       <p class="muted">Unified_Global_Skill_System.md 기반 스펙을 Firestore에 저장/불러오기/수정/삭제합니다. 샘플 스키마는 문서의 예제를 그대로 제공합니다.</p>
       <div class="pill">Firestore collections: <code class="inline">effectSpecs</code> · <code class="inline">abilitySpecs</code> · <code class="inline">skillSpecs</code></div>
+      <div class="preset-bar">
+        <label for="preset-search" class="muted">프리셋 검색/적용 (주문검 · 점화 · 생명선)</label>
+        <div class="preset-controls">
+          <input id="preset-search" list="preset-list" type="text" placeholder="스킬명 입력 (예: 주문검)" />
+          <datalist id="preset-list"></datalist>
+          <button class="secondary" id="preset-apply">프리셋 적용</button>
+        </div>
+        <p class="muted small">프리셋을 적용하면 Effect/Ability/Skill JSON과 ID가 모두 채워집니다.</p>
+      </div>
     </header>
 
     <section class="card">
@@ -271,6 +320,91 @@
             <div>
               <label for="effect-id">Effect ID</label>
               <input id="effect-id" type="text" placeholder="Effect_FireBolt_Damage" />
+            </div>
+          </div>
+          <div class="fieldset">
+            <h3>드롭다운 빠른 설정</h3>
+            <div class="grid">
+              <div>
+                <label for="effect-type">type</label>
+                <select id="effect-type">
+                  <option value="">(선택)</option>
+                  <option>Damage</option>
+                  <option>Heal</option>
+                  <option>Shield</option>
+                  <option>Buff</option>
+                  <option>Debuff</option>
+                  <option>CC</option>
+                  <option>Summon</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-trigger">trigger</label>
+                <select id="effect-trigger">
+                  <option value="">(선택)</option>
+                  <option>OnHit</option>
+                  <option>OnAttack</option>
+                  <option>OnCast</option>
+                  <option>OnTick</option>
+                  <option>OnEnter</option>
+                  <option>OnExit</option>
+                  <option>OnDamageTaken</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-selector">selector.selectorType</label>
+                <select id="effect-selector">
+                  <option value="">(선택)</option>
+                  <option>HitTarget</option>
+                  <option>Self</option>
+                  <option>Area</option>
+                  <option>Target</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-team">selector.team</label>
+                <select id="effect-team">
+                  <option value="">(선택)</option>
+                  <option>Enemy</option>
+                  <option>Ally</option>
+                  <option>Both</option>
+                  <option>Self</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-damage-type">apply.damageType</label>
+                <select id="effect-damage-type">
+                  <option value="">(선택)</option>
+                  <option>Physical</option>
+                  <option>Magic</option>
+                  <option>True</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-damage-stage">apply.damageStage</label>
+                <select id="effect-damage-stage">
+                  <option value="">(선택)</option>
+                  <option>PreMitigation</option>
+                  <option>PostMitigation</option>
+                  <option>Final</option>
+                </select>
+              </div>
+              <div>
+                <label for="effect-flat">calc.flat (숫자)</label>
+                <input id="effect-flat" type="number" placeholder="예: 100" />
+              </div>
+              <div>
+                <label for="effect-ratio-key">calc.ratios key</label>
+                <select id="effect-ratio-key">
+                  <option value="">(선택)</option>
+                  <option value="ap">ap</option>
+                  <option value="ad">ad</option>
+                  <option value="hp">hp</option>
+                </select>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="effect-apply-fields">필드값을 JSON에 반영</button>
             </div>
           </div>
           <div>
@@ -321,6 +455,66 @@
             <div>
               <label for="ability-key">Key (선택)</label>
               <input id="ability-key" type="text" placeholder="Default" />
+            </div>
+          </div>
+          <div class="fieldset">
+            <h3>드롭다운 빠른 설정</h3>
+            <div class="grid">
+              <div>
+                <label for="ability-cast-time">castSpec.castTime</label>
+                <input id="ability-cast-time" type="number" step="0.01" placeholder="0.25" />
+              </div>
+              <div>
+                <label for="ability-can-move">castSpec.canMove</label>
+                <select id="ability-can-move">
+                  <option value="">(선택)</option>
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </select>
+              </div>
+              <div>
+                <label for="ability-channel">castSpec.isChanneling</label>
+                <select id="ability-channel">
+                  <option value="">(선택)</option>
+                  <option value="true">true</option>
+                  <option value="false">false</option>
+                </select>
+              </div>
+              <div>
+                <label for="ability-delivery-type">deliverySpec.type</label>
+                <select id="ability-delivery-type">
+                  <option value="">(선택)</option>
+                  <option>Projectile</option>
+                  <option>Instant</option>
+                  <option>Area</option>
+                  <option>OnHit</option>
+                  <option>Dash</option>
+                </select>
+              </div>
+              <div>
+                <label for="ability-range">deliverySpec.range</label>
+                <input id="ability-range" type="number" placeholder="650" />
+              </div>
+              <div>
+                <label for="ability-speed">deliverySpec.speed</label>
+                <input id="ability-speed" type="number" placeholder="1200" />
+              </div>
+              <div>
+                <label for="ability-collision">deliverySpec.collision</label>
+                <select id="ability-collision">
+                  <option value="">(선택)</option>
+                  <option>FirstHit</option>
+                  <option>None</option>
+                  <option>MultiHit</option>
+                </select>
+              </div>
+              <div>
+                <label for="ability-effects">effects (콤마 구분)</label>
+                <input id="ability-effects" type="text" placeholder="Effect_FireBolt_Damage, Effect_FireBolt_Explosion" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="ability-apply-fields">필드값을 JSON에 반영</button>
             </div>
           </div>
           <div>
@@ -377,6 +571,30 @@
                 <option value="Active">Active</option>
                 <option value="Utility">Utility</option>
               </select>
+            </div>
+          </div>
+          <div class="fieldset">
+            <h3>드롭다운 빠른 설정</h3>
+            <div class="grid">
+              <div>
+                <label for="skill-max-rank">rankRules.maxRank</label>
+                <input id="skill-max-rank" type="number" min="1" placeholder="5" />
+              </div>
+              <div>
+                <label for="skill-cooldowns">cooldownByRank (콤마)</label>
+                <input id="skill-cooldowns" type="text" placeholder="8,7,6,5,4" />
+              </div>
+              <div>
+                <label for="skill-costs">costByRank (콤마)</label>
+                <input id="skill-costs" type="text" placeholder="50,55,60,65,70" />
+              </div>
+              <div>
+                <label for="skill-abilities">abilities (abilityId 콤마)</label>
+                <input id="skill-abilities" type="text" placeholder="Skill_FireBolt_Default, Skill_FireBolt_Empowered" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="skill-apply-fields">필드값을 JSON에 반영</button>
             </div>
           </div>
           <div>
@@ -494,6 +712,167 @@
         },
       ],
     };
+
+    const PRESETS = [
+      {
+        key: "주문검",
+        aliases: ["주문검", "spellblade", "sheen"],
+        label: "주문검 (Spellblade)",
+        effect: {
+          effectId: "Effect_Spellblade_BonusDamage",
+          type: "Damage",
+          trigger: "OnHit",
+          selector: { selectorType: "HitTarget", team: "Enemy" },
+          calc: { flat: { ref: "bonusDamage" }, ratios: { ad: { ref: "bonusAD" } } },
+          apply: { damageType: "Physical", damageStage: "PostMitigation" },
+          unique: { groupId: "Spellblade", policy: "Replace" },
+          procRules: { cooldown: 1.5, chance: 1, maxPerTrigger: 1 },
+          source: { sourceType: "Item", sourceId: "Item_Spellblade" },
+        },
+        ability: {
+          abilityId: "Item_Spellblade_Passive",
+          key: "Spellblade",
+          castSpec: { castTime: 0, canMove: true, isChanneling: false },
+          deliverySpec: { type: "OnHit", range: 0, speed: 0, collision: "None" },
+          paramBindings: { bonusDamage: { ref: "bonusDamage" }, bonusAD: { ref: "bonusAD" } },
+          effects: ["Effect_Spellblade_BonusDamage"],
+        },
+        skill: {
+          skillId: "Item_Spellblade",
+          skillCategory: "Passive",
+          rankRules: { maxRank: 1, cooldownByRank: [1.5], costByRank: [0] },
+          baseStats: { bonusDamage: 100, bonusAD: 1.0 },
+          abilities: [{ abilityId: "Item_Spellblade_Passive", key: "Passive", priority: 0 }],
+        },
+      },
+      {
+        key: "점화",
+        aliases: ["ignite", "점화"],
+        label: "점화 (Ignite)",
+        effect: {
+          effectId: "Effect_Ignite_DoT",
+          type: "Damage",
+          trigger: "OnTick",
+          selector: { selectorType: "Target", team: "Enemy" },
+          calc: { flat: { ref: "dot", byRank: true } },
+          timing: { tickInterval: 1, duration: 5 },
+          apply: { damageType: "True", damageStage: "Final" },
+          source: { sourceType: "Summoner", sourceId: "Summoner_Ignite" },
+        },
+        ability: {
+          abilityId: "Summoner_Ignite_Cast",
+          key: "Default",
+          castSpec: { castTime: 0, canMove: false, isChanneling: false },
+          deliverySpec: { type: "Target", range: 600, speed: 0, collision: "None" },
+          paramBindings: { dot: { ref: "dot" } },
+          effects: ["Effect_Ignite_DoT"],
+        },
+        skill: {
+          skillId: "Summoner_Ignite",
+          skillCategory: "Active",
+          rankRules: { maxRank: 1, cooldownByRank: [180], costByRank: [0] },
+          baseStats: { dot: [50] },
+          abilities: [{ abilityId: "Summoner_Ignite_Cast", key: "Default", priority: 0 }],
+        },
+      },
+      {
+        key: "생명선",
+        aliases: ["lifeline", "생명선"],
+        label: "생명선 (Lifeline)",
+        effect: {
+          effectId: "Effect_Lifeline_Shield",
+          type: "Shield",
+          trigger: "OnDamageTaken",
+          selector: { selectorType: "Self", team: "Self" },
+          calc: { flat: { ref: "shieldValue", byRank: true } },
+          apply: { duration: 3 },
+          source: { sourceType: "Item", sourceId: "Item_Lifeline" },
+        },
+        ability: {
+          abilityId: "Item_Lifeline_Passive",
+          key: "Lifeline",
+          castSpec: { castTime: 0, canMove: true, isChanneling: false },
+          deliverySpec: { type: "Passive", range: 0, speed: 0, collision: "None" },
+          paramBindings: { shieldValue: { ref: "shieldValue" } },
+          effects: ["Effect_Lifeline_Shield"],
+        },
+        skill: {
+          skillId: "Item_Lifeline",
+          skillCategory: "Passive",
+          rankRules: { maxRank: 3, cooldownByRank: [90, 75, 60], costByRank: [0, 0, 0] },
+          baseStats: { shieldValue: [250, 300, 350] },
+          abilities: [{ abilityId: "Item_Lifeline_Passive", key: "Passive", priority: 0 }],
+        },
+      },
+    ];
+
+    function toNumberArray(value) {
+      return value
+        .split(",")
+        .map((v) => Number(v.trim()))
+        .filter((v) => !Number.isNaN(v));
+    }
+
+    function toStringArray(value) {
+      return value
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    }
+
+    function fillEffectQuickFields(data) {
+      const selector = data.selector ?? {};
+      const apply = data.apply ?? {};
+      const calc = data.calc ?? {};
+      document.getElementById("effect-type").value = data.type ?? "";
+      document.getElementById("effect-trigger").value = data.trigger ?? "";
+      document.getElementById("effect-selector").value = selector.selectorType ?? "";
+      document.getElementById("effect-team").value = selector.team ?? "";
+      document.getElementById("effect-damage-type").value = apply.damageType ?? "";
+      document.getElementById("effect-damage-stage").value = apply.damageStage ?? "";
+      const flatValue =
+        typeof calc.flat === "number"
+          ? calc.flat
+          : typeof calc.flat === "object"
+            ? calc.flat.value ?? calc.flat.ref ?? ""
+            : "";
+      document.getElementById("effect-flat").value = flatValue ?? "";
+      const ratioKeys = calc.ratios ? Object.keys(calc.ratios) : [];
+      document.getElementById("effect-ratio-key").value = ratioKeys[0] ?? "";
+    }
+
+    function fillAbilityQuickFields(data) {
+      const cast = data.castSpec ?? {};
+      const delivery = data.deliverySpec ?? {};
+      document.getElementById("ability-cast-time").value = cast.castTime ?? "";
+      document.getElementById("ability-can-move").value =
+        typeof cast.canMove === "boolean" ? String(cast.canMove) : "";
+      document.getElementById("ability-channel").value =
+        typeof cast.isChanneling === "boolean" ? String(cast.isChanneling) : "";
+      document.getElementById("ability-delivery-type").value = delivery.type ?? "";
+      document.getElementById("ability-range").value = delivery.range ?? "";
+      document.getElementById("ability-speed").value = delivery.speed ?? "";
+      document.getElementById("ability-collision").value = delivery.collision ?? "";
+      const effects = Array.isArray(data.effects) ? data.effects.join(", ") : "";
+      document.getElementById("ability-effects").value = effects;
+    }
+
+    function fillSkillQuickFields(data) {
+      const rankRules = data.rankRules ?? {};
+      document.getElementById("skill-max-rank").value = rankRules.maxRank ?? "";
+      document.getElementById("skill-cooldowns").value = Array.isArray(rankRules.cooldownByRank)
+        ? rankRules.cooldownByRank.join(",")
+        : "";
+      document.getElementById("skill-costs").value = Array.isArray(rankRules.costByRank)
+        ? rankRules.costByRank.join(",")
+        : "";
+      document.getElementById("skill-abilities").value = Array.isArray(data.abilities)
+        ? data.abilities
+            .map((a) => (typeof a === "string" ? a : a.abilityId))
+            .filter(Boolean)
+            .join(", ")
+        : "";
+    }
 
     class SpecManager {
       constructor({
@@ -722,6 +1101,9 @@
         sampleBtnId: "effect-sample",
         refreshBtnId: "effect-refresh",
         sampleData: SAMPLE_EFFECT,
+        extraFill: ({ data }) => {
+          fillEffectQuickFields(data);
+        },
         summaryExtractor: (data) => ({
           label: data.effectId ?? data.type ?? "Effect",
           cells: [data.type, data.trigger, data.selector?.selectorType],
@@ -746,6 +1128,7 @@
         extraFill: ({ manager, data }) => {
           const keyField = document.getElementById("ability-key");
           keyField.value = data.key ?? "";
+          fillAbilityQuickFields(data);
         },
         summaryExtractor: (data) => ({
           label: data.abilityId ?? data.key ?? "Ability",
@@ -773,6 +1156,7 @@
         extraFill: ({ manager, data }) => {
           const categoryField = document.getElementById("skill-category");
           categoryField.value = data.skillCategory ?? "";
+          fillSkillQuickFields(data);
         },
         summaryExtractor: (data) => ({
           label: data.skillId ?? data.skillCategory ?? "Skill",
@@ -788,8 +1172,176 @@
       return [effectManager, abilityManager, skillManager];
     }
 
+    function applyEffectFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.type = document.getElementById("effect-type").value || next.type;
+      next.trigger = document.getElementById("effect-trigger").value || next.trigger;
+      next.selector = next.selector ?? {};
+      const selectorType = document.getElementById("effect-selector").value;
+      const selectorTeam = document.getElementById("effect-team").value;
+      if (selectorType) next.selector.selectorType = selectorType;
+      if (selectorTeam) next.selector.team = selectorTeam;
+      next.apply = next.apply ?? {};
+      const dmgType = document.getElementById("effect-damage-type").value;
+      const dmgStage = document.getElementById("effect-damage-stage").value;
+      if (dmgType) next.apply.damageType = dmgType;
+      if (dmgStage) next.apply.damageStage = dmgStage;
+      const flatRaw = document.getElementById("effect-flat").value.trim();
+      const ratioKey = document.getElementById("effect-ratio-key").value;
+      if (flatRaw !== "") {
+        const flat = Number(flatRaw);
+        if (!Number.isNaN(flat)) {
+          next.calc = next.calc ?? {};
+          next.calc.flat = typeof next.calc.flat === "object" ? { ...next.calc.flat, value: flat } : flat;
+        }
+      }
+      if (ratioKey) {
+        next.calc = next.calc ?? {};
+        next.calc.ratios = next.calc.ratios ?? {};
+        next.calc.ratios[ratioKey] = next.calc.ratios[ratioKey] ?? { ref: ratioKey };
+      }
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("드롭다운 값이 JSON에 반영되었습니다.");
+      fillEffectQuickFields(next);
+    }
+
+    function applyAbilityFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.castSpec = next.castSpec ?? {};
+      const castTimeRaw = document.getElementById("ability-cast-time").value.trim();
+      if (castTimeRaw !== "") {
+        const castTime = Number(castTimeRaw);
+        if (!Number.isNaN(castTime)) next.castSpec.castTime = castTime;
+      }
+      const canMove = document.getElementById("ability-can-move").value;
+      if (canMove) next.castSpec.canMove = canMove === "true";
+      const isChannel = document.getElementById("ability-channel").value;
+      if (isChannel) next.castSpec.isChanneling = isChannel === "true";
+
+      next.deliverySpec = next.deliverySpec ?? {};
+      const deliveryType = document.getElementById("ability-delivery-type").value;
+      if (deliveryType) next.deliverySpec.type = deliveryType;
+      const rangeRaw = document.getElementById("ability-range").value.trim();
+      if (rangeRaw !== "") {
+        const range = Number(rangeRaw);
+        if (!Number.isNaN(range)) next.deliverySpec.range = range;
+      }
+      const speedRaw = document.getElementById("ability-speed").value.trim();
+      if (speedRaw !== "") {
+        const speed = Number(speedRaw);
+        if (!Number.isNaN(speed)) next.deliverySpec.speed = speed;
+      }
+      const collision = document.getElementById("ability-collision").value;
+      if (collision) next.deliverySpec.collision = collision;
+
+      const effectList = document.getElementById("ability-effects").value;
+      const parsedEffects = toStringArray(effectList);
+      if (parsedEffects.length) next.effects = parsedEffects;
+
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("드롭다운 값이 JSON에 반영되었습니다.");
+      fillAbilityQuickFields(next);
+    }
+
+    function applySkillFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.skillCategory = document.getElementById("skill-category").value || next.skillCategory;
+      next.rankRules = next.rankRules ?? {};
+      const maxRankRaw = document.getElementById("skill-max-rank").value.trim();
+      if (maxRankRaw !== "") {
+        const maxRank = Number(maxRankRaw);
+        if (!Number.isNaN(maxRank) && maxRank > 0) next.rankRules.maxRank = maxRank;
+      }
+      const cooldownsRaw = document.getElementById("skill-cooldowns").value;
+      const costsRaw = document.getElementById("skill-costs").value;
+      const abilitiesRaw = document.getElementById("skill-abilities").value;
+      const cooldowns = cooldownsRaw ? toNumberArray(cooldownsRaw) : [];
+      const costs = costsRaw ? toNumberArray(costsRaw) : [];
+      if (cooldowns.length) next.rankRules.cooldownByRank = cooldowns;
+      if (costs.length) next.rankRules.costByRank = costs;
+      const abilityIds = toStringArray(abilitiesRaw);
+      if (abilityIds.length) {
+        next.abilities = abilityIds.map((abilityId, index) => ({
+          abilityId,
+          key: index === 0 ? "Default" : undefined,
+          priority: index,
+        }));
+      }
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("드롭다운 값이 JSON에 반영되었습니다.");
+      fillSkillQuickFields(next);
+    }
+
+    function registerFieldButtons([effectManager, abilityManager, skillManager]) {
+      document.getElementById("effect-apply-fields")?.addEventListener("click", () => applyEffectFields(effectManager));
+      document.getElementById("ability-apply-fields")?.addEventListener("click", () => applyAbilityFields(abilityManager));
+      document.getElementById("skill-apply-fields")?.addEventListener("click", () => applySkillFields(skillManager));
+    }
+
+    function populatePresetList() {
+      const datalist = document.getElementById("preset-list");
+      if (!datalist) return;
+      datalist.innerHTML = "";
+      PRESETS.forEach((preset) => {
+        const option = document.createElement("option");
+        option.value = preset.label;
+        datalist.appendChild(option);
+      });
+    }
+
+    function findPresetByName(name) {
+      const query = name.trim().toLowerCase();
+      return PRESETS.find(
+        (p) =>
+          p.aliases.some((alias) => alias.toLowerCase() === query || alias.toLowerCase().includes(query)) ||
+          p.label.toLowerCase().includes(query)
+      );
+    }
+
+    function applyPresetToManagers(name, [effectManager, abilityManager, skillManager]) {
+      const preset = findPresetByName(name);
+      if (!preset) {
+        const message = "프리셋을 찾지 못했습니다. (주문검/점화/생명선을 입력)";
+        effectManager.setStatus(message);
+        abilityManager.setStatus(message);
+        skillManager.setStatus(message);
+        return;
+      }
+      if (preset.effect) effectManager.fillForm(preset.effect.effectId ?? "", preset.effect);
+      if (preset.ability) abilityManager.fillForm(preset.ability.abilityId ?? "", preset.ability);
+      if (preset.skill) skillManager.fillForm(preset.skill.skillId ?? "", preset.skill);
+      effectManager.setStatus(`${preset.label} 프리셋을 적용했습니다.`);
+      abilityManager.setStatus(`${preset.label} 프리셋을 적용했습니다.`);
+      skillManager.setStatus(`${preset.label} 프리셋을 적용했습니다.`);
+    }
+
     async function initialize() {
       const managers = createManagers();
+      registerFieldButtons(managers);
+      populatePresetList();
+      const presetInput = document.getElementById("preset-search");
+      const presetBtn = document.getElementById("preset-apply");
+      if (presetBtn) {
+        presetBtn.addEventListener("click", () => {
+          if (!presetInput?.value) {
+            managers.forEach((m) => m.setStatus("프리셋 이름을 입력하세요. (예: 주문검)"));
+            return;
+          }
+          applyPresetToManagers(presetInput.value, managers);
+        });
+      }
+      presetInput?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          presetBtn?.click();
+        }
+      });
       try {
         const app = initializeApp(await getFirebaseConfig());
         const db = getFirestore(app);
