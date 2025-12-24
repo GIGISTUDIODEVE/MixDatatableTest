@@ -1075,7 +1075,6 @@
     populateSelect(selects.sortRule, sortRuleOptions);
     populateSelect(selects.centerRef, centerRefOptions);
     populateSelect(selects.valueModel, valueModelOptions);
-    populateSelect(presetSelect, effectPresets.map((p) => p.label));
 
     unitFilterOptions.forEach((value) => {
       const label = document.createElement("label");
@@ -1218,6 +1217,8 @@
         },
       },
     ];
+
+    populateSelect(presetSelect, effectPresets.map((p) => p.label));
 
     function formatNumber(value) {
       if (value === undefined || value === null || Number.isNaN(Number(value))) return "";
