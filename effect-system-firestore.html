@@ -762,6 +762,7 @@
       doc,
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
     import { getFirebaseConfig } from "./firebase-config.js";
+    import { PRESET_GROUPS } from "./presets/lol-presets.js";
 
     const SAMPLE_EFFECT = {
       effectId: "Effect_FireBolt_Damage",
@@ -837,96 +838,9 @@
     };
 
     const PRESETS = [
-      {
-        key: "주문검",
-        aliases: ["주문검", "spellblade", "sheen"],
-        label: "주문검 (Spellblade)",
-        effect: {
-          effectId: "Effect_Spellblade_BonusDamage",
-          type: "Damage",
-          trigger: "OnHit",
-          selector: { selectorType: "HitTarget", team: "Enemy" },
-          calc: { flat: { ref: "bonusDamage" }, ratios: { ad: { ref: "bonusAD" } } },
-          apply: { damageType: "Physical", damageStage: "PostMitigation" },
-          unique: { groupId: "Spellblade", policy: "Replace" },
-          procRules: { cooldown: 1.5, chance: 1, maxPerTrigger: 1 },
-          source: { sourceType: "Item", sourceId: "Item_Spellblade" },
-        },
-        ability: {
-          abilityId: "Item_Spellblade_Passive",
-          key: "Spellblade",
-          castSpec: { castTime: 0, canMove: true, isChanneling: false },
-          deliverySpec: { type: "OnHit", range: 0, speed: 0, collision: "None" },
-          paramBindings: { bonusDamage: { ref: "bonusDamage" }, bonusAD: { ref: "bonusAD" } },
-          effects: ["Effect_Spellblade_BonusDamage"],
-        },
-        skill: {
-          skillId: "Item_Spellblade",
-          skillCategory: "Passive",
-          rankRules: { maxRank: 1, cooldownByRank: [1.5], costByRank: [0] },
-          baseStats: { bonusDamage: 100, bonusAD: 1.0 },
-          abilities: [{ abilityId: "Item_Spellblade_Passive", key: "Passive", priority: 0 }],
-        },
-      },
-      {
-        key: "점화",
-        aliases: ["ignite", "점화"],
-        label: "점화 (Ignite)",
-        effect: {
-          effectId: "Effect_Ignite_DoT",
-          type: "Damage",
-          trigger: "OnTick",
-          selector: { selectorType: "Target", team: "Enemy" },
-          calc: { flat: { ref: "dot", byRank: true } },
-          timing: { tickInterval: 1, duration: 5 },
-          apply: { damageType: "True", damageStage: "Final" },
-          source: { sourceType: "Summoner", sourceId: "Summoner_Ignite" },
-        },
-        ability: {
-          abilityId: "Summoner_Ignite_Cast",
-          key: "Default",
-          castSpec: { castTime: 0, canMove: false, isChanneling: false },
-          deliverySpec: { type: "Target", range: 600, speed: 0, collision: "None" },
-          paramBindings: { dot: { ref: "dot" } },
-          effects: ["Effect_Ignite_DoT"],
-        },
-        skill: {
-          skillId: "Summoner_Ignite",
-          skillCategory: "Active",
-          rankRules: { maxRank: 1, cooldownByRank: [180], costByRank: [0] },
-          baseStats: { dot: [50] },
-          abilities: [{ abilityId: "Summoner_Ignite_Cast", key: "Default", priority: 0 }],
-        },
-      },
-      {
-        key: "생명선",
-        aliases: ["lifeline", "생명선"],
-        label: "생명선 (Lifeline)",
-        effect: {
-          effectId: "Effect_Lifeline_Shield",
-          type: "Shield",
-          trigger: "OnDamageTaken",
-          selector: { selectorType: "Self", team: "Self" },
-          calc: { flat: { ref: "shieldValue", byRank: true } },
-          apply: { duration: 3 },
-          source: { sourceType: "Item", sourceId: "Item_Lifeline" },
-        },
-        ability: {
-          abilityId: "Item_Lifeline_Passive",
-          key: "Lifeline",
-          castSpec: { castTime: 0, canMove: true, isChanneling: false },
-          deliverySpec: { type: "Passive", range: 0, speed: 0, collision: "None" },
-          paramBindings: { shieldValue: { ref: "shieldValue" } },
-          effects: ["Effect_Lifeline_Shield"],
-        },
-        skill: {
-          skillId: "Item_Lifeline",
-          skillCategory: "Passive",
-          rankRules: { maxRank: 3, cooldownByRank: [90, 75, 60], costByRank: [0, 0, 0] },
-          baseStats: { shieldValue: [250, 300, 350] },
-          abilities: [{ abilityId: "Item_Lifeline_Passive", key: "Passive", priority: 0 }],
-        },
-      },
+      ...PRESET_GROUPS.champions,
+      ...PRESET_GROUPS.items,
+      ...PRESET_GROUPS.utilities,
     ];
 
     function toNumberArray(value) {
