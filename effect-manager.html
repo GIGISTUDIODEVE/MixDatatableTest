@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Effect 정의 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.2rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.4rem;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    .section {
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+      background: #0b1220;
+    }
+
+    .section h3 {
+      margin: 0 0 0.4rem;
+      font-size: 1.05rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      margin: 0;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 68px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.65rem 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.55rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .preview {
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      padding: 0.65rem 0.8rem;
+      max-height: 420px;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+
+    .two-column {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .two-column {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link active" href="effect-manager.html">Effect 정의 관리</a>
+    </div>
+  </nav>
+  <div class="container">
+    <header class="card">
+      <h1>Effect 생성 · 수정 · 관리</h1>
+      <p class="muted">EffectSystem.md 스펙을 기반으로 EffectSpec을 빠르게 작성하고 Firestore에 저장합니다.</p>
+    </header>
+
+    <section class="card">
+      <div class="two-column">
+        <div>
+          <h2>Effect 입력</h2>
+          <p class="muted">필수 필드는 effectId, type, trigger.triggerType, targeting.selectorType 입니다.</p>
+          <div id="form-sections" class="container"></div>
+          <div class="actions">
+            <button class="primary" id="save-btn">Effect 저장/업데이트</button>
+            <button class="secondary" id="reset-btn">새로 작성</button>
+          </div>
+          <div class="status" id="status"></div>
+        </div>
+        <div>
+          <h2>미리보기</h2>
+          <p class="muted">저장될 EffectSpec JSON</p>
+          <pre class="preview" id="preview">{} </pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>저장된 Effect</h2>
+      <div class="muted">Firestore collection: <code>effectSpecs</code></div>
+      <table>
+        <thead>
+          <tr>
+            <th>effectId</th>
+            <th>type</th>
+            <th>trigger</th>
+            <th>tags</th>
+            <th>작업</th>
+          </tr>
+        </thead>
+        <tbody id="effect-table-body"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const statusEl = document.getElementById("status");
+    const previewEl = document.getElementById("preview");
+    const tableBody = document.getElementById("effect-table-body");
+    const formSections = document.getElementById("form-sections");
+    const saveBtn = document.getElementById("save-btn");
+    const resetBtn = document.getElementById("reset-btn");
+
+    const effectTypes = [
+      "Damage", "DamagePercentHP", "ExecuteDamage", "DamageOverTime", "ConvertDamageType",
+      "ApplyStatus", "RemoveStatus", "DispelShield", "Interrupt",
+      "Heal", "HealOverTime", "Shield", "GrantLifesteal",
+      "Dash", "Blink", "Knockback", "Knockup", "Pull", "SwapPosition",
+      "SpawnObject", "CreateZone", "ModifyZone", "Trap",
+      "ModifyStat", "ApplyMultiplier", "StealStat",
+      "Reveal", "Nearsight", "MarkTarget",
+      "GainResource", "SpendResource", "AddStack", "ConsumeStack", "ResetCooldown", "ReduceCooldown", "RefundCost",
+      "Sequence", "Parallel", "Repeat", "RandomPick", "Conditional", "ScaleBy", "Link",
+    ];
+
+    const triggerTypes = [
+      "OnCastStart", "OnCastCommit", "OnCastEnd", "OnProjectileSpawn", "OnProjectileHit",
+      "OnHit", "OnDamageDealt", "OnDamageTaken", "OnTick",
+      "OnEnterZone", "OnExitZone", "WhileInZone",
+      "OnBuffApplied", "OnBuffExpired", "AfterDelay",
+      "OnKill", "OnAssist", "OnUnitDied",
+    ];
+
+    const selectorTypes = [
+      "Self", "Caster", "HitTarget", "SelectedTarget", "Area", "Cone", "Line", "Chain",
+      "NearestN", "LowestHP", "HighestMaxHP", "PriorityByTag",
+    ];
+
+    const valueModels = [
+      "Flat", "FlatByRank", "FlatByLevel", "Ratio", "FlatPlusRatio",
+      "PercentMaxHP", "PercentCurrentHP", "PercentMissingHP",
+      "ByStacks", "ByTargetsHit", "ByTime", "Curve",
+    ];
+
+    const snapshotPolicies = ["SnapshotOnCommit", "RecalcEveryTick"];
+    const cancelPolicies = ["NotCancelable", "CancelableNoRefund", "CancelableRefundCost", "InterruptedStop"];
+    const applicationModes = ["Instant", "OverTime", "Aura", "Pulse", "OnExpireExplode"];
+    const stackingRules = ["RefreshDuration", "AddStacks", "Replace", "Unique"];
+    const decayTypes = ["None", "Time", "OnEvent"];
+    const collisionRules = ["FirstHit", "Pierce", "StopOnUnit", "Reflectable"];
+    const teamFilters = ["Enemy", "Ally", "Both"];
+    const sortRules = ["None", "Nearest", "LowestHP", "HighestMaxHP", "Custom"];
+    const shieldInteractions = ["Normal", "IgnoreShield", "DestroyShieldFirst"];
+    const immunityInteractions = ["Ignore", "ConvertToAlternateEffect", "ApplyButNoResult"];
+    const spellShieldInteractions = ["BlockAndConsume", "BlockNoConsume", "NotBlockable"];
+
+    const fieldSectionsConfig = [
+      {
+        title: "기본 정보",
+        description: "Effect의 핵심 메타데이터를 입력하세요.",
+        fields: [
+          { path: "effectId", label: "effectId", type: "text", required: true, placeholder: "Q_HitDamage" },
+          { path: "type", label: "type (EffectType)", type: "select", options: effectTypes, required: true },
+          { path: "enabled", label: "enabled", type: "checkbox", default: true },
+          { path: "tags", label: "tags (쉼표 구분)", type: "list", placeholder: "Spell,SingleTarget" },
+          { path: "notes", label: "메모/설명 (선택)", type: "textarea", rows: 2, placeholder: "툴팁/테스트 노트 등" },
+        ],
+      },
+      {
+        title: "Trigger & Targeting",
+        description: "발동 트리거와 타겟팅 정보를 설정합니다.",
+        fields: [
+          { path: "trigger.triggerType", label: "trigger.triggerType", type: "select", options: triggerTypes, required: true },
+          { path: "trigger.filters.sourceFilter", label: "sourceFilter", type: "select", options: ["", "Ability", "BasicAttack", "Item", "Rune", "Modifier"] },
+          { path: "trigger.filters.damageTypeFilter", label: "damageTypeFilter", type: "select", options: ["", "Physical", "Magic", "True", "Any"] },
+          { path: "trigger.filters.targetTypeFilter", label: "targetTypeFilter", type: "select", options: ["", "Champion", "Minion", "Monster", "Structure", "Summon", "Any"] },
+          { path: "trigger.filters.hitResultFilter", label: "hitResultFilter", type: "select", options: ["", "Hit", "Miss", "Blocked", "Immune", "ShieldAbsorbed", "Any"] },
+          { path: "targeting.selectorType", label: "targeting.selectorType", type: "select", options: selectorTypes, required: true },
+          { path: "targeting.teamFilter", label: "teamFilter", type: "select", options: teamFilters },
+          { path: "targeting.unitFilter", label: "unitFilter (쉼표 구분)", type: "list", placeholder: "Champion,Minion,Monster" },
+          { path: "targeting.maxTargets", label: "maxTargets", type: "number", min: 0 },
+          { path: "targeting.sortRule", label: "sortRule", type: "select", options: sortRules },
+          { path: "targeting.centerRef", label: "centerRef", type: "select", options: ["", "CasterPos", "TargetPos", "ImpactPos", "CursorPos", "ZoneCenter"] },
+          { path: "targeting.radius", label: "radius", type: "number", min: 0 },
+          { path: "targeting.angle", label: "angle", type: "number", min: 0 },
+          { path: "targeting.range", label: "range", type: "number", min: 0 },
+          { path: "targeting.width", label: "width", type: "number", min: 0 },
+          { path: "targeting.length", label: "length", type: "number", min: 0 },
+          { path: "targeting.bounces", label: "bounces", type: "number", min: 0 },
+          { path: "targeting.searchRadius", label: "searchRadius", type: "number", min: 0 },
+          { path: "targeting.excludeAlreadyHit", label: "excludeAlreadyHit", type: "checkbox" },
+          { path: "targeting.excludeSummons", label: "excludeSummons", type: "checkbox" },
+          { path: "targeting.excludeIds", label: "excludeIds (쉼표 구분)", type: "list" },
+        ],
+      },
+      {
+        title: "Condition & Timing",
+        description: "발동 조건과 지속/틱 설정을 입력하세요.",
+        fields: [
+          { path: "conditions", label: "conditions (JSON 배열)", type: "json", placeholder: `[{"type":"OnceRules","params":{"oncePerCast":true}}]` },
+          { path: "timing.delay", label: "delay", type: "number", min: 0 },
+          { path: "timing.duration", label: "duration", type: "number", min: 0 },
+          { path: "timing.tickInterval", label: "tickInterval", type: "number", min: 0 },
+          { path: "timing.tickCount", label: "tickCount", type: "number", min: 0 },
+          { path: "timing.snapshotPolicy", label: "snapshotPolicy", type: "select", options: snapshotPolicies },
+          { path: "timing.cancelPolicy", label: "cancelPolicy", type: "select", options: cancelPolicies },
+        ],
+      },
+      {
+        title: "Calc & Apply",
+        description: "수치 계산 및 적용 규칙을 정의합니다.",
+        fields: [
+          { path: "calc.model", label: "calc.model", type: "select", options: valueModels, required: true },
+          { path: "calc.flat", label: "flat", type: "number" },
+          { path: "calc.flatByRank", label: "flatByRank (숫자 배열)", type: "list-number", placeholder: "80,120,160" },
+          { path: "calc.flatByLevel", label: "flatByLevel (숫자 배열)", type: "list-number", placeholder: "10,15,20" },
+          { path: "calc.ratios.ap", label: "계수 ap", type: "number", step: "0.01" },
+          { path: "calc.ratios.ad", label: "계수 ad", type: "number", step: "0.01" },
+          { path: "calc.ratios.bonusAd", label: "계수 bonusAd", type: "number", step: "0.01" },
+          { path: "calc.ratios.hp", label: "계수 hp", type: "number", step: "0.01" },
+          { path: "calc.percent", label: "percent", type: "number", step: "0.01" },
+          { path: "calc.min", label: "min", type: "number" },
+          { path: "calc.max", label: "max", type: "number" },
+          { path: "calc.damageType", label: "damageType", type: "select", options: ["", "Physical", "Magic", "True"] },
+          { path: "calc.critAllowed", label: "critAllowed", type: "checkbox" },
+          { path: "apply.applicationMode", label: "applicationMode", type: "select", options: applicationModes },
+          { path: "apply.hitRules.canMiss", label: "canMiss", type: "checkbox" },
+          { path: "apply.hitRules.canBeDodged", label: "canBeDodged", type: "checkbox" },
+          { path: "apply.hitRules.canBeBlocked", label: "canBeBlocked", type: "checkbox" },
+          { path: "apply.hitRules.collisionRule", label: "collisionRule", type: "select", options: collisionRules },
+          { path: "apply.interactionRules.shieldInteraction", label: "shieldInteraction", type: "select", options: shieldInteractions },
+          { path: "apply.interactionRules.immunityInteraction", label: "immunityInteraction", type: "select", options: immunityInteractions },
+          { path: "apply.interactionRules.spellShieldInteraction", label: "spellShieldInteraction", type: "select", options: spellShieldInteractions },
+        ],
+      },
+      {
+        title: "Stack/Proc/Event",
+        description: "중첩, 프로크 제어, 이벤트 발행을 설정합니다.",
+        fields: [
+          { path: "stacking.stackingRule", label: "stackingRule", type: "select", options: stackingRules },
+          { path: "stacking.maxStacks", label: "maxStacks", type: "number", min: 0 },
+          { path: "stacking.decayType", label: "decayType", type: "select", options: decayTypes },
+          { path: "stacking.decayValue", label: "decayValue", type: "number", min: 0 },
+          { path: "stacking.priority", label: "priority", type: "number" },
+          { path: "stacking.uniqueGroup", label: "uniqueGroup", type: "text" },
+          { path: "procRules.internalCooldown", label: "internalCooldown", type: "number", min: 0 },
+          { path: "procRules.procCoefficient", label: "procCoefficient", type: "number", step: "0.01", min: 0 },
+          { path: "procRules.oncePerCast", label: "oncePerCast", type: "checkbox" },
+          { path: "procRules.oncePerTarget", label: "oncePerTarget", type: "checkbox" },
+          { path: "procRules.sharedCooldownGroup", label: "sharedCooldownGroup", type: "text" },
+          { path: "procRules.procsAllowed.allowItemProcs", label: "allowItemProcs", type: "checkbox" },
+          { path: "procRules.procsAllowed.allowRuneProcs", label: "allowRuneProcs", type: "checkbox" },
+          { path: "procRules.procsAllowed.allowLifesteal", label: "allowLifesteal", type: "checkbox" },
+          { path: "procRules.procsAllowed.allowSpellVamp", label: "allowSpellVamp", type: "checkbox" },
+          { path: "procRules.sourceTag", label: "sourceTag", type: "select", options: ["", "SpellDamage", "BasicDamage", "ItemProc", "PeriodicDamage", "StatusTick"] },
+          { path: "emit.emitOnApply", label: "emitOnApply", type: "checkbox" },
+          { path: "emit.emitOnHit", label: "emitOnHit", type: "checkbox" },
+          { path: "emit.emitOnKill", label: "emitOnKill", type: "checkbox" },
+          { path: "emit.payloadKeys", label: "payloadKeys (쉼표 구분)", type: "list" },
+        ],
+      },
+    ];
+
+    const inputs = new Map();
+    const fieldWrappers = new Map();
+    let effectsCollection;
+
+    function setStatus(message, { persist = false } = {}) {
+      statusEl.textContent = message;
+      if (!persist) {
+        setTimeout(() => {
+          if (statusEl.textContent === message) statusEl.textContent = "";
+        }, 4200);
+      }
+    }
+
+    function setByPath(target, path, value) {
+      const parts = path.split(".");
+      let node = target;
+      parts.forEach((part, index) => {
+        if (index === parts.length - 1) {
+          node[part] = value;
+        } else {
+          if (!node[part] || typeof node[part] !== "object") {
+            node[part] = {};
+          }
+          node = node[part];
+        }
+      });
+    }
+
+    function getByPath(target, path) {
+      const parts = path.split(".");
+      let node = target;
+      for (const part of parts) {
+        if (node == null || typeof node !== "object") return undefined;
+        node = node[part];
+      }
+      return node;
+    }
+
+    function parseList(value, asNumber = false) {
+      const items = value
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+      if (!asNumber) return items;
+      return items
+        .map((v) => Number(v))
+        .filter((n) => Number.isFinite(n));
+    }
+
+    function parseNumberValue(value) {
+      if (value === "" || value == null) return undefined;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+
+    function setFieldVisibility(path, visible) {
+      const wrapper = fieldWrappers.get(path);
+      if (!wrapper) return;
+      wrapper.style.display = visible ? "" : "none";
+    }
+
+    function createField(field) {
+      const wrapper = document.createElement("div");
+      if (field.type !== "checkbox") {
+        const label = document.createElement("label");
+        label.textContent = field.label;
+        label.setAttribute("for", field.path);
+        wrapper.appendChild(label);
+      }
+
+      let input;
+      switch (field.type) {
+        case "textarea":
+          input = document.createElement("textarea");
+          if (field.rows) input.rows = field.rows;
+          break;
+        case "json":
+          input = document.createElement("textarea");
+          input.placeholder = field.placeholder ?? "";
+          input.rows = 3;
+          break;
+        case "select":
+          input = document.createElement("select");
+          const emptyOpt = document.createElement("option");
+          emptyOpt.value = "";
+          emptyOpt.textContent = field.required ? "선택하세요" : "선택 (옵션)";
+          input.appendChild(emptyOpt);
+          field.options.forEach((opt) => {
+            const option = document.createElement("option");
+            option.value = opt;
+            option.textContent = opt;
+            input.appendChild(option);
+          });
+          break;
+        case "checkbox":
+          input = document.createElement("input");
+          input.type = "checkbox";
+        input.id = field.path;
+        input.checked = Boolean(field.default);
+        input.className = "checkbox-input";
+        const checkboxLabel = document.createElement("label");
+        checkboxLabel.className = "checkbox-row";
+        checkboxLabel.htmlFor = field.path;
+        const textSpan = document.createElement("span");
+        textSpan.textContent = field.label;
+        checkboxLabel.prepend(input);
+        checkboxLabel.appendChild(textSpan);
+        wrapper.appendChild(checkboxLabel);
+        inputs.set(field.path, input);
+        fieldWrappers.set(field.path, wrapper);
+        return wrapper;
+        default:
+          input = document.createElement("input");
+          input.type = field.type === "number" ? "number" : "text";
+          if (field.min !== undefined) input.min = String(field.min);
+          if (field.max !== undefined) input.max = String(field.max);
+          if (field.step !== undefined) input.step = String(field.step);
+      }
+
+      input.id = field.path;
+      input.placeholder = field.placeholder ?? "";
+      if (field.required) input.required = true;
+      wrapper.appendChild(input);
+      inputs.set(field.path, input);
+      fieldWrappers.set(field.path, wrapper);
+      return wrapper;
+    }
+
+    function createForm() {
+      fieldSectionsConfig.forEach((section) => {
+        const sectionEl = document.createElement("div");
+        sectionEl.className = "section";
+        const title = document.createElement("h3");
+        title.textContent = section.title;
+        const desc = document.createElement("p");
+        desc.className = "muted";
+        desc.textContent = section.description;
+        const grid = document.createElement("div");
+        grid.className = "grid";
+        section.fields.forEach((field) => {
+          grid.appendChild(createField(field));
+        });
+        sectionEl.append(title, desc, grid);
+        formSections.appendChild(sectionEl);
+      });
+    }
+
+    function attachInputListeners() {
+      inputs.forEach((input) => {
+        const eventType = input.type === "checkbox" ? "change" : "input";
+        input.addEventListener(eventType, updatePreview);
+      });
+
+      const selectorInput = inputs.get("targeting.selectorType");
+      if (selectorInput) {
+        selectorInput.addEventListener("change", () => {
+          updateTargetingVisibility(selectorInput.value);
+        });
+      }
+    }
+
+    const targetingShapeFields = [
+      "targeting.centerRef",
+      "targeting.radius",
+      "targeting.angle",
+      "targeting.range",
+      "targeting.width",
+      "targeting.length",
+      "targeting.bounces",
+      "targeting.searchRadius",
+    ];
+
+    const targetingVisibilityBySelector = {
+      Area: ["targeting.centerRef", "targeting.radius"],
+      Cone: ["targeting.centerRef", "targeting.angle", "targeting.range"],
+      Line: ["targeting.centerRef", "targeting.width", "targeting.length"],
+      Chain: ["targeting.centerRef", "targeting.range", "targeting.bounces", "targeting.searchRadius"],
+      NearestN: ["targeting.searchRadius"],
+    };
+
+    function updateTargetingVisibility(selectorType) {
+      const visibleSet = new Set(targetingVisibilityBySelector[selectorType] ?? []);
+      targetingShapeFields.forEach((path) => {
+        setFieldVisibility(path, visibleSet.has(path));
+      });
+    }
+
+    function resetForm() {
+      inputs.forEach((input, path) => {
+        if (input.type === "checkbox") {
+          const defaultVal = fieldSectionsConfig
+            .flatMap((s) => s.fields)
+            .find((f) => f.path === path)?.default;
+          input.checked = Boolean(defaultVal);
+        } else {
+          input.value = "";
+        }
+      });
+      updatePreview();
+      updateTargetingVisibility(inputs.get("targeting.selectorType")?.value);
+      setStatus("새 Effect 입력을 시작하세요.");
+    }
+
+    function readJsonField(text) {
+      if (!text.trim()) return [];
+      try {
+        const parsed = JSON.parse(text);
+        if (!Array.isArray(parsed)) {
+          throw new Error("JSON은 배열이어야 합니다.");
+        }
+        return parsed;
+      } catch (error) {
+        throw new Error(`conditions JSON 파싱 실패: ${error.message}`);
+      }
+    }
+
+    function buildEffectSpec({ skipRequired = false } = {}) {
+      const effect = {};
+      const allFields = fieldSectionsConfig.flatMap((s) => s.fields);
+      let conditionsError = null;
+
+      allFields.forEach((field) => {
+        const el = inputs.get(field.path);
+        if (!el) return;
+        let value;
+
+        switch (field.type) {
+          case "checkbox":
+            value = el.checked;
+            break;
+          case "list":
+            value = parseList(el.value);
+            break;
+          case "list-number":
+            value = parseList(el.value, true);
+            break;
+          case "number":
+            value = parseNumberValue(el.value);
+            if (el.value && value === undefined) {
+              throw new Error(`${field.label}에 숫자를 입력하세요.`);
+            }
+            break;
+          case "json":
+            try {
+              value = readJsonField(el.value);
+            } catch (error) {
+              conditionsError = error;
+            }
+            break;
+          case "select":
+          case "text":
+          case "textarea":
+          default:
+            value = el.value.trim();
+            break;
+        }
+
+        if (conditionsError) return;
+
+        const isCheckbox = field.type === "checkbox";
+        const isRequired = Boolean(field.required);
+        const isArrayField = Array.isArray(value);
+        const hasValue =
+          isCheckbox ||
+          isRequired ||
+          (isArrayField ? value.length > 0 : value !== "" && value !== undefined);
+
+        if (!hasValue) return;
+
+        if (field.type === "json") {
+          setByPath(effect, field.path, value);
+        } else if (field.type === "select" && !value) {
+          return;
+        } else {
+          setByPath(effect, field.path, value);
+        }
+      });
+
+      if (conditionsError) {
+        throw conditionsError;
+      }
+
+      if (!skipRequired) {
+        if (!effect.effectId) {
+          throw new Error("effectId를 입력하세요.");
+        }
+        if (!effect.type) {
+          throw new Error("type(EffectType)을 선택하세요.");
+        }
+        if (!getByPath(effect, "trigger.triggerType")) {
+          throw new Error("trigger.triggerType을 선택하세요.");
+        }
+        if (!getByPath(effect, "targeting.selectorType")) {
+          throw new Error("targeting.selectorType을 선택하세요.");
+        }
+      }
+
+      const notes = getByPath(effect, "notes");
+      if (notes === "") {
+        delete effect.notes;
+      }
+
+      return effect;
+    }
+
+    function updatePreview() {
+      try {
+        const effect = buildEffectSpec({ skipRequired: true });
+        previewEl.textContent = JSON.stringify(effect, null, 2);
+        return effect;
+      } catch (error) {
+        previewEl.textContent = `⚠️ ${error.message}`;
+        return null;
+      }
+    }
+
+    function fillForm(effect) {
+      inputs.forEach((input, path) => {
+        const value = getByPath(effect, path);
+        const field = fieldSectionsConfig.flatMap((s) => s.fields).find((f) => f.path === path);
+        if (!field) return;
+
+        switch (field.type) {
+          case "checkbox":
+            input.checked = Boolean(value);
+            break;
+          case "list":
+            input.value = Array.isArray(value) ? value.join(", ") : "";
+            break;
+          case "list-number":
+            input.value = Array.isArray(value) ? value.join(",") : "";
+            break;
+          case "json":
+            input.value = value ? JSON.stringify(value, null, 2) : "";
+            break;
+          default:
+            input.value = value ?? "";
+        }
+      });
+      updateTargetingVisibility(inputs.get("targeting.selectorType")?.value);
+      updatePreview();
+    }
+
+    async function saveEffect() {
+      let effect;
+      try {
+        effect = buildEffectSpec();
+        previewEl.textContent = JSON.stringify(effect, null, 2);
+      } catch (error) {
+        setStatus(error.message, { persist: true });
+        previewEl.textContent = `⚠️ ${error.message}`;
+        return;
+      }
+
+      const docId = String(effect.effectId).trim();
+      if (!docId) {
+        setStatus("effectId가 비어 있습니다.");
+        return;
+      }
+
+      try {
+        await setDoc(doc(effectsCollection, docId), effect, { merge: true });
+        setStatus(`'${docId}' Effect를 저장했습니다.`);
+        await loadEffects();
+      } catch (error) {
+        console.error(error);
+        setStatus("저장 중 오류가 발생했습니다. 콘솔 로그를 확인하세요.", { persist: true });
+      }
+    }
+
+    function renderTable(rows) {
+      tableBody.innerHTML = "";
+      if (!rows.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = "저장된 Effect가 없습니다.";
+        tr.appendChild(td);
+        tableBody.appendChild(tr);
+        return;
+      }
+
+      rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        const cells = [
+          row.effectId,
+          row.type,
+          row.trigger?.triggerType ?? "-",
+          Array.isArray(row.tags) ? row.tags.join(", ") : "-",
+        ];
+
+        cells.forEach((value) => {
+          const td = document.createElement("td");
+          td.textContent = value ?? "-";
+          tr.appendChild(td);
+        });
+
+        const actionsTd = document.createElement("td");
+        const loadBtn = document.createElement("button");
+        loadBtn.className = "secondary";
+        loadBtn.textContent = "불러오기";
+        loadBtn.addEventListener("click", () => {
+          fillForm(row);
+          setStatus(`'${row.effectId}' 편집 중입니다.`);
+        });
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "danger";
+        deleteBtn.textContent = "삭제";
+        deleteBtn.addEventListener("click", async () => {
+          if (!confirm(`'${row.effectId}' Effect를 삭제할까요?`)) return;
+          try {
+            await deleteDoc(doc(effectsCollection, row.id ?? row.effectId));
+            setStatus(`'${row.effectId}'를 삭제했습니다.`);
+            await loadEffects();
+            resetForm();
+          } catch (error) {
+            console.error(error);
+            setStatus("삭제 중 오류가 발생했습니다.", { persist: true });
+          }
+        });
+
+        actionsTd.append(loadBtn, deleteBtn);
+        tr.appendChild(actionsTd);
+        tableBody.appendChild(tr);
+      });
+    }
+
+    async function loadEffects() {
+      setStatus("Effect를 불러오는 중...", { persist: true });
+      try {
+        const snapshot = await getDocs(effectsCollection);
+        const rows = [];
+        snapshot.forEach((docSnap) => {
+          rows.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        renderTable(rows);
+        setStatus(`총 ${rows.length}개 Effect를 불러왔습니다.`);
+      } catch (error) {
+        console.error(error);
+        setStatus("Effect 목록을 불러오지 못했습니다. firebase-config.js 설정을 확인하세요.", { persist: true });
+      }
+    }
+
+    async function bootstrap() {
+      try {
+        createForm();
+        attachInputListeners();
+        resetForm();
+        const app = initializeApp(await getFirebaseConfig());
+        const db = getFirestore(app);
+        effectsCollection = collection(db, "effectSpecs");
+        await loadEffects();
+      } catch (error) {
+        console.error(error);
+        setStatus("초기화 실패: Firebase 설정을 확인하세요.", { persist: true });
+      }
+    }
+
+    saveBtn.addEventListener("click", async () => {
+      saveBtn.disabled = true;
+      resetBtn.disabled = true;
+      try {
+        await saveEffect();
+      } finally {
+        saveBtn.disabled = false;
+        resetBtn.disabled = false;
+      }
+    });
+
+    resetBtn.addEventListener("click", resetForm);
+
+    bootstrap();
+  </script>
+</body>
+</html>
