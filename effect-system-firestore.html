@@ -1433,7 +1433,7 @@
     function applyPresetToManagers(name, [effectManager, abilityManager, skillManager]) {
       const preset = findPresetByName(name);
       if (!preset) {
-        const message = "프리셋을 찾지 못했습니다. (주문검/점화/생명선을 입력)";
+        const message = "프리셋을 찾지 못했습니다. 검색어나 목록을 확인하세요.";
         effectManager.setStatus(message);
         abilityManager.setStatus(message);
         skillManager.setStatus(message);
