@@ -339,6 +339,21 @@
     </section>
 
     <section class="card">
+      <div class="step-label">프리셋</div>
+      <h2>대표적인 LoL 스타일 Effect 불러오기</h2>
+      <p class="section-subtitle">자주 쓰는 효과를 바로 불러와 수정하세요. 저장은 영향을 주지 않습니다.</p>
+      <div class="grid">
+        <div>
+          <label for="preset-select">프리셋 선택</label>
+          <select id="preset-select"></select>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="apply-preset-btn">프리셋 불러오기</button>
+      </div>
+    </section>
+
+    <section class="card">
       <div class="step-label">단계 안내</div>
       <h2>단계별 입력</h2>
       <p class="section-subtitle">한 번에 한 단계씩 입력합니다. 이전/다음 버튼 또는 칩을 눌러 이동하세요.</p>
@@ -1036,6 +1051,8 @@
     const prevStepBtn = document.getElementById("prev-step-btn");
     const nextStepBtn = document.getElementById("next-step-btn");
     let currentStepIndex = 0;
+    const presetSelect = document.getElementById("preset-select");
+    const applyPresetBtn = document.getElementById("apply-preset-btn");
 
     function populateSelect(selectEl, options) {
       selectEl.innerHTML = "";
@@ -1058,6 +1075,7 @@
     populateSelect(selects.sortRule, sortRuleOptions);
     populateSelect(selects.centerRef, centerRefOptions);
     populateSelect(selects.valueModel, valueModelOptions);
+    populateSelect(presetSelect, effectPresets.map((p) => p.label));
 
     unitFilterOptions.forEach((value) => {
       const label = document.createElement("label");
@@ -1126,6 +1144,80 @@
       HighestMaxHP: "체력이 높은 대상",
       PriorityByTag: "우선 태그 대상",
     };
+
+    const effectPresets = [
+      {
+        label: "단일 투사체 마법 피해 + 둔화",
+        effect: {
+          effectId: "Q_ArcaneBolt",
+          type: "Damage",
+          tags: ["Spell", "SingleTarget"],
+          trigger: { triggerType: "OnHit", filters: { damageTypeFilter: "Magic" } },
+          targeting: { selectorType: "HitTarget", teamFilter: "Enemy", unitFilter: ["Champion", "Minion"], maxTargets: 1 },
+          calc: { model: "FlatPlusRatio", flatByRank: [60, 100, 140, 180, 220], ratios: { ap: 0.6 }, damageType: "Magic" },
+          apply: {
+            applicationMode: "Instant",
+            interactionRules: { shieldInteraction: "Normal", spellShieldInteraction: "BlockAndConsume" },
+          },
+          emit: { emitOnHit: true, payloadKeys: ["damageAmount", "targets"] },
+          conditions: [],
+        },
+      },
+      {
+        label: "지속 마법 피해 장판",
+        effect: {
+          effectId: "W_BurningField",
+          type: "DamageOverTime",
+          tags: ["Spell", "AoE", "DoT"],
+          trigger: { triggerType: "OnTick" },
+          targeting: { selectorType: "Area", teamFilter: "Enemy", unitFilter: ["Champion", "Minion", "Monster"], maxTargets: 5, radius: 350, centerRef: "ZoneCenter" },
+          timing: { duration: 4, tickInterval: 1, snapshotPolicy: "SnapshotOnCommit" },
+          calc: { model: "FlatPlusRatio", flat: 30, ratios: { ap: 0.25 }, damageType: "Magic" },
+          apply: { applicationMode: "OverTime" },
+          stacking: { stackingRule: "RefreshDuration" },
+        },
+      },
+      {
+        label: "아군 보호막 + 이동 속도",
+        effect: {
+          effectId: "E_ShieldSpeed",
+          type: "Shield",
+          tags: ["Spell", "Buff"],
+          trigger: { triggerType: "OnCastCommit" },
+          targeting: { selectorType: "SelectedTarget", teamFilter: "Ally", unitFilter: ["Champion"], maxTargets: 1 },
+          timing: { duration: 3 },
+          calc: { model: "FlatPlusRatio", flat: 80, ratios: { ap: 0.4 } },
+          apply: { applicationMode: "Instant" },
+          emit: { emitOnApply: true, payloadKeys: ["shieldAmount", "duration"] },
+        },
+      },
+      {
+        label: "적중 시 고정 피해 + 처형 추가",
+        effect: {
+          effectId: "Passive_Execute",
+          type: "ExecuteDamage",
+          tags: ["Passive", "Execute"],
+          trigger: { triggerType: "OnHit", filters: { sourceFilter: "BasicAttack" } },
+          targeting: { selectorType: "HitTarget", teamFilter: "Enemy", unitFilter: ["Champion", "Minion"], maxTargets: 1 },
+          calc: { model: "PercentMissingHP", percent: 8, damageType: "True", min: 20, max: 150 },
+          conditions: [{ type: "OnceRules", params: { oncePerTarget: true } }],
+        },
+      },
+      {
+        label: "치유 오라",
+        effect: {
+          effectId: "R_Radiance",
+          type: "HealOverTime",
+          tags: ["Spell", "Aura", "Heal"],
+          trigger: { triggerType: "OnTick" },
+          targeting: { selectorType: "Area", teamFilter: "Ally", unitFilter: ["Champion"], maxTargets: 5, radius: 550, centerRef: "CasterPos" },
+          timing: { duration: 6, tickInterval: 1, snapshotPolicy: "RecalcEveryTick" },
+          calc: { model: "FlatPlusRatio", flat: 35, ratios: { ap: 0.2 }, damageType: "" },
+          apply: { applicationMode: "OverTime" },
+          stacking: { stackingRule: "RefreshDuration" },
+        },
+      },
+    ];
 
     function formatNumber(value) {
       if (value === undefined || value === null || Number.isNaN(Number(value))) return "";
@@ -1924,7 +2016,9 @@
     function refreshPreview() {
       const draft = assembleEffect({ silentJSON: true }) || {};
       const lol = buildLolStyleDescription(draft);
-      previewEl.textContent = lol || describeEffect(draft);
+      const detail = describeEffect(draft);
+      const combined = lol ? `${lol}\n\n${detail}` : detail;
+      previewEl.textContent = combined;
     }
 
     function attachPreviewListeners() {
@@ -1934,6 +2028,18 @@
         el.addEventListener(eventName, refreshPreview);
       });
     }
+
+    function applyPreset(label) {
+      const preset = effectPresets.find((p) => p.label === label);
+      if (!preset) return;
+      fillForm(structuredClone(preset.effect));
+      refreshPreview();
+      setStatus(`프리셋 '${preset.label}'을 불러왔습니다.`);
+    }
+
+    applyPresetBtn.addEventListener("click", () => {
+      applyPreset(presetSelect.value);
+    });
 
     saveBtn.addEventListener("click", async () => {
       saveBtn.disabled = true;
