@@ -312,10 +312,39 @@
       display: none !important;
     }
 
-    .tag-grid {
+    .tag-dropdown {
+      position: relative;
+    }
+
+    .tag-toggle {
+      width: 100%;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 0.5rem 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .tag-panel {
+      position: absolute;
+      z-index: 20;
+      top: 110%;
+      left: 0;
+      right: 0;
+      background: #0f172a;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      padding: 0.6rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      max-height: 220px;
+      overflow: auto;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 0.35rem 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.35rem 0.6rem;
     }
     </style>
   </head>
@@ -402,8 +431,11 @@
         </div>
         <div>
           <label for="effect-tags">tags (쉼표로 구분)</label>
-          <div id="tag-options" class="tag-grid"></div>
-          <p class="helper">LoL에서 자주 쓰는 태그를 선택하세요. (복수 선택)</p>
+          <div class="tag-dropdown">
+            <button type="button" class="tag-toggle" id="tag-toggle">태그 선택</button>
+            <div id="tag-options" class="tag-panel hidden"></div>
+          </div>
+          <p class="helper">LoL에서 자주 쓰는 태그를 선택하세요. (복수 선택, 드롭다운)</p>
         </div>
       </div>
     </section>
@@ -1081,6 +1113,7 @@
     const calcFields = document.querySelectorAll(".calc-field");
     const shapeFields = document.querySelectorAll(".shape-field");
     const tagContainer = document.getElementById("tag-options");
+    const tagToggleBtn = document.getElementById("tag-toggle");
 
     const statusEl = document.getElementById("status");
     const previewEl = document.getElementById("effect-preview");
@@ -1135,6 +1168,16 @@
       checkbox.value = value;
       label.append(checkbox, document.createTextNode(value));
       tagContainer.appendChild(label);
+    });
+
+    tagToggleBtn.addEventListener("click", () => {
+      tagContainer.classList.toggle("hidden");
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!tagContainer.contains(event.target) && !tagToggleBtn.contains(event.target)) {
+        tagContainer.classList.add("hidden");
+      }
     });
 
     const calcVisibilityMap = {
