@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>몬스터 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 200px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      border: 1px solid #334155;
+    }
+
+    .preview-card {
+      margin-top: 0.75rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .preview-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .preview-card .label {
+      color: #cbd5e1;
+    }
+
+    .preview-card .value {
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 999px;
+      background: #111827;
+      border: 1px solid #1f2937;
+      color: #e2e8f0;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .badge.ok {
+      border-color: #16a34a;
+      color: #bbf7d0;
+      background: rgba(22, 163, 74, 0.15);
+    }
+
+    .badge.warn {
+      border-color: #f59e0b;
+      color: #fef08a;
+      background: rgba(245, 158, 11, 0.15);
+    }
+
+    .badge.error {
+      border-color: #ef4444;
+      color: #fecdd3;
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    .package-card {
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .package-summary {
+      display: grid;
+      gap: 0.4rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .package-list {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: #cbd5e1;
+    }
+
+    .package-list li {
+      margin-bottom: 0.2rem;
+    }
+
+    details.collapsible {
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      background: #111827;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    details.collapsible[open] > summary {
+      border-bottom: 1px solid #1f2937;
+    }
+
+    details.collapsible summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+    }
+
+    details.collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.collapsible .content {
+      padding: 1rem 1.25rem;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link" href="effect-system-firestore.html">EffectSpec 관리</a>
+      <a class="nav-link active" href="monster-firestore.html">몬스터 관리</a>
+    </div>
+  </nav>
+  <div class="container">
+    <header class="card">
+      <h1>몬스터/변형 관리</h1>
+      <p class="muted">monster_schema.md 스펙을 기반으로 Firestore 컬렉션 <code>monsters</code> / <code>monsterVariants</code>에 저장/불러오기/수정/삭제합니다. 기본 레벨 정책: <strong>finalStat = base + (level - 1) * growth</strong>.</p>
+      <div class="pill">DPS 연동: basePresetId · growthPresetId · defaultLevel를 combat-dps-tester에 공급</div>
+    </header>
+
+    <details class="package-card collapsible" open>
+      <summary>
+        <span>몬스터 DPS 연동 상태</span>
+        <div class="badge warn" id="dps-status-badge">점검 필요</div>
+      </summary>
+      <div class="content">
+        <div class="section-header">
+          <div>
+            <h2>몬스터 DPS 연동 상태</h2>
+            <p class="muted">monster_dps_integration.md의 Flow(Load → Select → Apply)를 따라야 합니다.</p>
+          </div>
+        </div>
+        <div class="package-summary">
+          <div class="label">연동 프리뷰</div>
+          <div class="value" id="dps-preview-text">몬스터/변형을 선택하면 DPS 도구에 전달되는 값이 표시됩니다.</div>
+        </div>
+        <ul class="package-list" id="dps-checklist"></ul>
+      </div>
+    </details>
+
+    <details class="card collapsible" open>
+      <summary>
+        <span>Monster 관리</span>
+        <span class="pill">collection = monsters</span>
+      </summary>
+      <div class="content">
+        <div class="split-grid">
+          <div>
+            <div class="grid">
+              <div>
+                <label for="monster-id">monsterId</label>
+                <input id="monster-id" type="text" placeholder="Mon_Raptor" />
+              </div>
+              <div>
+                <label for="monster-display">displayName</label>
+                <input id="monster-display" type="text" placeholder="작은 랩터" />
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="monster-base-preset">basePresetId</label>
+                <input id="monster-base-preset" type="text" placeholder="BaseStat_Raptor" />
+              </div>
+              <div>
+                <label for="monster-growth-preset">growthPresetId</label>
+                <input id="monster-growth-preset" type="text" placeholder="GrowthBase_Raptor" />
+              </div>
+              <div>
+                <label for="monster-default-level">defaultLevel</label>
+                <input id="monster-default-level" type="number" min="1" value="1" />
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="monster-tags">tags (콤마)</label>
+                <input id="monster-tags" type="text" placeholder="Jungle, Neutral" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="monster-apply-fields">필드값을 JSON에 반영</button>
+            </div>
+            <div>
+              <label for="monster-json">Monster JSON</label>
+              <textarea id="monster-json" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="monster-save">저장/업데이트</button>
+              <button class="secondary" id="monster-sample">샘플 불러오기</button>
+              <button class="secondary" id="monster-reset">새로 작성</button>
+              <button class="secondary" id="monster-refresh">목록 새로고침</button>
+            </div>
+            <div class="status" id="monster-status"></div>
+          </div>
+          <div>
+            <div class="preview-card" id="monster-preview">
+              <h3>Monster 프리뷰</h3>
+              <div class="label">플레이버</div>
+              <div class="value" id="monster-preview-text">-</div>
+            </div>
+            <p class="muted">필수 필드: monsterId, basePresetId, growthPresetId, defaultLevel. 태그는 정렬/필터링에 사용됩니다.</p>
+            <p class="muted">스키마는 확장 가능합니다. loot, combatProfile, ai 등 추가 필드를 JSON에 직접 입력하세요.</p>
+          </div>
+        </div>
+        <div>
+          <p class="muted">저장된 Monster 문서 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>monsterId</th>
+                <th>displayName</th>
+                <th>defaultLevel</th>
+                <th>basePresetId</th>
+                <th>growthPresetId</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="monster-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+
+    <details class="card collapsible" open>
+      <summary>
+        <span>Monster Variant 관리</span>
+        <span class="pill">collection = monsterVariants</span>
+      </summary>
+      <div class="content">
+        <div class="split-grid">
+          <div>
+            <div class="grid">
+              <div>
+                <label for="variant-id">variantId</label>
+                <input id="variant-id" type="text" placeholder="Mon_Raptor_Alpha" />
+              </div>
+              <div>
+                <label for="variant-monster-id">monsterId (부모)</label>
+                <input id="variant-monster-id" type="text" placeholder="Mon_Raptor" />
+              </div>
+              <div>
+                <label for="variant-display">displayName</label>
+                <input id="variant-display" type="text" placeholder="알파 랩터" />
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="variant-base-preset">overrides.basePresetId</label>
+                <input id="variant-base-preset" type="text" placeholder="BaseStat_Raptor_Alpha" />
+              </div>
+              <div>
+                <label for="variant-growth-preset">overrides.growthPresetId</label>
+                <input id="variant-growth-preset" type="text" placeholder="GrowthBase_Raptor_Alpha" />
+              </div>
+              <div>
+                <label for="variant-default-level">overrides.defaultLevel</label>
+                <input id="variant-default-level" type="number" min="1" />
+              </div>
+              <div>
+                <label for="variant-tags">tags (콤마)</label>
+                <input id="variant-tags" type="text" placeholder="Elite, Objective" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="variant-apply-fields">필드값을 JSON에 반영</button>
+            </div>
+            <div>
+              <label for="variant-json">Variant JSON</label>
+              <textarea id="variant-json" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="variant-save">저장/업데이트</button>
+              <button class="secondary" id="variant-sample">샘플 불러오기</button>
+              <button class="secondary" id="variant-reset">새로 작성</button>
+              <button class="secondary" id="variant-refresh">목록 새로고침</button>
+            </div>
+            <div class="status" id="variant-status"></div>
+          </div>
+          <div>
+            <div class="preview-card" id="variant-preview">
+              <h3>Variant 프리뷰</h3>
+              <div class="label">플레이버</div>
+              <div class="value" id="variant-preview-text">-</div>
+            </div>
+            <p class="muted">variantId는 부모 monsterId와 1:N 관계를 가집니다. overrides.*로 base/growth/레벨을 덮어쓸 수 있습니다.</p>
+            <p class="muted">추가 필드(lootOverrides, spawnRules 등)는 JSON에 직접 작성하세요.</p>
+          </div>
+        </div>
+        <div>
+          <p class="muted">저장된 Variant 문서 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>variantId</th>
+                <th>monsterId</th>
+                <th>displayName</th>
+                <th>basePresetId</th>
+                <th>growthPresetId</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="variant-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const SAMPLE_MONSTER = {
+      monsterId: "Mon_Raptor",
+      displayName: "작은 랩터",
+      basePresetId: "BaseStat_Raptor",
+      growthPresetId: "GrowthBase_Raptor",
+      defaultLevel: 1,
+      tags: ["Jungle", "Neutral"],
+      loot: {
+        xp: 90,
+        gold: 0,
+      },
+      combatProfile: {
+        ai: "JungleCamp",
+        attackRange: 125,
+      },
+    };
+
+    const SAMPLE_VARIANT = {
+      variantId: "Mon_Raptor_Alpha",
+      monsterId: "Mon_Raptor",
+      displayName: "알파 랩터",
+      overrides: {
+        basePresetId: "BaseStat_Raptor_Alpha",
+        growthPresetId: "GrowthBase_Raptor_Alpha",
+        defaultLevel: 3,
+      },
+      tags: ["Elite"],
+      lootOverrides: {
+        xp: 110,
+      },
+      notes: "기본형보다 체력/공격력이 높습니다.",
+    };
+
+    function toStringArray(value) {
+      return value
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    }
+
+    function safeParseJson(value) {
+      if (!value || !value.trim()) return {};
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    class SpecManager {
+      constructor({
+        entityName,
+        collectionName,
+        idInputId,
+        jsonInputId,
+        statusId,
+        tableBodyId,
+        saveBtnId,
+        resetBtnId,
+        sampleBtnId,
+        refreshBtnId,
+        sampleData,
+        extraFill,
+        summaryExtractor,
+        transformBeforeSave,
+      }) {
+        this.entityName = entityName;
+        this.collectionName = collectionName;
+        this.idInput = document.getElementById(idInputId);
+        this.jsonInput = document.getElementById(jsonInputId);
+        this.statusEl = document.getElementById(statusId);
+        this.tableBody = document.getElementById(tableBodyId);
+        this.sampleData = sampleData;
+        this.extraFill = extraFill;
+        this.summaryExtractor = summaryExtractor;
+        this.transformBeforeSave = transformBeforeSave;
+
+        this.saveBtn = document.getElementById(saveBtnId);
+        this.resetBtn = document.getElementById(resetBtnId);
+        this.sampleBtn = document.getElementById(sampleBtnId);
+        this.refreshBtn = document.getElementById(refreshBtnId);
+
+        this.registerHandlers();
+      }
+
+      attachDb(db) {
+        this.db = db;
+        this.collectionRef = collection(db, this.collectionName);
+      }
+
+      registerHandlers() {
+        this.saveBtn?.addEventListener("click", () => this.handleSave());
+        this.resetBtn?.addEventListener("click", () => this.resetForm());
+        this.sampleBtn?.addEventListener("click", () => this.loadSample());
+        this.refreshBtn?.addEventListener("click", () => this.loadTable());
+      }
+
+      setStatus(message, { persist = false } = {}) {
+        this.statusEl.textContent = message;
+        if (!persist) {
+          clearTimeout(this._statusTimer);
+          this._statusTimer = setTimeout(() => {
+            this.statusEl.textContent = "";
+          }, 4500);
+        }
+      }
+
+      sanitizeId(rawId) {
+        return rawId.trim().replace(/[^A-Za-z0-9_.-]+/g, "_");
+      }
+
+      getDocIdOrWarn() {
+        const raw = this.idInput.value.trim();
+        if (!raw) {
+          this.setStatus(`${this.entityName} ID를 입력하세요.`);
+          return null;
+        }
+        const sanitized = this.sanitizeId(raw);
+        if (!sanitized) {
+          this.setStatus("유효한 ID를 입력하세요 (영문/숫자/._- 조합).");
+          return null;
+        }
+        if (sanitized !== raw) {
+          this.idInput.value = sanitized;
+        }
+        return sanitized;
+      }
+
+      parseJsonOrWarn() {
+        const raw = this.jsonInput.value.trim();
+        if (!raw) return {};
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("JSON 파싱에 실패했습니다. 포맷을 확인하세요.");
+          return null;
+        }
+      }
+
+      fillForm(id, data) {
+        this.idInput.value = id;
+        if (this.extraFill) this.extraFill({ manager: this, data });
+        this.jsonInput.value = JSON.stringify(data, null, 2);
+        this.setStatus(`'${id}' ${this.entityName}를 불러왔습니다.`);
+        updatePreviews();
+      }
+
+      resetForm() {
+        this.idInput.value = "";
+        if (this.extraFill) this.extraFill({ manager: this, data: this.sampleData });
+        this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
+        this.setStatus("새 문서를 작성하세요.");
+        updatePreviews();
+      }
+
+      loadSample() {
+        const key = `${this.entityName.toLowerCase()}Id`;
+        this.fillForm(this.sampleData[key] ?? "", this.sampleData);
+        this.setStatus("샘플 데이터를 불러왔습니다.");
+      }
+
+      async handleSave() {
+        if (!this.db) return;
+        const docId = this.getDocIdOrWarn();
+        if (!docId) return;
+        const data = this.parseJsonOrWarn();
+        if (!data) return;
+        const transformed = this.transformBeforeSave
+          ? this.transformBeforeSave({ data, manager: this, docId })
+          : data;
+
+        this.toggleButtons(true);
+        try {
+          await setDoc(doc(this.collectionRef, docId), transformed, { merge: true });
+          this.setStatus(`'${docId}' ${this.entityName}를 저장했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("저장 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async handleDelete(docId, label) {
+        if (!this.db) return;
+        if (!confirm(`'${label}' ${this.entityName}를 삭제할까요?`)) return;
+        this.toggleButtons(true);
+        try {
+          await deleteDoc(doc(this.collectionRef, docId));
+          this.setStatus(`'${label}' ${this.entityName}를 삭제했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("삭제 중 오류가 발생했습니다. 네트워크/권한을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async loadTable() {
+        if (!this.db) return;
+        this.setStatus("목록을 불러오는 중...", { persist: true });
+        try {
+          const snapshot = await getDocs(this.collectionRef);
+          const rows = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            rows.push({ id: docSnap.id, data });
+          });
+          rows.sort((a, b) => a.id.localeCompare(b.id));
+          this.renderTable(rows);
+          this.setStatus(`총 ${rows.length}개 ${this.entityName}를 불러왔습니다.`);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("목록을 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        }
+      }
+
+      renderTable(rows) {
+        this.tableBody.innerHTML = "";
+        if (!rows.length) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 6;
+          td.textContent = "저장된 문서가 없습니다.";
+          tr.appendChild(td);
+          this.tableBody.appendChild(tr);
+          return;
+        }
+
+        rows.forEach(({ id, data }) => {
+          const tr = document.createElement("tr");
+          const summary = this.summaryExtractor ? this.summaryExtractor(data) : {};
+          const cells = summary.cells ?? [];
+          [id, ...cells].forEach((value) => {
+            const td = document.createElement("td");
+            td.textContent = value ?? "-";
+            tr.appendChild(td);
+          });
+
+          const actionsTd = document.createElement("td");
+          const loadBtn = document.createElement("button");
+          loadBtn.className = "secondary";
+          loadBtn.textContent = "불러오기";
+          loadBtn.addEventListener("click", () => this.fillForm(id, data));
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "danger";
+          deleteBtn.textContent = "삭제";
+          deleteBtn.addEventListener("click", () => this.handleDelete(id, summary.label ?? id));
+
+          actionsTd.append(loadBtn, deleteBtn);
+          tr.appendChild(actionsTd);
+          this.tableBody.appendChild(tr);
+        });
+      }
+
+      toggleButtons(disabled) {
+        [this.saveBtn, this.resetBtn, this.sampleBtn, this.refreshBtn].forEach((btn) => {
+          if (btn) btn.disabled = disabled;
+        });
+      }
+    }
+
+    function fillMonsterQuickFields(data) {
+      document.getElementById("monster-display").value = data.displayName ?? "";
+      document.getElementById("monster-base-preset").value = data.basePresetId ?? "";
+      document.getElementById("monster-growth-preset").value = data.growthPresetId ?? "";
+      document.getElementById("monster-default-level").value = data.defaultLevel ?? "";
+      document.getElementById("monster-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
+    }
+
+    function fillVariantQuickFields(data) {
+      document.getElementById("variant-monster-id").value = data.monsterId ?? "";
+      document.getElementById("variant-display").value = data.displayName ?? "";
+      const overrides = data.overrides ?? {};
+      document.getElementById("variant-base-preset").value = overrides.basePresetId ?? "";
+      document.getElementById("variant-growth-preset").value = overrides.growthPresetId ?? "";
+      document.getElementById("variant-default-level").value = overrides.defaultLevel ?? "";
+      document.getElementById("variant-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
+    }
+
+    function applyMonsterFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.monsterId = document.getElementById("monster-id").value.trim() || next.monsterId;
+      next.displayName = document.getElementById("monster-display").value.trim() || next.displayName;
+      next.basePresetId = document.getElementById("monster-base-preset").value.trim() || next.basePresetId;
+      next.growthPresetId = document.getElementById("monster-growth-preset").value.trim() || next.growthPresetId;
+      const level = document.getElementById("monster-default-level").value.trim();
+      if (level !== "") {
+        const num = Number(level);
+        if (!Number.isNaN(num)) next.defaultLevel = num;
+      }
+      const tags = toStringArray(document.getElementById("monster-tags").value);
+      if (tags.length) next.tags = tags;
+
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("드롭다운 값이 JSON에 반영되었습니다.");
+      fillMonsterQuickFields(next);
+      updatePreviews();
+    }
+
+    function applyVariantFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.variantId = document.getElementById("variant-id").value.trim() || next.variantId;
+      next.monsterId = document.getElementById("variant-monster-id").value.trim() || next.monsterId;
+      next.displayName = document.getElementById("variant-display").value.trim() || next.displayName;
+      next.overrides = next.overrides ?? {};
+      const basePreset = document.getElementById("variant-base-preset").value.trim();
+      if (basePreset) next.overrides.basePresetId = basePreset;
+      const growthPreset = document.getElementById("variant-growth-preset").value.trim();
+      if (growthPreset) next.overrides.growthPresetId = growthPreset;
+      const level = document.getElementById("variant-default-level").value.trim();
+      if (level !== "") {
+        const num = Number(level);
+        if (!Number.isNaN(num)) next.overrides.defaultLevel = num;
+      }
+      const tags = toStringArray(document.getElementById("variant-tags").value);
+      if (tags.length) next.tags = tags;
+
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("드롭다운 값이 JSON에 반영되었습니다.");
+      fillVariantQuickFields(next);
+      updatePreviews();
+    }
+
+    function mergeMonsterInputs() {
+      const base = safeParseJson(document.getElementById("monster-json").value);
+      if (base === null) return null;
+      const merged = { ...(base || {}) };
+      merged.monsterId = document.getElementById("monster-id").value.trim() || merged.monsterId;
+      const displayName = document.getElementById("monster-display").value.trim();
+      if (displayName) merged.displayName = displayName;
+      const basePreset = document.getElementById("monster-base-preset").value.trim();
+      if (basePreset) merged.basePresetId = basePreset;
+      const growthPreset = document.getElementById("monster-growth-preset").value.trim();
+      if (growthPreset) merged.growthPresetId = growthPreset;
+      const level = document.getElementById("monster-default-level").value.trim();
+      if (level !== "") {
+        const num = Number(level);
+        if (!Number.isNaN(num)) merged.defaultLevel = num;
+      }
+      const tags = toStringArray(document.getElementById("monster-tags").value);
+      if (tags.length) merged.tags = tags;
+      return merged;
+    }
+
+    function mergeVariantInputs() {
+      const base = safeParseJson(document.getElementById("variant-json").value);
+      if (base === null) return null;
+      const merged = { ...(base || {}) };
+      merged.variantId = document.getElementById("variant-id").value.trim() || merged.variantId;
+      const monsterId = document.getElementById("variant-monster-id").value.trim();
+      if (monsterId) merged.monsterId = monsterId;
+      const displayName = document.getElementById("variant-display").value.trim();
+      if (displayName) merged.displayName = displayName;
+      merged.overrides = merged.overrides ?? {};
+      const basePreset = document.getElementById("variant-base-preset").value.trim();
+      if (basePreset) merged.overrides.basePresetId = basePreset;
+      const growthPreset = document.getElementById("variant-growth-preset").value.trim();
+      if (growthPreset) merged.overrides.growthPresetId = growthPreset;
+      const level = document.getElementById("variant-default-level").value.trim();
+      if (level !== "") {
+        const num = Number(level);
+        if (!Number.isNaN(num)) merged.overrides.defaultLevel = num;
+      }
+      const tags = toStringArray(document.getElementById("variant-tags").value);
+      if (tags.length) merged.tags = tags;
+      return merged;
+    }
+
+    function buildMonsterPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 필드를 채워주세요.";
+      const id = data.monsterId ?? "-";
+      const name = data.displayName ?? "이름 미정";
+      const base = data.basePresetId ?? "basePreset 미정";
+      const growth = data.growthPresetId ?? "growthPreset 미정";
+      const level = data.defaultLevel ?? 1;
+      const tags = Array.isArray(data.tags) ? ` | 태그: ${data.tags.join(", ")}` : "";
+      return `[${id}] ${name} · L${level} | base=${base} · growth=${growth}${tags}`;
+    }
+
+    function buildVariantPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 필드를 채워주세요.";
+      const id = data.variantId ?? "-";
+      const name = data.displayName ?? "이름 미정";
+      const parent = data.monsterId ?? "parent 미정";
+      const overrides = data.overrides ?? {};
+      const base = overrides.basePresetId ?? "inherit base";
+      const growth = overrides.growthPresetId ?? "inherit growth";
+      const level = overrides.defaultLevel ?? "inherit level";
+      const tags = Array.isArray(data.tags) ? ` | 태그: ${data.tags.join(", ")}` : "";
+      return `[${id}] ${name} (parent: ${parent}) · base=${base} · growth=${growth} · level=${level}${tags}`;
+    }
+
+    function buildDpsChecklist(monsterData, variantData) {
+      const checks = [];
+      const messages = [];
+
+      if (monsterData) {
+        const hasBase = !!monsterData.basePresetId;
+        const hasGrowth = !!monsterData.growthPresetId;
+        const hasLevel = Number.isFinite(Number(monsterData.defaultLevel));
+        checks.push({ ok: hasBase, text: hasBase ? "basePresetId 설정 완료." : "basePresetId를 채우세요." });
+        checks.push({ ok: hasGrowth, text: hasGrowth ? "growthPresetId 설정 완료." : "growthPresetId를 채우세요." });
+        checks.push({ ok: hasLevel, text: hasLevel ? "defaultLevel 설정 완료." : "defaultLevel을 채우세요." });
+        messages.push(`Monster 준비됨: ${monsterData.monsterId ?? "-"}`);
+      } else {
+        messages.push("Monster JSON을 입력하세요.");
+      }
+
+      if (variantData) {
+        const overrides = variantData.overrides ?? {};
+        const hasParent = !!variantData.monsterId;
+        const hasBase = !!overrides.basePresetId;
+        const hasGrowth = !!overrides.growthPresetId;
+        const hasLevel = overrides.defaultLevel !== undefined;
+        checks.push({
+          ok: hasParent,
+          text: hasParent ? "variant가 부모 monsterId를 가집니다." : "monsterId(부모)를 지정하세요.",
+        });
+        if (hasBase || hasGrowth || hasLevel) {
+          checks.push({ ok: true, text: "overrides.* 값이 존재함 (선택적)." });
+        }
+        messages.push(`Variant 준비됨: ${variantData.variantId ?? "-"}`);
+      } else {
+        messages.push("Variant JSON을 입력하거나 비워둡니다.");
+      }
+
+      const ready =
+        monsterData &&
+        !!monsterData.basePresetId &&
+        !!monsterData.growthPresetId &&
+        Number.isFinite(Number(monsterData.defaultLevel));
+
+      return { checks, messages, ready };
+    }
+
+    function updateDpsPreview(monsterData, variantData) {
+      const badge = document.getElementById("dps-status-badge");
+      const preview = document.getElementById("dps-preview-text");
+      const checklist = document.getElementById("dps-checklist");
+      const result = buildDpsChecklist(monsterData, variantData);
+
+      const applied = variantData?.overrides ?? {};
+      const appliedBase = applied.basePresetId ?? monsterData?.basePresetId ?? "-";
+      const appliedGrowth = applied.growthPresetId ?? monsterData?.growthPresetId ?? "-";
+      const appliedLevel =
+        applied.defaultLevel ??
+        monsterData?.defaultLevel ??
+        "-";
+
+      preview.textContent = `monster=${monsterData?.monsterId ?? "-"} / variant=${variantData?.variantId ?? "-"} | base=${appliedBase} · growth=${appliedGrowth} · level=${appliedLevel}`;
+
+      checklist.innerHTML = "";
+      if (result.checks.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "입력된 정보가 없습니다.";
+        checklist.appendChild(li);
+      } else {
+        result.checks.forEach((check) => {
+          const li = document.createElement("li");
+          li.textContent = check.text;
+          li.style.color = check.ok ? "#bbf7d0" : "#fef08a";
+          checklist.appendChild(li);
+        });
+      }
+
+      if (badge) {
+        badge.classList.remove("ok", "warn", "error");
+        if (result.ready) {
+          badge.classList.add("ok");
+          badge.textContent = "준비 완료";
+        } else {
+          badge.classList.add("warn");
+          badge.textContent = "점검 필요";
+        }
+      }
+    }
+
+    function updatePreviews() {
+      const monsterData = mergeMonsterInputs();
+      const variantData = mergeVariantInputs();
+      const monsterPreview = document.getElementById("monster-preview-text");
+      const variantPreview = document.getElementById("variant-preview-text");
+      monsterPreview.textContent = monsterData ? buildMonsterPreview(monsterData) : "JSON 파싱 오류: Monster";
+      variantPreview.textContent = variantData ? buildVariantPreview(variantData) : "JSON 파싱 오류: Variant";
+      updateDpsPreview(monsterData, variantData);
+    }
+
+    function createManagers() {
+      const monsterManager = new SpecManager({
+        entityName: "Monster",
+        collectionName: "monsters",
+        idInputId: "monster-id",
+        jsonInputId: "monster-json",
+        statusId: "monster-status",
+        tableBodyId: "monster-table",
+        saveBtnId: "monster-save",
+        resetBtnId: "monster-reset",
+        sampleBtnId: "monster-sample",
+        refreshBtnId: "monster-refresh",
+        sampleData: SAMPLE_MONSTER,
+        extraFill: ({ data }) => {
+          fillMonsterQuickFields(data);
+        },
+        summaryExtractor: (data) => ({
+          label: data.monsterId ?? data.displayName ?? "Monster",
+          cells: [data.displayName, data.defaultLevel, data.basePresetId, data.growthPresetId],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const merged = mergeMonsterInputs() ?? data;
+          merged.monsterId = merged.monsterId ?? docId;
+          return merged;
+        },
+      });
+
+      const variantManager = new SpecManager({
+        entityName: "Variant",
+        collectionName: "monsterVariants",
+        idInputId: "variant-id",
+        jsonInputId: "variant-json",
+        statusId: "variant-status",
+        tableBodyId: "variant-table",
+        saveBtnId: "variant-save",
+        resetBtnId: "variant-reset",
+        sampleBtnId: "variant-sample",
+        refreshBtnId: "variant-refresh",
+        sampleData: SAMPLE_VARIANT,
+        extraFill: ({ data }) => {
+          fillVariantQuickFields(data);
+        },
+        summaryExtractor: (data) => ({
+          label: data.variantId ?? data.displayName ?? "Variant",
+          cells: [
+            data.monsterId,
+            data.displayName,
+            data.overrides?.basePresetId ?? "(inherit)",
+            data.overrides?.growthPresetId ?? "(inherit)",
+          ],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const merged = mergeVariantInputs() ?? data;
+          merged.variantId = merged.variantId ?? docId;
+          return merged;
+        },
+      });
+
+      return [monsterManager, variantManager];
+    }
+
+    function registerFieldButtons([monsterManager, variantManager]) {
+      document.getElementById("monster-apply-fields")?.addEventListener("click", () => applyMonsterFields(monsterManager));
+      document.getElementById("variant-apply-fields")?.addEventListener("click", () => applyVariantFields(variantManager));
+    }
+
+    async function initialize() {
+      const managers = createManagers();
+      registerFieldButtons(managers);
+
+      const previewInputs = [
+        "monster-json",
+        "monster-id",
+        "monster-display",
+        "monster-base-preset",
+        "monster-growth-preset",
+        "monster-default-level",
+        "monster-tags",
+        "variant-json",
+        "variant-id",
+        "variant-monster-id",
+        "variant-display",
+        "variant-base-preset",
+        "variant-growth-preset",
+        "variant-default-level",
+        "variant-tags",
+      ];
+      previewInputs.forEach((id) => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", updatePreviews);
+        el?.addEventListener("change", updatePreviews);
+      });
+
+      try {
+        const app = initializeApp(await getFirebaseConfig());
+        const db = getFirestore(app);
+        managers.forEach((manager) => {
+          manager.attachDb(db);
+          manager.resetForm();
+          manager.loadTable();
+        });
+        updatePreviews();
+      } catch (error) {
+        console.error(error);
+        managers.forEach((manager) => {
+          manager.setStatus("Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.", { persist: true });
+          manager.toggleButtons(true);
+        });
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
