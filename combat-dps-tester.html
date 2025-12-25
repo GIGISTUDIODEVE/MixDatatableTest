@@ -217,7 +217,7 @@
   <div class="container">
     <header class="card">
       <h1>Combat DPS 테스트</h1>
-      <p class="muted">BaseStats + (Level × GrowthBaseStats)와 CombatStats.md 수식을 기반으로 몬스터 A(공격) → B(방어) DPS를 시뮬레이션합니다.</p>
+      <p class="muted">BaseStats + ((Level-1) × GrowthBaseStats)와 CombatStats.md 수식을 기반으로 몬스터 A(공격) → B(방어) DPS를 시뮬레이션합니다.</p>
     </header>
 
     <section class="card">
@@ -233,7 +233,7 @@
         </div>
         <div>
           <label for="attacker-level">공격자 레벨</label>
-          <input type="number" id="attacker-level" min="0" value="0" />
+          <input type="number" id="attacker-level" min="1" value="1" />
         </div>
         <div>
           <label for="defender-base">방어자 BaseStat</label>
@@ -245,11 +245,20 @@
         </div>
         <div>
           <label for="defender-level">방어자 레벨</label>
-          <input type="number" id="defender-level" min="0" value="0" />
+          <input type="number" id="defender-level" min="1" value="1" />
         </div>
         <div>
           <label for="combat-config">전투 상수 (CombatStats)</label>
           <select id="combat-config"></select>
+        </div>
+
+        <div>
+          <label for="damage-type">피해 타입</label>
+          <select id="damage-type">
+            <option value="Physical" selected>Physical (Armor)</option>
+            <option value="Magic">Magic (MR)</option>
+            <option value="True">True (No Mitigation)</option>
+          </select>
         </div>
       </div>
       <div class="actions">
@@ -394,7 +403,8 @@
     }
 
     function applyGrowth(base, growth, levelRaw) {
-      const level = clampNumber(levelRaw, 0, Number.POSITIVE_INFINITY);
+      const level = clampNumber(levelRaw, 1, Number.POSITIVE_INFINITY);
+      const growthLevel = Math.max(0, level - 1);
       const result = {};
       const keys = new Set([
         ...Object.keys(base ?? {}),
@@ -407,7 +417,7 @@
         if (key === "Element") {
           result[key] = base?.[key] ?? growth?.[key] ?? "";
         } else {
-          result[key] = baseVal + level * growthVal;
+          result[key] = baseVal + growthLevel * growthVal;
         }
       });
       return result;
@@ -428,9 +438,23 @@
       const ad = Number(attacker.ad) || 0;
       const as = Math.max(Number(attacker.as) || 0, cfg.attackSpeedMin);
       const armor = Math.max(Number(defender.armor) || 0, 0);
+      const mr = Math.max(Number(defender.mr) || 0, 0);
 
       const expectedHit = ad * (1 + (critChance / 100) * (critDamage - 1));
-      const mitigation = cfg.armorMitigationBase / (cfg.armorMitigationDivisor + armor);
+
+      // Damage type routing
+      const damageType = (defender.damageType || attacker.damageType || "Physical");
+      let mitigation = 1;
+      if (damageType === "Physical") {
+        mitigation = cfg.armorMitigationBase / (cfg.armorMitigationDivisor + armor);
+      } else if (damageType === "Magic") {
+        mitigation = cfg.armorMitigationBase / (cfg.armorMitigationDivisor + mr);
+      } else if (damageType === "True") {
+        mitigation = 1;
+      } else {
+        mitigation = cfg.armorMitigationBase / (cfg.armorMitigationDivisor + armor);
+      }
+
       const dps = expectedHit * mitigation * as;
 
       return {
