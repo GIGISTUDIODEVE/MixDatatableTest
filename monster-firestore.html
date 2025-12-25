@@ -300,6 +300,36 @@
     .package-list li {
       margin-bottom: 0.2rem;
     }
+
+    details.collapsible {
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      background: #111827;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    details.collapsible[open] > summary {
+      border-bottom: 1px solid #1f2937;
+    }
+
+    details.collapsible summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+    }
+
+    details.collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.collapsible .content {
+      padding: 1rem 1.25rem;
+    }
   </style>
 </head>
 <body>
@@ -321,22 +351,27 @@
       <div class="pill">DPS 연동: basePresetId · growthPresetId · defaultLevel를 combat-dps-tester에 공급</div>
     </header>
 
-    <section class="package-card">
-      <div class="section-header">
-        <div>
-          <h2>몬스터 DPS 연동 상태</h2>
-          <p class="muted">monster_dps_integration.md의 Flow(Load → Select → Apply)를 따라야 합니다.</p>
+    <details class="package-card collapsible" open>
+      <summary>
+        <span>몬스터 DPS 연동 상태</span>
+        <div class="badge warn" id="dps-status-badge">점검 필요</div>
+      </summary>
+      <div class="content">
+        <div class="section-header">
+          <div>
+            <h2>몬스터 DPS 연동 상태</h2>
+            <p class="muted">monster_dps_integration.md의 Flow(Load → Select → Apply)를 따라야 합니다.</p>
+          </div>
         </div>
-        <div id="dps-status-badge" class="badge warn">점검 필요</div>
+        <div class="package-summary">
+          <div class="label">연동 프리뷰</div>
+          <div class="value" id="dps-preview-text">몬스터/변형을 선택하면 DPS 도구에 전달되는 값이 표시됩니다.</div>
+        </div>
+        <ul class="package-list" id="dps-checklist"></ul>
       </div>
-      <div class="package-summary">
-        <div class="label">연동 프리뷰</div>
-        <div class="value" id="dps-preview-text">몬스터/변형을 선택하면 DPS 도구에 전달되는 값이 표시됩니다.</div>
-      </div>
-      <ul class="package-list" id="dps-checklist"></ul>
-    </section>
+    </details>
 
-    <details class="card" open>
+    <details class="card collapsible" open>
       <summary>
         <span>Monster 관리</span>
         <span class="pill">collection = monsters</span>
@@ -418,7 +453,7 @@
       </div>
     </details>
 
-    <details class="card" open>
+    <details class="card collapsible" open>
       <summary>
         <span>Monster Variant 관리</span>
         <span class="pill">collection = monsterVariants</span>
