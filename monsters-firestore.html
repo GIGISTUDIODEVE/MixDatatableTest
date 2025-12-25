@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>몬스터 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+    .nav-brand { font-weight: 800; letter-spacing: -0.01em; }
+    .nav-links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .nav-link:hover { background: #111827; border-color: #1f2937; color: #e2e8f0; }
+    .nav-link.active { background: linear-gradient(90deg,#3b82f6,#06b6d4); color:#0b1220; border-color: transparent; }
+
+    h1 { margin-top: 0; }
+    .container { display: grid; gap: 1.25rem; }
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+    label { display:block; font-weight: 700; margin-bottom: 0.35rem; }
+    input[type="text"], input[type="number"], textarea, select {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+    textarea { min-height: 180px; resize: vertical; line-height: 1.4; }
+    .muted { color:#94a3b8; font-size: 0.9rem; }
+    .actions { display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    button {
+      border:none; border-radius: 10px; padding: 0.6rem 1rem;
+      font-weight: 800; cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+    button.primary { background: linear-gradient(90deg,#3b82f6,#06b6d4); color:#0b1220; }
+    button.secondary { background:#1f2937; color:#e2e8f0; border:1px solid #334155; }
+    button.danger { background:#ef4444; color:#0b1220; }
+    button:hover { filter: brightness(1.05); transform: translateY(-1px); }
+    button:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .tabs { display:flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .tab {
+      padding: 0.45rem 0.8rem;
+      border-radius: 999px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-weight: 800;
+      user-select: none;
+    }
+    .tab.active {
+      background: linear-gradient(90deg,#3b82f6,#06b6d4);
+      color:#0b1220;
+      border-color: transparent;
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    th, td { border-bottom: 1px solid #1f2937; padding: 0.6rem; text-align: left; vertical-align: top; }
+    th { color:#cbd5e1; font-size: 0.95rem; }
+    tr:hover td { background:#0b1220; }
+    .result-table { max-height: 320px; overflow:auto; border:1px solid #1f2937; border-radius: 10px; margin-top: 0.75rem; }
+
+    .mini-grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.35rem 0.65rem;
+      align-items: end;
+    }
+    .pill {
+      display:inline-flex; align-items:center; gap: 0.35rem;
+      padding: 0.25rem 0.6rem; border-radius: 999px;
+      background:#1f2937; color:#cbd5e1; font-size: 0.85rem;
+      border: 1px solid #334155;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Curve & Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link" href="effect-system-firestore.html">EffectSpec 관리</a>
+      <a class="nav-link active" href="monsters-firestore.html">몬스터 관리</a>
+      <a class="nav-link" href="xp-curve-firestore.html">XP Curve 관리</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="card">
+      <h1>몬스터 관리 (Firestore)</h1>
+      <p class="muted">
+        monsters / monsterVariants 문서를 생성·수정·삭제하고,
+        Base/Growth/Combat 프리셋 및 SkillSpec 참조를 쉽게 구성합니다.
+      </p>
+      <div class="tabs">
+        <div class="tab active" id="tab-monsters">monsters</div>
+        <div class="tab" id="tab-variants">monsterVariants</div>
+      </div>
+      <div class="muted">
+        현재 모드: <span class="pill" id="mode-pill">monsters</span>
+        <span style="margin-left:0.5rem" class="pill" id="sync-pill">Firestore 동기화 필요</span>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2 id="form-title">몬스터 편집</h2>
+
+      <div class="grid">
+        <div>
+          <label for="doc-id">문서 ID (키)</label>
+          <input id="doc-id" type="text" placeholder="예: Monster_Goblin_Warrior" />
+          <p class="muted">비워두면 새 문서로 저장합니다(자동 ID). 지정하면 해당 키를 덮어씁니다.</p>
+        </div>
+        <div>
+          <label for="name">이름</label>
+          <input id="name" type="text" placeholder="예: 고블린 전사" />
+        </div>
+        <div>
+          <label for="tier">Tier</label>
+          <select id="tier">
+            <option value="Normal">Normal</option>
+            <option value="Elite">Elite</option>
+            <option value="Boss">Boss</option>
+          </select>
+        </div>
+        <div>
+          <label for="role">Role</label>
+          <select id="role">
+            <option value="Bruiser">Bruiser</option>
+            <option value="DPS">DPS</option>
+            <option value="Tank">Tank</option>
+            <option value="Support">Support</option>
+            <option value="Controller">Controller</option>
+          </select>
+        </div>
+        <div>
+          <label for="rarity">Rarity</label>
+          <select id="rarity">
+            <option value="Common">Common</option>
+            <option value="Uncommon">Uncommon</option>
+            <option value="Rare">Rare</option>
+            <option value="Epic">Epic</option>
+            <option value="Legendary">Legendary</option>
+          </select>
+        </div>
+        <div>
+          <label for="tags">Tags (쉼표)</label>
+          <input id="tags" type="text" placeholder="예: Goblin, Melee, Humanoid" />
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:0.75rem;">
+        <div>
+          <label for="level-min">Level Min</label>
+          <input id="level-min" type="number" min="1" value="1" />
+        </div>
+        <div>
+          <label for="level-max">Level Max</label>
+          <input id="level-max" type="number" min="1" value="30" />
+        </div>
+        <div>
+          <label for="level-default">Default Level</label>
+          <input id="level-default" type="number" min="1" value="5" />
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1rem; background:#0b1220;">
+        <h3 style="margin:0 0 0.5rem;">스탯 참조</h3>
+        <div class="grid">
+          <div>
+            <label for="base-preset">BaseStatPreset</label>
+            <select id="base-preset"></select>
+            <p class="muted">Firestore: <code>baseStatPresets</code></p>
+          </div>
+          <div>
+            <label for="growth-preset">GrowthBaseStatPreset</label>
+            <select id="growth-preset"></select>
+            <p class="muted">Firestore: <code>growthBaseStatPresets</code></p>
+          </div>
+          <div>
+            <label for="combat-config">CombatStatConfig</label>
+            <select id="combat-config"></select>
+            <p class="muted">Firestore: <code>combatStatConfigs</code></p>
+          </div>
+          <div>
+            <label for="element">Element (문자열)</label>
+            <input id="element" type="text" placeholder="예: None / Fire / Ice" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1rem; background:#0b1220;">
+        <h3 style="margin:0 0 0.5rem;">스킬 로드아웃</h3>
+        <p class="muted">SkillSpec를 slot/priority/조건과 함께 구성합니다. 아래 행 편집 후 “로드아웃 JSON 반영”을 누르세요.</p>
+
+        <div id="loadout-rows" style="display:grid; gap:0.75rem;"></div>
+        <div class="actions" style="margin-top:0.5rem;">
+          <button class="secondary" id="add-loadout-row">로드아웃 행 추가</button>
+          <button class="secondary" id="apply-loadout-json">로드아웃 JSON 반영</button>
+          <button class="secondary" id="fill-samples">샘플 3종 채우기</button>
+        </div>
+
+        <label for="skill-loadout-json" style="margin-top:0.75rem;">skillLoadout (JSON)</label>
+        <textarea id="skill-loadout-json" placeholder='[{"slot":"BasicAttack","skillId":"Skill_X","priority":0,"conditions":[]}]'></textarea>
+
+        <div class="grid" style="margin-top:0.75rem;">
+          <div>
+            <label for="skill-suggest">SkillSpec 빠른 선택(행에 삽입용)</label>
+            <select id="skill-suggest"></select>
+            <p class="muted">Firestore: <code>skillSpecs</code></p>
+          </div>
+          <div>
+            <label for="suggest-target-row">삽입 대상 행</label>
+            <input id="suggest-target-row" type="number" min="1" value="1" />
+            <p class="muted">선택한 스킬을 해당 행의 skillId에 삽입합니다.</p>
+          </div>
+          <div style="display:flex; align-items:end;">
+            <button class="secondary" id="insert-skill-to-row" style="width:100%;">선택 스킬 삽입</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1rem; background:#0b1220;">
+        <h3 style="margin:0 0 0.5rem;">AI</h3>
+        <div class="grid">
+          <div>
+            <label for="ai-arch">archetype</label>
+            <input id="ai-arch" type="text" placeholder="예: MeleeChaser / RangedKiter / BossController" />
+          </div>
+          <div>
+            <label for="ai-think">thinkInterval</label>
+            <input id="ai-think" type="number" step="0.01" value="0.25" />
+          </div>
+          <div>
+            <label for="ai-aggro">aggroRange</label>
+            <input id="ai-aggro" type="number" step="0.1" value="10" />
+          </div>
+          <div>
+            <label for="ai-leash">leashRange</label>
+            <input id="ai-leash" type="number" step="0.1" value="22" />
+          </div>
+          <div>
+            <label for="ai-pref">preferredRange</label>
+            <input id="ai-pref" type="number" step="0.1" value="2.0" />
+          </div>
+          <div>
+            <label for="ai-retreat">retreatHpRatio</label>
+            <input id="ai-retreat" type="number" step="0.01" value="0" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1rem; background:#0b1220;">
+        <h3 style="margin:0 0 0.5rem;">Rewards</h3>
+        <div class="grid">
+          <div>
+            <label for="xp-curve-id">xp.curveId</label>
+            <input id="xp-curve-id" type="text" placeholder="예: BaseLevel" />
+          </div>
+          <div>
+            <label for="xp-mult">xp.multiplier</label>
+            <input id="xp-mult" type="number" step="0.01" value="1.0" />
+          </div>
+          <div>
+            <label for="gold-min">gold.min</label>
+            <input id="gold-min" type="number" min="0" value="3" />
+          </div>
+          <div>
+            <label for="gold-max">gold.max</label>
+            <input id="gold-max" type="number" min="0" value="7" />
+          </div>
+          <div>
+            <label for="loot-table">lootTableId</label>
+            <input id="loot-table" type="text" placeholder="예: Loot_Goblin_Common" />
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:1rem;">
+        <div>
+          <label for="notes">notes</label>
+          <input id="notes" type="text" placeholder="운영 메모" />
+        </div>
+        <div>
+          <label for="enabled">enabled</label>
+          <select id="enabled">
+            <option value="true" selected>true</option>
+            <option value="false">false</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" id="variant-panel" style="margin-top:1rem; background:#0b1220; display:none;">
+        <h3 style="margin:0 0 0.5rem;">Variant 전용</h3>
+        <div class="grid">
+          <div>
+            <label for="base-monster-id">baseMonsterId</label>
+            <select id="base-monster-id"></select>
+            <p class="muted">monsterVariants는 baseMonsterId + overrides 구조를 권장합니다.</p>
+          </div>
+          <div>
+            <label for="overrides-json">overrides (JSON)</label>
+            <textarea id="overrides-json" placeholder='{"tier":"Elite","tagsAdd":["Elite"],"statMultipliers":{"hp":1.4}}'></textarea>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="fill-variant-template">오버라이드 템플릿 채우기</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="secondary" id="reset-form">초기화</button>
+        <button class="secondary" id="preview-json">JSON 미리보기</button>
+        <button class="primary" id="save-doc">저장(업로드)</button>
+      </div>
+
+      <div class="status" id="form-status"></div>
+
+      <label for="preview-area" style="margin-top:0.75rem;">Payload 미리보기 (읽기 전용)</label>
+      <textarea id="preview-area" readonly placeholder="여기에 저장 payload가 표시됩니다."></textarea>
+    </section>
+
+    <section class="card">
+      <h2>저장된 문서</h2>
+      <div class="muted">현재 컬렉션: <code id="current-collection">monsters</code></div>
+      <div class="actions" style="margin-top:0.35rem;">
+        <button class="secondary" id="refresh-list">리스트 새로고침</button>
+      </div>
+
+      <div class="result-table">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:22%;">ID</th>
+              <th style="width:18%;">이름</th>
+              <th style="width:14%;">Tier</th>
+              <th style="width:22%;">업데이트</th>
+              <th style="width:24%;">작업</th>
+            </tr>
+          </thead>
+          <tbody id="list-body">
+            <tr><td colspan="5">데이터를 불러오는 중입니다...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="status" id="list-status"></div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      doc,
+      getDocs,
+      getDoc,
+      setDoc,
+      addDoc,
+      deleteDoc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const app = initializeApp(await getFirebaseConfig());
+    const db = getFirestore(app);
+
+    // Collections
+    const monstersRef = collection(db, "monsters");
+    const variantsRef = collection(db, "monsterVariants");
+    const baseRef = collection(db, "baseStatPresets");
+    const growthRef = collection(db, "growthBaseStatPresets");
+    const combatRef = collection(db, "combatStatConfigs");
+    const skillsRef = collection(db, "skillSpecs");
+
+    // Mode
+    let mode = "monsters"; // or "monsterVariants"
+    let loadedDocs = new Map(); // id -> data
+    let basePresets = new Map();
+    let growthPresets = new Map();
+    let combatConfigs = new Map();
+    let skillSpecs = new Map();
+
+    // Elements
+    const tabMonsters = document.getElementById("tab-monsters");
+    const tabVariants = document.getElementById("tab-variants");
+    const modePill = document.getElementById("mode-pill");
+    const syncPill = document.getElementById("sync-pill");
+
+    const formTitle = document.getElementById("form-title");
+    const variantPanel = document.getElementById("variant-panel");
+
+    const docIdInput = document.getElementById("doc-id");
+    const nameInput = document.getElementById("name");
+    const tierSelect = document.getElementById("tier");
+    const roleSelect = document.getElementById("role");
+    const raritySelect = document.getElementById("rarity");
+    const tagsInput = document.getElementById("tags");
+
+    const levelMin = document.getElementById("level-min");
+    const levelMax = document.getElementById("level-max");
+    const levelDefault = document.getElementById("level-default");
+
+    const basePresetSelect = document.getElementById("base-preset");
+    const growthPresetSelect = document.getElementById("growth-preset");
+    const combatConfigSelect = document.getElementById("combat-config");
+    const elementInput = document.getElementById("element");
+
+    const loadoutRowsContainer = document.getElementById("loadout-rows");
+    const addLoadoutRowBtn = document.getElementById("add-loadout-row");
+    const applyLoadoutJsonBtn = document.getElementById("apply-loadout-json");
+    const skillLoadoutJson = document.getElementById("skill-loadout-json");
+
+    const skillSuggestSelect = document.getElementById("skill-suggest");
+    const suggestTargetRow = document.getElementById("suggest-target-row");
+    const insertSkillToRowBtn = document.getElementById("insert-skill-to-row");
+
+    const fillSamplesBtn = document.getElementById("fill-samples");
+
+    const aiArch = document.getElementById("ai-arch");
+    const aiThink = document.getElementById("ai-think");
+    const aiAggro = document.getElementById("ai-aggro");
+    const aiLeash = document.getElementById("ai-leash");
+    const aiPref = document.getElementById("ai-pref");
+    const aiRetreat = document.getElementById("ai-retreat");
+
+    const xpCurveId = document.getElementById("xp-curve-id");
+    const xpMult = document.getElementById("xp-mult");
+    const goldMin = document.getElementById("gold-min");
+    const goldMax = document.getElementById("gold-max");
+    const lootTable = document.getElementById("loot-table");
+
+    const notes = document.getElementById("notes");
+    const enabled = document.getElementById("enabled");
+
+    const baseMonsterId = document.getElementById("base-monster-id");
+    const overridesJson = document.getElementById("overrides-json");
+    const fillVariantTemplateBtn = document.getElementById("fill-variant-template");
+
+    const resetFormBtn = document.getElementById("reset-form");
+    const previewJsonBtn = document.getElementById("preview-json");
+    const saveDocBtn = document.getElementById("save-doc");
+    const formStatus = document.getElementById("form-status");
+    const previewArea = document.getElementById("preview-area");
+
+    const currentCollectionEl = document.getElementById("current-collection");
+    const refreshListBtn = document.getElementById("refresh-list");
+    const listBody = document.getElementById("list-body");
+    const listStatus = document.getElementById("list-status");
+
+    // Helpers
+    function setFormStatus(message, delay = 4500) {
+      formStatus.textContent = message;
+      if (delay) setTimeout(() => (formStatus.textContent = ""), delay);
+    }
+    function setListStatus(message, delay = 4500) {
+      listStatus.textContent = message;
+      if (delay) setTimeout(() => (listStatus.textContent = ""), delay);
+    }
+    function setSynced(isSynced) {
+      syncPill.textContent = isSynced ? "Firestore 동기화 완료" : "Firestore 동기화 필요";
+      syncPill.style.opacity = isSynced ? "0.95" : "0.75";
+    }
+    function sanitizeKey(raw) {
+      const trimmed = (raw || "").trim();
+      if (!trimmed) return "";
+      if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
+        throw new Error("키는 영문, 숫자, -, _ 만 사용할 수 있습니다.");
+      }
+      return trimmed;
+    }
+    function clampInt(value, min = 1) {
+      const n = Math.floor(Number(value));
+      if (!Number.isFinite(n)) return min;
+      return Math.max(min, n);
+    }
+    function clampNum(value, min = 0) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return min;
+      return Math.max(min, n);
+    }
+    function parseTags(raw) {
+      return (raw || "")
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+    }
+    function toBoolString(v) {
+      return v === true || v === "true" ? "true" : "false";
+    }
+    function formatDate(iso) {
+      if (!iso) return "-";
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return iso;
+      return date.toLocaleString();
+    }
+    function renderSelect(selectEl, entries, labelKey = "name") {
+      const current = selectEl.value;
+      selectEl.innerHTML = "";
+      entries.forEach(({ id, data }) => {
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = data?.[labelKey] ?? id;
+        selectEl.appendChild(opt);
+      });
+      if (entries.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "데이터 없음";
+        selectEl.appendChild(opt);
+      }
+      if (current && entries.some((e) => e.id === current)) selectEl.value = current;
+    }
+
+    // Loadout dynamic rows
+    const loadoutRows = [];
+    function clearLoadoutRows() {
+      loadoutRowsContainer.innerHTML = "";
+      loadoutRows.length = 0;
+    }
+    function createLoadoutRow(initial = {}) {
+      const row = document.createElement("div");
+      row.className = "mini-grid";
+
+      const slotWrap = document.createElement("div");
+      const slotLabel = document.createElement("label");
+      slotLabel.textContent = "slot";
+      const slotInput = document.createElement("input");
+      slotInput.type = "text";
+      slotInput.placeholder = "BasicAttack / Skill1 / Ultimate ...";
+      slotInput.value = initial.slot ?? "BasicAttack";
+      slotWrap.append(slotLabel, slotInput);
+
+      const skillWrap = document.createElement("div");
+      const skillLabel = document.createElement("label");
+      skillLabel.textContent = "skillId";
+      const skillInput = document.createElement("input");
+      skillInput.type = "text";
+      skillInput.placeholder = "Skill_XXX";
+      skillInput.value = initial.skillId ?? "";
+      skillWrap.append(skillLabel, skillInput);
+
+      const prioWrap = document.createElement("div");
+      const prioLabel = document.createElement("label");
+      prioLabel.textContent = "priority";
+      const prioInput = document.createElement("input");
+      prioInput.type = "number";
+      prioInput.value = initial.priority ?? 0;
+      prioWrap.append(prioLabel, prioInput);
+
+      const condWrap = document.createElement("div");
+      const condLabel = document.createElement("label");
+      condLabel.textContent = "conditions (쉼표)";
+      const condInput = document.createElement("input");
+      condInput.type = "text";
+      condInput.placeholder = "TargetInRange, CooldownReady";
+      condInput.value = Array.isArray(initial.conditions) ? initial.conditions.join(", ") : (initial.conditions ?? "");
+      condWrap.append(condLabel, condInput);
+
+      const rmWrap = document.createElement("div");
+      rmWrap.style.display = "flex";
+      rmWrap.style.alignItems = "flex-end";
+      const rmBtn = document.createElement("button");
+      rmBtn.className = "danger";
+      rmBtn.type = "button";
+      rmBtn.textContent = "삭제";
+      rmBtn.addEventListener("click", () => {
+        loadoutRowsContainer.removeChild(row);
+        const idx = loadoutRows.findIndex((x) => x.wrapper === row);
+        if (idx >= 0) loadoutRows.splice(idx, 1);
+      });
+      rmWrap.appendChild(rmBtn);
+
+      row.append(slotWrap, skillWrap, prioWrap, condWrap, rmWrap);
+      loadoutRowsContainer.appendChild(row);
+
+      const entry = { wrapper: row, slotInput, skillInput, prioInput, condInput };
+      loadoutRows.push(entry);
+      return entry;
+    }
+
+    function applyLoadoutToJson() {
+      const items = [];
+      const errors = [];
+      loadoutRows.forEach(({ slotInput, skillInput, prioInput, condInput }, index) => {
+        const slot = (slotInput.value || "").trim();
+        const skillId = (skillInput.value || "").trim();
+        const priority = Number(prioInput.value);
+        const conditions = (condInput.value || "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        if (!slot) errors.push(`${index + 1}행: slot 필요`);
+        if (!skillId) errors.push(`${index + 1}행: skillId 필요`);
+        const pr = Number.isFinite(priority) ? priority : 0;
+
+        items.push({ slot, skillId, priority: pr, conditions });
+      });
+
+      if (errors.length) {
+        setFormStatus(errors.join("\n"), 6500);
+        return;
+      }
+      skillLoadoutJson.value = JSON.stringify(items, null, 2);
+      setFormStatus(`로드아웃 ${items.length}개를 JSON에 반영했습니다.`);
+    }
+
+    function parseLoadoutJson(raw) {
+      const trimmed = (raw || "").trim();
+      if (!trimmed) return [];
+      let parsed;
+      try { parsed = JSON.parse(trimmed); }
+      catch (e) { throw new Error("skillLoadout JSON 파싱 실패"); }
+      if (!Array.isArray(parsed)) throw new Error("skillLoadout은 배열이어야 합니다.");
+      return parsed.map((it) => ({
+        slot: (it.slot ?? "").toString(),
+        skillId: (it.skillId ?? "").toString(),
+        priority: Number(it.priority ?? 0) || 0,
+        conditions: Array.isArray(it.conditions) ? it.conditions.map(String) : [],
+      }));
+    }
+
+    // Build payload
+    function buildMonsterPayload() {
+      const now = new Date().toISOString();
+
+      const id = sanitizeKey(docIdInput.value);
+      const tags = parseTags(tagsInput.value);
+
+      const minL = clampInt(levelMin.value, 1);
+      const maxL = Math.max(minL, clampInt(levelMax.value, minL));
+      const defL = Math.min(Math.max(minL, clampInt(levelDefault.value, minL)), maxL);
+
+      const payload = {
+        schemaVersion: 1,
+        monsterId: id || undefined,
+        name: (nameInput.value || "").trim(),
+        description: "",
+        tags,
+        tier: tierSelect.value,
+        role: roleSelect.value,
+        rarity: raritySelect.value,
+        levelPolicy: { min: minL, max: maxL, default: defL },
+        stats: {
+          basePresetId: basePresetSelect.value || "",
+          growthPresetId: growthPresetSelect.value || "",
+          combatConfigId: combatConfigSelect.value || "",
+          element: (elementInput.value || "").trim() || "None",
+        },
+        skillLoadout: parseLoadoutJson(skillLoadoutJson.value),
+        ai: {
+          archetype: (aiArch.value || "").trim(),
+          thinkInterval: clampNum(aiThink.value, 0.01),
+          aggroRange: clampNum(aiAggro.value, 0),
+          leashRange: clampNum(aiLeash.value, 0),
+          preferredRange: clampNum(aiPref.value, 0),
+          retreatHpRatio: Math.min(Math.max(clampNum(aiRetreat.value, 0), 0), 1),
+          assistCallRange: 0,
+        },
+        rewards: {
+          xp: { curveId: (xpCurveId.value || "").trim(), multiplier: clampNum(xpMult.value, 0.01) },
+          gold: { min: clampInt(goldMin.value, 0), max: clampInt(goldMax.value, 0) },
+          lootTableId: (lootTable.value || "").trim(),
+        },
+        meta: {
+          enabled: toBoolString(enabled.value) === "true",
+          notes: (notes.value || "").trim(),
+        },
+        updatedAt: now,
+      };
+
+      // gold bounds
+      payload.rewards.gold.max = Math.max(payload.rewards.gold.min, payload.rewards.gold.max);
+
+      // If doc already loaded, keep createdAt
+      const existing = id && loadedDocs.has(id) ? loadedDocs.get(id) : null;
+      payload.createdAt = existing?.createdAt || now;
+
+      // Clean empty optional fields
+      if (!payload.name) delete payload.name;
+      if (!payload.rewards.xp.curveId) delete payload.rewards.xp.curveId;
+      if (!payload.rewards.lootTableId) delete payload.rewards.lootTableId;
+      if (!payload.ai.archetype) delete payload.ai.archetype;
+
+      return { id, payload };
+    }
+
+    function buildVariantPayload() {
+      const now = new Date().toISOString();
+      const id = sanitizeKey(docIdInput.value);
+
+      const baseId = baseMonsterId.value || "";
+      if (!baseId) throw new Error("baseMonsterId를 선택하세요.");
+
+      let overrides = {};
+      const raw = (overridesJson.value || "").trim();
+      if (raw) {
+        try { overrides = JSON.parse(raw); }
+        catch (e) { throw new Error("overrides JSON 파싱 실패"); }
+      }
+
+      const payload = {
+        schemaVersion: 1,
+        variantId: id || undefined,
+        baseMonsterId: baseId,
+        overrides,
+        updatedAt: now,
+      };
+
+      const existing = id && loadedDocs.has(id) ? loadedDocs.get(id) : null;
+      payload.createdAt = existing?.createdAt || now;
+
+      return { id, payload };
+    }
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      tabMonsters.classList.toggle("active", mode === "monsters");
+      tabVariants.classList.toggle("active", mode === "monsterVariants");
+      modePill.textContent = mode;
+      currentCollectionEl.textContent = mode;
+      formTitle.textContent = mode === "monsters" ? "몬스터 편집" : "Variant 편집";
+      variantPanel.style.display = mode === "monsterVariants" ? "block" : "none";
+      setSynced(false);
+      resetForm(false);
+      refreshList();
+    }
+
+    function resetForm(clearStatus = true) {
+      docIdInput.value = "";
+      nameInput.value = "";
+      tierSelect.value = "Normal";
+      roleSelect.value = "Bruiser";
+      raritySelect.value = "Common";
+      tagsInput.value = "";
+
+      levelMin.value = 1;
+      levelMax.value = 30;
+      levelDefault.value = 5;
+
+      elementInput.value = "None";
+
+      clearLoadoutRows();
+      createLoadoutRow({ slot: "BasicAttack", skillId: "", priority: 0, conditions: [] });
+      skillLoadoutJson.value = JSON.stringify([{ slot: "BasicAttack", skillId: "", priority: 0, conditions: [] }], null, 2);
+
+      aiArch.value = mode === "monsters" ? "MeleeChaser" : "";
+      aiThink.value = 0.25;
+      aiAggro.value = 10;
+      aiLeash.value = 22;
+      aiPref.value = 2.0;
+      aiRetreat.value = 0;
+
+      xpCurveId.value = "BaseLevel";
+      xpMult.value = 1.0;
+      goldMin.value = 3;
+      goldMax.value = 7;
+      lootTable.value = "";
+
+      notes.value = "";
+      enabled.value = "true";
+
+      overridesJson.value = "";
+
+      previewArea.value = "";
+      if (clearStatus) setFormStatus("");
+    }
+
+    function applyMonsterToForm(id, data) {
+      resetForm(false);
+      docIdInput.value = id;
+      nameInput.value = data?.name ?? "";
+      tierSelect.value = data?.tier ?? "Normal";
+      roleSelect.value = data?.role ?? "Bruiser";
+      raritySelect.value = data?.rarity ?? "Common";
+      tagsInput.value = Array.isArray(data?.tags) ? data.tags.join(", ") : "";
+
+      levelMin.value = data?.levelPolicy?.min ?? 1;
+      levelMax.value = data?.levelPolicy?.max ?? 30;
+      levelDefault.value = data?.levelPolicy?.default ?? 5;
+
+      basePresetSelect.value = data?.stats?.basePresetId ?? basePresetSelect.value;
+      growthPresetSelect.value = data?.stats?.growthPresetId ?? growthPresetSelect.value;
+      combatConfigSelect.value = data?.stats?.combatConfigId ?? combatConfigSelect.value;
+      elementInput.value = data?.stats?.element ?? "None";
+
+      // Loadout
+      clearLoadoutRows();
+      const loadout = Array.isArray(data?.skillLoadout) ? data.skillLoadout : [];
+      if (loadout.length === 0) {
+        createLoadoutRow({ slot: "BasicAttack", skillId: "", priority: 0, conditions: [] });
+        skillLoadoutJson.value = JSON.stringify([{ slot:"BasicAttack", skillId:"", priority:0, conditions:[] }], null, 2);
+      } else {
+        loadout.forEach((it) => createLoadoutRow(it));
+        skillLoadoutJson.value = JSON.stringify(loadout, null, 2);
+      }
+
+      aiArch.value = data?.ai?.archetype ?? "";
+      aiThink.value = data?.ai?.thinkInterval ?? 0.25;
+      aiAggro.value = data?.ai?.aggroRange ?? 10;
+      aiLeash.value = data?.ai?.leashRange ?? 22;
+      aiPref.value = data?.ai?.preferredRange ?? 2.0;
+      aiRetreat.value = data?.ai?.retreatHpRatio ?? 0;
+
+      xpCurveId.value = data?.rewards?.xp?.curveId ?? "";
+      xpMult.value = data?.rewards?.xp?.multiplier ?? 1.0;
+      goldMin.value = data?.rewards?.gold?.min ?? 0;
+      goldMax.value = data?.rewards?.gold?.max ?? 0;
+      lootTable.value = data?.rewards?.lootTableId ?? "";
+
+      notes.value = data?.meta?.notes ?? "";
+      enabled.value = data?.meta?.enabled === false ? "false" : "true";
+
+      setFormStatus(`'${id}' 문서를 불러왔습니다.`);
+    }
+
+    function applyVariantToForm(id, data) {
+      resetForm(false);
+      docIdInput.value = id;
+      nameInput.value = data?.overrides?.name ?? "";
+      tierSelect.value = data?.overrides?.tier ?? "Normal";
+      tagsInput.value = Array.isArray(data?.overrides?.tagsAdd) ? data.overrides.tagsAdd.join(", ") : "";
+      baseMonsterId.value = data?.baseMonsterId ?? baseMonsterId.value;
+      overridesJson.value = JSON.stringify(data?.overrides ?? {}, null, 2);
+      setFormStatus(`'${id}' variant를 불러왔습니다.`);
+    }
+
+    function fillSamples() {
+      // Prefill 3 sample monsters aligned with spec docs
+      const samples = [
+        {
+          id: "Monster_Goblin_Warrior",
+          name: "고블린 전사",
+          tier: "Normal",
+          role: "Bruiser",
+          rarity: "Common",
+          tags: ["Goblin", "Melee", "Humanoid"],
+          levelPolicy: { min: 1, max: 30, default: 5 },
+          stats: { basePresetId: "goblin_warrior_base", growthPresetId: "goblin_warrior_growth", combatConfigId: "BasicConstants", element: "None" },
+          skillLoadout: [{ slot: "BasicAttack", skillId: "Skill_Goblin_BasicSlash", priority: 0, conditions: [] }],
+          ai: { archetype: "MeleeChaser", thinkInterval: 0.25, aggroRange: 10, leashRange: 22, preferredRange: 2.0, retreatHpRatio: 0 },
+          rewards: { xp: { curveId: "BaseLevel", multiplier: 1.0 }, gold: { min: 3, max: 7 }, lootTableId: "Loot_Goblin_Common" },
+          meta: { enabled: true, notes: "튜토리얼~초반" },
+        },
+        {
+          id: "Monster_Goblin_Slinger",
+          name: "고블린 투척병",
+          tier: "Normal",
+          role: "DPS",
+          rarity: "Common",
+          tags: ["Goblin", "Ranged", "Humanoid"],
+          levelPolicy: { min: 1, max: 35, default: 7 },
+          stats: { basePresetId: "goblin_slinger_base", growthPresetId: "goblin_slinger_growth", combatConfigId: "BasicConstants", element: "None" },
+          skillLoadout: [
+            { slot: "BasicAttack", skillId: "Skill_Goblin_BasicThrow", priority: 0, conditions: [] },
+            { slot: "Skill1", skillId: "Skill_Goblin_PoisonDart", priority: 5, conditions: ["TargetInRange", "CooldownReady"] }
+          ],
+          ai: { archetype: "RangedKiter", thinkInterval: 0.2, aggroRange: 12, leashRange: 25, preferredRange: 8.0, retreatHpRatio: 0.15 },
+          rewards: { xp: { curveId: "BaseLevel", multiplier: 1.05 }, gold: { min: 4, max: 9 }, lootTableId: "Loot_Goblin_Common" },
+          meta: { enabled: true, notes: "원거리 압박" },
+        },
+        {
+          id: "Monster_IceQueen",
+          name: "빙결의 여왕",
+          tier: "Boss",
+          role: "Controller",
+          rarity: "Legendary",
+          tags: ["Boss", "Ice", "Ranged", "Controller"],
+          levelPolicy: { min: 20, max: 60, default: 30 },
+          stats: { basePresetId: "boss_icequeen_base", growthPresetId: "boss_icequeen_growth", combatConfigId: "BasicConstants", element: "Ice" },
+          skillLoadout: [
+            { slot: "BasicAttack", skillId: "Skill_IceQueen_IceBolt", priority: 0, conditions: [] },
+            { slot: "Skill1", skillId: "Skill_IceQueen_FrostNova", priority: 5, conditions: ["TargetInRange", "CooldownReady"] },
+            { slot: "Ultimate", skillId: "Skill_Ashe_R", priority: 100, conditions: ["HpBelow70", "CooldownReady"] }
+          ],
+          ai: { archetype: "BossController", thinkInterval: 0.15, aggroRange: 18, leashRange: 40, preferredRange: 10.0, retreatHpRatio: 0 },
+          rewards: { xp: { curveId: "BaseLevel", multiplier: 6.0 }, gold: { min: 200, max: 400 }, lootTableId: "Loot_Boss_IceQueen" },
+          meta: { enabled: true, notes: "궁극기 투사체로 페이즈 압박" },
+        },
+      ];
+
+      // Use current doc-id as selector:
+      const pick = prompt("샘플 선택: 1=근접, 2=원거리, 3=보스", "1");
+      const idx = Number(pick) - 1;
+      if (!Number.isFinite(idx) || idx < 0 || idx >= samples.length) {
+        setFormStatus("샘플 선택이 취소되었거나 잘못되었습니다.", 4500);
+        return;
+      }
+      const s = samples[idx];
+
+      // apply
+      docIdInput.value = s.id;
+      nameInput.value = s.name;
+      tierSelect.value = s.tier;
+      roleSelect.value = s.role;
+      raritySelect.value = s.rarity;
+      tagsInput.value = s.tags.join(", ");
+
+      levelMin.value = s.levelPolicy.min;
+      levelMax.value = s.levelPolicy.max;
+      levelDefault.value = s.levelPolicy.default;
+
+      basePresetSelect.value = s.stats.basePresetId;
+      growthPresetSelect.value = s.stats.growthPresetId;
+      combatConfigSelect.value = s.stats.combatConfigId;
+      elementInput.value = s.stats.element;
+
+      clearLoadoutRows();
+      s.skillLoadout.forEach((it) => createLoadoutRow(it));
+      skillLoadoutJson.value = JSON.stringify(s.skillLoadout, null, 2);
+
+      aiArch.value = s.ai.archetype;
+      aiThink.value = s.ai.thinkInterval;
+      aiAggro.value = s.ai.aggroRange;
+      aiLeash.value = s.ai.leashRange;
+      aiPref.value = s.ai.preferredRange;
+      aiRetreat.value = s.ai.retreatHpRatio;
+
+      xpCurveId.value = s.rewards.xp.curveId;
+      xpMult.value = s.rewards.xp.multiplier;
+      goldMin.value = s.rewards.gold.min;
+      goldMax.value = s.rewards.gold.max;
+      lootTable.value = s.rewards.lootTableId;
+
+      enabled.value = s.meta.enabled ? "true" : "false";
+      notes.value = s.meta.notes;
+
+      setFormStatus(`샘플 '${s.id}'를 채웠습니다. 저장을 누르면 업로드됩니다.`, 6000);
+    }
+
+    function fillVariantTemplate() {
+      const template = {
+        name: "정예 변형",
+        tier: "Elite",
+        tagsAdd: ["Elite"],
+        tagsRemove: [],
+        statMultipliers: { hp: 1.4, ad: 1.2, armor: 1.1, mr: 1.1, as: 1.05 },
+        skillLoadoutAdd: [],
+        skillLoadoutRemoveBySlot: []
+      };
+      overridesJson.value = JSON.stringify(template, null, 2);
+      setFormStatus("오버라이드 템플릿을 채웠습니다.");
+    }
+
+    function previewPayload() {
+      try {
+        const built = mode === "monsters" ? buildMonsterPayload() : buildVariantPayload();
+        previewArea.value = JSON.stringify(built.payload, null, 2);
+        setFormStatus("미리보기를 갱신했습니다.");
+      } catch (e) {
+        console.error(e);
+        setFormStatus(e.message || "미리보기 실패", 6000);
+      }
+    }
+
+    async function saveDoc() {
+      try {
+        const built = mode === "monsters" ? buildMonsterPayload() : buildVariantPayload();
+        const payload = built.payload;
+        const key = built.id;
+
+        if (mode === "monsters") {
+          // minimal validation
+          if (!payload.stats?.basePresetId) throw new Error("BaseStatPreset을 선택하세요.");
+          if (!payload.stats?.growthPresetId) throw new Error("GrowthBaseStatPreset을 선택하세요.");
+          if (!payload.stats?.combatConfigId) throw new Error("CombatStatConfig를 선택하세요.");
+        }
+
+        if (key) {
+          const ref = doc(db, mode, key);
+          await setDoc(ref, payload, { merge: true });
+          setFormStatus(`'${key}'로 저장했습니다.`);
+        } else {
+          const ref = await addDoc(mode === "monsters" ? monstersRef : variantsRef, payload);
+          docIdInput.value = ref.id;
+          setFormStatus(`새 문서로 저장했습니다. (key: ${ref.id})`);
+        }
+
+        setSynced(false);
+        await refreshList();
+      } catch (e) {
+        console.error(e);
+        setFormStatus(e.message || "저장 실패", 6500);
+      }
+    }
+
+    async function deleteById(id) {
+      if (!id) return;
+      if (!confirm(`'${id}' 항목을 삭제하시겠습니까?`)) return;
+      try {
+        await deleteDoc(doc(db, mode, id));
+        setListStatus(`'${id}' 삭제 완료`);
+        if ((docIdInput.value || "").trim() === id) resetForm(false);
+        setSynced(false);
+        await refreshList();
+      } catch (e) {
+        console.error(e);
+        setListStatus(e.message || "삭제 실패", 6500);
+      }
+    }
+
+    async function refreshRefs() {
+      // Load preset + skills for dropdowns
+      const [baseSnap, growthSnap, combatSnap, skillSnap] = await Promise.all([
+        getDocs(baseRef),
+        getDocs(growthRef),
+        getDocs(combatRef),
+        getDocs(skillsRef),
+      ]);
+
+      basePresets = new Map();
+      baseSnap.forEach((d) => basePresets.set(d.id, d.data()));
+      growthPresets = new Map();
+      growthSnap.forEach((d) => growthPresets.set(d.id, d.data()));
+      combatConfigs = new Map();
+      combatSnap.forEach((d) => combatConfigs.set(d.id, d.data()));
+      skillSpecs = new Map();
+      skillSnap.forEach((d) => skillSpecs.set(d.id, d.data()));
+
+      const baseEntries = Array.from(basePresets, ([id, data]) => ({ id, data }));
+      const growthEntries = Array.from(growthPresets, ([id, data]) => ({ id, data }));
+      const combatEntries = Array.from(combatConfigs, ([id, data]) => ({ id, data }));
+      const skillEntries = Array.from(skillSpecs, ([id, data]) => ({ id, data }));
+
+      renderSelect(basePresetSelect, baseEntries, "name");
+      renderSelect(growthPresetSelect, growthEntries, "name");
+      renderSelect(combatConfigSelect, combatEntries, "name");
+      renderSelect(skillSuggestSelect, skillEntries, "skillId");
+
+      setSynced(true);
+    }
+
+    async function refreshBaseMonsterSelect() {
+      // Used for variants baseMonsterId
+      const snap = await getDocs(monstersRef);
+      const entries = [];
+      snap.forEach((d) => entries.push({ id: d.id, data: d.data() }));
+      entries.sort((a, b) => (a.data?.name || a.id).localeCompare(b.data?.name || b.id, "ko"));
+      renderSelect(baseMonsterId, entries, "name");
+    }
+
+    async function refreshList() {
+      listBody.innerHTML = `<tr><td colspan="5">데이터를 불러오는 중...</td></tr>`;
+      try {
+        const ref = mode === "monsters" ? monstersRef : variantsRef;
+        const snap = await getDocs(ref);
+        const docs = [];
+        loadedDocs = new Map();
+
+        snap.forEach((d) => {
+          const data = d.data();
+          loadedDocs.set(d.id, data);
+          docs.push({ id: d.id, data });
+        });
+
+        docs.sort((a, b) => {
+          const tA = new Date(a.data?.updatedAt || a.data?.createdAt || 0).getTime();
+          const tB = new Date(b.data?.updatedAt || b.data?.createdAt || 0).getTime();
+          return tB - tA;
+        });
+
+        renderList(docs);
+        setListStatus(`총 ${docs.length}건 불러옴`);
+        if (mode === "monsterVariants") await refreshBaseMonsterSelect();
+      } catch (e) {
+        console.error(e);
+        listBody.innerHTML = `<tr><td colspan="5">불러오기 실패</td></tr>`;
+        setListStatus(e.message || "리스트 불러오기 실패", 6500);
+      }
+    }
+
+    function renderList(docs) {
+      listBody.innerHTML = "";
+      if (!docs.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = "저장된 데이터가 없습니다.";
+        tr.appendChild(td);
+        listBody.appendChild(tr);
+        return;
+      }
+
+      docs.forEach(({ id, data }) => {
+        const tr = document.createElement("tr");
+        const name = mode === "monsters"
+          ? (data?.name ?? "-")
+          : (data?.overrides?.name ?? data?.variantId ?? "-");
+        const tier = mode === "monsters"
+          ? (data?.tier ?? "-")
+          : (data?.overrides?.tier ?? "-");
+        const updated = formatDate(data?.updatedAt || data?.createdAt);
+
+        [id, name, tier, updated].forEach((text) => {
+          const td = document.createElement("td");
+          td.textContent = text ?? "-";
+          tr.appendChild(td);
+        });
+
+        const actionTd = document.createElement("td");
+
+        const loadBtn = document.createElement("button");
+        loadBtn.className = "secondary";
+        loadBtn.textContent = "불러오기";
+        loadBtn.type = "button";
+        loadBtn.addEventListener("click", async () => {
+          const ref = doc(db, mode, id);
+          const snap = await getDoc(ref);
+          if (!snap.exists()) return setListStatus("문서를 찾을 수 없습니다.", 4500);
+          const docData = snap.data();
+          if (mode === "monsters") applyMonsterToForm(id, docData);
+          else applyVariantToForm(id, docData);
+          previewPayload();
+        });
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "danger";
+        delBtn.textContent = "삭제";
+        delBtn.type = "button";
+        delBtn.style.marginLeft = "0.5rem";
+        delBtn.addEventListener("click", () => deleteById(id));
+
+        actionTd.appendChild(loadBtn);
+        actionTd.appendChild(delBtn);
+        tr.appendChild(actionTd);
+
+        listBody.appendChild(tr);
+      });
+    }
+
+    // Skill suggest insertion
+    function insertSkillToRow() {
+      const skillId = (skillSuggestSelect.value || "").trim();
+      if (!skillId) return setFormStatus("삽입할 SkillSpec를 선택하세요.", 4500);
+      const idx = clampInt(suggestTargetRow.value, 1) - 1;
+      if (idx < 0 || idx >= loadoutRows.length) return setFormStatus("대상 행 번호가 범위를 벗어났습니다.", 4500);
+      loadoutRows[idx].skillInput.value = skillId;
+      setFormStatus(`${idx + 1}행에 '${skillId}'를 삽입했습니다. (JSON 반영 버튼을 누르세요)`, 6000);
+    }
+
+    // Events
+    tabMonsters.addEventListener("click", () => setMode("monsters"));
+    tabVariants.addEventListener("click", () => setMode("monsterVariants"));
+
+    addLoadoutRowBtn.addEventListener("click", () => createLoadoutRow({ slot:"Skill1", skillId:"", priority: 0, conditions: [] }));
+    applyLoadoutJsonBtn.addEventListener("click", applyLoadoutToJson);
+    insertSkillToRowBtn.addEventListener("click", insertSkillToRow);
+
+    fillSamplesBtn.addEventListener("click", fillSamples);
+    fillVariantTemplateBtn.addEventListener("click", fillVariantTemplate);
+
+    resetFormBtn.addEventListener("click", () => resetForm(true));
+    previewJsonBtn.addEventListener("click", previewPayload);
+    saveDocBtn.addEventListener("click", saveDoc);
+
+    refreshListBtn.addEventListener("click", refreshList);
+
+    // Boot
+    (async function init() {
+      try {
+        resetForm(false);
+        await refreshRefs();
+        await refreshList();
+      } catch (e) {
+        console.error(e);
+        setFormStatus(e.message || "초기화 실패", 6500);
+      }
+    })();
+  </script>
+</body>
+</html>
