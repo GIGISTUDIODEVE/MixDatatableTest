@@ -10,7 +10,7 @@
 
 ## 최종 스텟 산출
 - 입력: 베이스 스텟(`base`)과 성장 스텟(`growth`), 그리고 `level`.
-- 계산: `final = base + (level × growth)`
+- 계산: `final = base + ((level - 1) × growth)`
   - 성장 스텟이 존재하지 않는 경우에는 0으로 간주합니다.
   - `level`은 0 미만으로 내려가지 않도록 0 이상으로 제한합니다.
 
