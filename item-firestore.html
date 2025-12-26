@@ -94,7 +94,7 @@
 
     .split-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 1rem 1.25rem;
     }
 
@@ -106,6 +106,7 @@
 
     input[type="text"],
     input[type="number"],
+    select,
     textarea {
       width: 100%;
       padding: 0.55rem 0.65rem;
@@ -117,7 +118,7 @@
     }
 
     textarea {
-      min-height: 220px;
+      min-height: 140px;
       resize: vertical;
       line-height: 1.45;
     }
@@ -286,8 +287,8 @@
   <div class="container">
     <header class="card">
       <h1>아이템 관리</h1>
-      <p class="muted">ItemSchema.md 스펙을 기반으로 Firestore 컬렉션 <code>items</code>에 저장/불러오기/수정/삭제합니다. 티어/조합/강화 정보를 모두 JSON으로 관리하도록 설계되었습니다.</p>
-      <div class="pill">핵심 필드: id · slug · name · tierNumber/tierKey · build · stats · effects</div>
+      <p class="muted">ItemSchema.md (타입 기반 스키마)을 기반으로 Firestore 컬렉션 <code>items</code>에 저장/불러오기/수정/삭제합니다. 공통 필드 + itemType별 블록(equipment/consumable/quest/material/key_item/currency_item)을 모두 JSON으로 관리하도록 설계되었습니다.</p>
+      <div class="pill">핵심 필드: id · slug · name · itemType · tierNumber/tierKey · stack/shop/requirements · equipment/consumable/quest/material/keyItem/currencyItem</div>
     </header>
 
     <details class="card collapsible" open>
@@ -311,6 +312,18 @@
                 <label for="item-name">name</label>
                 <input id="item-name" type="text" placeholder="Infinity Edge" />
               </div>
+              <div>
+                <label for="item-type">itemType</label>
+                <select id="item-type">
+                  <option value="">(선택)</option>
+                  <option value="equipment">equipment</option>
+                  <option value="consumable">consumable</option>
+                  <option value="quest">quest</option>
+                  <option value="material">material</option>
+                  <option value="key_item">key_item</option>
+                  <option value="currency_item">currency_item</option>
+                </select>
+              </div>
             </div>
             <div class="grid">
               <div>
@@ -325,22 +338,58 @@
                 <label for="item-rarity-key">rarityKey</label>
                 <input id="item-rarity-key" type="text" placeholder="legendary" />
               </div>
-            </div>
-            <div class="grid">
               <div>
                 <label for="item-tags">tags (콤마)</label>
                 <input id="item-tags" type="text" placeholder="damage, crit" />
               </div>
+            </div>
+            <div class="grid">
               <div>
-                <label for="item-categories">categories (콤마)</label>
-                <input id="item-categories" type="text" placeholder="legendary" />
+                <label for="item-stack">stack (JSON)</label>
+                <textarea id="item-stack" spellcheck="false" placeholder='{"stackable": false, "maxStack": 1}'></textarea>
+              </div>
+              <div>
+                <label for="item-shop">shop (JSON)</label>
+                <textarea id="item-shop" spellcheck="false" placeholder='{"purchasable": true, "sellable": true, "sellValue": {"gold": 2380}}'></textarea>
+              </div>
+              <div>
+                <label for="item-requirements">requirements (JSON)</label>
+                <textarea id="item-requirements" spellcheck="false" placeholder='{"levelMin": 0, "uniqueGroupKey": "crit_modifier"}'></textarea>
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="item-equipment">equipment 블록 (JSON)</label>
+                <textarea id="item-equipment" spellcheck="false" placeholder="equipment.* 스키마"></textarea>
+              </div>
+              <div>
+                <label for="item-consumable">consumable 블록 (JSON)</label>
+                <textarea id="item-consumable" spellcheck="false" placeholder="consumable.* 스키마"></textarea>
+              </div>
+              <div>
+                <label for="item-quest">quest 블록 (JSON)</label>
+                <textarea id="item-quest" spellcheck="false" placeholder="quest.* 스키마"></textarea>
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="item-material">material 블록 (JSON)</label>
+                <textarea id="item-material" spellcheck="false" placeholder="material.* 스키마"></textarea>
+              </div>
+              <div>
+                <label for="item-key-item">key_item 블록 (JSON)</label>
+                <textarea id="item-key-item" spellcheck="false" placeholder="keyItem.* 스키마"></textarea>
+              </div>
+              <div>
+                <label for="item-currency-item">currency_item 블록 (JSON)</label>
+                <textarea id="item-currency-item" spellcheck="false" placeholder="currencyItem.* 스키마"></textarea>
               </div>
             </div>
             <div class="actions">
               <button class="secondary" id="item-apply-fields">필드값을 JSON에 반영</button>
             </div>
             <div>
-              <label for="item-json">Item JSON</label>
+              <label for="item-json">Item JSON (전체 문서)</label>
               <textarea id="item-json" spellcheck="false"></textarea>
             </div>
             <div class="actions">
@@ -356,11 +405,11 @@
               <h3>Item 프리뷰</h3>
               <div class="label">핵심 정보</div>
               <div class="value" id="item-preview-text">-</div>
-              <div class="label" style="margin-top: 0.75rem;">조합/비용</div>
+              <div class="label" style="margin-top: 0.75rem;">주요 비용/타입 블록</div>
               <div class="value" id="item-cost-preview">-</div>
             </div>
-            <p class="muted">스키마는 확장 가능합니다. shop, build, stats, effects, enhancement, metadata 등을 JSON에 작성하세요.</p>
-            <p class="muted">비용 map 키는 currencies 컬렉션에서 관리되는 값을 사용하는 것을 권장합니다.</p>
+            <p class="muted">공통 필드는 얕게 관리하고, 타입별 기능은 itemType에 맞는 블록(equipment/consumable/quest/material/keyItem/currencyItem)에 작성하세요.</p>
+            <p class="muted">비용 map의 키는 currencies 컬렉션에서 관리되는 값을 사용하는 것을 권장합니다. 강화/효과/조합 등은 ItemSchema.md의 예시 포맷을 참고하세요.</p>
           </div>
         </div>
         <div>
@@ -370,6 +419,7 @@
               <tr>
                 <th>itemId</th>
                 <th>name</th>
+                <th>itemType</th>
                 <th>tier</th>
                 <th>tierKey</th>
                 <th>tags</th>
@@ -399,72 +449,53 @@
       id: "3031",
       slug: "infinity-edge",
       name: "Infinity Edge",
+      itemType: "equipment",
       tierNumber: 3,
       tierKey: "T3",
       rarityKey: "legendary",
-      shop: {
-        purchasable: true,
-        sellable: true,
-        consumable: false,
-        stackable: false,
-        maxStack: 1,
-      },
-      requirements: {
-        levelMin: 0,
-        uniqueGroupKey: "crit_modifier",
-      },
-      build: {
-        buildsFrom: [
-          { itemId: "1038", count: 1 },
-          { itemId: "1018", count: 1 },
-        ],
-        buildsInto: [],
-        baseCost: { gold: 3400 },
-        recipeCost: { gold: 625, token_event: 2 },
-        totalCost: { gold: 3400, token_event: 2 },
-      },
+      stack: { stackable: false, maxStack: 1 },
+      shop: { purchasable: true, sellable: true, sellValue: { gold: 2380 } },
+      requirements: { levelMin: 0, uniqueGroupKey: "crit_modifier" },
       tags: ["damage", "crit"],
-      categories: ["legendary"],
-      stats: {
-        attackDamage: 70,
-        critChance: 0.25,
-      },
-      effects: {
-        passives: [
-          {
-            key: "ie_crit_amp",
-            name: "Perfection",
-            unique: true,
-            rulesText: "Critical strikes deal increased damage.",
-            scaling: { critDamageMultiplierBonus: 0.4 },
+      equipment: {
+        build: {
+          buildsFrom: [
+            { itemId: "1038", count: 1 },
+            { itemId: "1018", count: 1 },
+          ],
+          buildsInto: [],
+          baseCost: { gold: 3400 },
+          recipeCost: { gold: 625, token_event: 2 },
+          totalCost: { gold: 3400, token_event: 2 },
+        },
+        stats: { attackDamage: 70, critChance: 0.25 },
+        effects: {
+          passives: [
+            {
+              key: "ie_crit_amp",
+              name: "Perfection",
+              unique: true,
+              rulesText: "Critical strikes deal increased damage.",
+              scaling: { critDamageMultiplierBonus: 0.4 },
+            },
+          ],
+          actives: [],
+        },
+        enhancement: {
+          enabled: true,
+          levelMin: 0,
+          levelMax: 15,
+          profileKey: "enh_weapon_v1",
+          rules: { downgradeOnFail: false, breakOnFail: false },
+          costByLevel: {
+            "1": { gold: 200, shard: 1 },
+            "2": { gold: 300, shard: 1 },
+            "3": { gold: 450, shard: 2 },
           },
-        ],
-        actives: [],
-      },
-      enhancement: {
-        enabled: true,
-        levelMin: 0,
-        levelMax: 15,
-        profileKey: "enh_weapon_v1",
-        rules: {
-          downgradeOnFail: false,
-          breakOnFail: false,
+          successRateByLevel: { "1": 1.0, "2": 0.9, "3": 0.8 },
+          statScaling: { perLevelAdd: { attackDamage: 2 }, perLevelMul: { attackDamage: 0.0 } },
+          effectUnlocks: [{ atLevel: 7, addPassiveKey: "ie_bonus_crit" }],
         },
-        costByLevel: {
-          "1": { gold: 200, shard: 1 },
-          "2": { gold: 300, shard: 1 },
-          "3": { gold: 450, shard: 2 },
-        },
-        successRateByLevel: {
-          "1": 1.0,
-          "2": 0.9,
-          "3": 0.8,
-        },
-        statScaling: {
-          perLevelAdd: { attackDamage: 2 },
-          perLevelMul: { attackDamage: 0.0 },
-        },
-        effectUnlocks: [{ atLevel: 7, addPassiveKey: "ie_bonus_crit" }],
       },
     };
 
@@ -482,6 +513,28 @@
       } catch (error) {
         console.error(error);
         return null;
+      }
+    }
+
+    function parseJsonField(id, label, manager) {
+      const el = document.getElementById(id);
+      if (!el) return { ok: true, empty: true, value: undefined };
+      const raw = el.value ?? "";
+      const parsed = safeParseJson(raw);
+      if (parsed === null) {
+        manager?.setStatus(`${label} JSON 파싱 오류. 포맷을 확인하세요.`);
+        return { ok: false };
+      }
+      return { ok: true, empty: raw.trim().length === 0, value: parsed };
+    }
+
+    function setJsonFieldValue(id, data) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (data && typeof data === "object" && Object.keys(data).length > 0) {
+        el.value = JSON.stringify(data, null, 2);
+      } else {
+        el.value = "";
       }
     }
 
@@ -563,7 +616,7 @@
         if (this.extraFill) this.extraFill({ data, manager: this });
         this.jsonInput.value = JSON.stringify(data, null, 2);
         this.setStatus(`'${id}' 아이템을 불러왔습니다.`);
-        updatePreviews();
+        updatePreviews(this);
       }
 
       resetForm() {
@@ -571,7 +624,7 @@
         if (this.extraFill) this.extraFill({ data: this.sampleData, manager: this });
         this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
         this.setStatus("새 문서를 작성하세요.");
-        updatePreviews();
+        updatePreviews(this);
       }
 
       loadSample() {
@@ -584,13 +637,13 @@
         if (!this.db) return;
         const docId = this.getDocIdOrWarn();
         if (!docId) return;
-        const data = this.parseJsonOrWarn();
-        if (!data) return;
-        const transformed = this.transformBeforeSave ? this.transformBeforeSave({ data, manager: this, docId }) : data;
+        const merged = mergeItemInputs(this);
+        if (!merged) return;
+        const data = this.transformBeforeSave ? this.transformBeforeSave({ data: merged, manager: this, docId }) : merged;
 
         this.toggleButtons(true);
         try {
-          await setDoc(doc(this.collectionRef, docId), transformed, { merge: true });
+          await setDoc(doc(this.collectionRef, docId), data, { merge: true });
           this.setStatus(`'${docId}' 아이템을 저장했습니다.`);
           await this.loadTable();
         } catch (error) {
@@ -641,7 +694,7 @@
         if (!rows.length) {
           const tr = document.createElement("tr");
           const td = document.createElement("td");
-          td.colSpan = 6;
+          td.colSpan = 7;
           td.textContent = "저장된 문서가 없습니다.";
           tr.appendChild(td);
           this.tableBody.appendChild(tr);
@@ -686,45 +739,29 @@
       document.getElementById("item-id").value = data.id ?? "";
       document.getElementById("item-slug").value = data.slug ?? "";
       document.getElementById("item-name").value = data.name ?? "";
+      document.getElementById("item-type").value = data.itemType ?? "";
       document.getElementById("item-tier-number").value = data.tierNumber ?? "";
       document.getElementById("item-tier-key").value = data.tierKey ?? "";
       document.getElementById("item-rarity-key").value = data.rarityKey ?? "";
       document.getElementById("item-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
-      document.getElementById("item-categories").value = Array.isArray(data.categories)
-        ? data.categories.join(", ")
-        : "";
+      setJsonFieldValue("item-stack", data.stack);
+      setJsonFieldValue("item-shop", data.shop);
+      setJsonFieldValue("item-requirements", data.requirements);
+      setJsonFieldValue("item-equipment", data.equipment);
+      setJsonFieldValue("item-consumable", data.consumable);
+      setJsonFieldValue("item-quest", data.quest);
+      setJsonFieldValue("item-material", data.material);
+      setJsonFieldValue("item-key-item", data.keyItem);
+      setJsonFieldValue("item-currency-item", data.currencyItem);
     }
 
-    function applyItemFields(manager) {
-      const data = manager.parseJsonOrWarn();
-      if (data === null) return;
-      const next = { ...(data || {}) };
-      next.id = document.getElementById("item-id").value.trim() || next.id;
-      next.slug = document.getElementById("item-slug").value.trim() || next.slug;
-      next.name = document.getElementById("item-name").value.trim() || next.name;
-      const tierNum = document.getElementById("item-tier-number").value.trim();
-      if (tierNum !== "") {
-        const parsed = Number(tierNum);
-        if (!Number.isNaN(parsed)) next.tierNumber = parsed;
-      }
-      const tierKey = document.getElementById("item-tier-key").value.trim();
-      if (tierKey) next.tierKey = tierKey;
-      const rarityKey = document.getElementById("item-rarity-key").value.trim();
-      if (rarityKey) next.rarityKey = rarityKey;
-      const tags = toStringArray(document.getElementById("item-tags").value);
-      if (tags.length) next.tags = tags;
-      const categories = toStringArray(document.getElementById("item-categories").value);
-      if (categories.length) next.categories = categories;
-
-      manager.jsonInput.value = JSON.stringify(next, null, 2);
-      manager.setStatus("입력값을 JSON에 반영했습니다.");
-      fillItemQuickFields(next);
-      updatePreviews();
-    }
-
-    function mergeItemInputs() {
+    function mergeItemInputs(manager) {
       const base = safeParseJson(document.getElementById("item-json").value);
-      if (base === null) return null;
+      if (base === null) {
+        manager?.setStatus("Item JSON 파싱 오류. 포맷을 확인하세요.");
+        return null;
+      }
+
       const merged = { ...(base || {}) };
       const id = document.getElementById("item-id").value.trim();
       if (id) merged.id = id;
@@ -732,6 +769,8 @@
       if (slug) merged.slug = slug;
       const name = document.getElementById("item-name").value.trim();
       if (name) merged.name = name;
+      const itemType = document.getElementById("item-type").value;
+      if (itemType) merged.itemType = itemType;
       const tierNum = document.getElementById("item-tier-number").value.trim();
       if (tierNum !== "") {
         const parsed = Number(tierNum);
@@ -743,9 +782,41 @@
       if (rarityKey) merged.rarityKey = rarityKey;
       const tags = toStringArray(document.getElementById("item-tags").value);
       if (tags.length) merged.tags = tags;
-      const categories = toStringArray(document.getElementById("item-categories").value);
-      if (categories.length) merged.categories = categories;
+
+      const applyField = (prop, fieldId, label) => {
+        const parsed = parseJsonField(fieldId, label, manager);
+        if (!parsed?.ok) return false;
+        if (!parsed.empty) {
+          merged[prop] = parsed.value;
+        } else {
+          delete merged[prop];
+        }
+        return true;
+      };
+
+      const results = [
+        applyField("stack", "item-stack", "stack"),
+        applyField("shop", "item-shop", "shop"),
+        applyField("requirements", "item-requirements", "requirements"),
+        applyField("equipment", "item-equipment", "equipment"),
+        applyField("consumable", "item-consumable", "consumable"),
+        applyField("quest", "item-quest", "quest"),
+        applyField("material", "item-material", "material"),
+        applyField("keyItem", "item-key-item", "key_item"),
+        applyField("currencyItem", "item-currency-item", "currency_item"),
+      ];
+
+      if (results.includes(false)) return null;
       return merged;
+    }
+
+    function applyItemFields(manager) {
+      const merged = mergeItemInputs(manager);
+      if (!merged) return;
+      manager.jsonInput.value = JSON.stringify(merged, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillItemQuickFields(merged);
+      updatePreviews(manager);
     }
 
     function summarizeCosts(build = {}) {
@@ -769,29 +840,57 @@
       const id = data.id ?? "-";
       const name = data.name ?? "이름 미정";
       const slug = data.slug ? ` (${data.slug})` : "";
+      const itemType = data.itemType ? ` · type=${data.itemType}` : "";
       const tierNumber = data.tierNumber ?? "-";
       const tierKey = data.tierKey ? ` · ${data.tierKey}` : "";
       const rarity = data.rarityKey ? ` · rarity=${data.rarityKey}` : "";
       const tags = Array.isArray(data.tags) && data.tags.length ? ` | 태그: ${data.tags.join(", ")}` : "";
-      const categories =
-        Array.isArray(data.categories) && data.categories.length ? ` | 카테고리: ${data.categories.join(", ")}` : "";
-      return `[${id}] ${name}${slug} · tier=${tierNumber}${tierKey}${rarity}${tags}${categories}`;
+      return `[${id}] ${name}${slug}${itemType} · tier=${tierNumber}${tierKey}${rarity}${tags}`;
     }
 
     function buildCostPreview(data) {
-      if (!data || !data.build) return "build.* 비용 정보를 입력하세요.";
-      const costs = summarizeCosts(data.build);
-      const buildsFrom = Array.isArray(data.build.buildsFrom)
-        ? data.build.buildsFrom.map((b) => `${b.itemId ?? "-"}x${b.count ?? 1}`).join(", ")
-        : "-";
-      return `base=${costs.base} | recipe=${costs.recipe} | total=${costs.total} | 조합=${buildsFrom}`;
+      if (!data) return "유효한 JSON을 입력하세요.";
+      if (data.itemType === "equipment" && data.equipment?.build) {
+        const costs = summarizeCosts(data.equipment.build);
+        const buildsFrom = Array.isArray(data.equipment.build.buildsFrom)
+          ? data.equipment.build.buildsFrom.map((b) => `${b.itemId ?? "-"}x${b.count ?? 1}`).join(", ")
+          : "-";
+        return `equipment.build → base=${costs.base} | recipe=${costs.recipe} | total=${costs.total} | 조합=${buildsFrom}`;
+      }
+      if (data.itemType === "consumable" && data.consumable) {
+        const charges = data.consumable.charges ? JSON.stringify(data.consumable.charges) : "no charges";
+        const effects = Array.isArray(data.consumable.onUseEffects)
+          ? `${data.consumable.onUseEffects.length} onUseEffects`
+          : "onUseEffects 없음";
+        return `consumable → consumeOnUse=${data.consumable.consumeOnUse ?? true} | charges=${charges} | ${effects}`;
+      }
+      if (data.itemType === "quest" && data.quest) {
+        return `quest → unique=${data.quest.unique ?? false} | bindQuestIds=${
+          Array.isArray(data.quest.bindQuestIds) ? data.quest.bindQuestIds.join(", ") : "-"
+        }`;
+      }
+      if (data.itemType === "material" && data.material) {
+        return `material → grade=${data.material.gradeKey ?? "-"} | crafting=${
+          data.material.isCraftingIngredient ?? true
+        }`;
+      }
+      if (data.itemType === "key_item" && data.keyItem) {
+        return `key_item → unlockKeys=${
+          Array.isArray(data.keyItem.unlockKeys) ? data.keyItem.unlockKeys.join(", ") : "-"
+        }`;
+      }
+      if (data.itemType === "currency_item" && data.currencyItem) {
+        const grants = summarizeCosts({ baseCost: data.currencyItem.grants }).base;
+        return `currency_item → grants=${grants}`;
+      }
+      return "타입 블록을 입력하세요.";
     }
 
-    function updatePreviews() {
-      const itemData = mergeItemInputs();
+    function updatePreviews(manager) {
+      const itemData = mergeItemInputs(manager);
       const itemPreview = document.getElementById("item-preview-text");
       const costPreview = document.getElementById("item-cost-preview");
-      itemPreview.textContent = itemData ? buildItemPreview(itemData) : "JSON 파싱 오류: Item";
+      itemPreview.textContent = itemData ? buildItemPreview(itemData) : "JSON 파싱 오류";
       costPreview.textContent = itemData ? buildCostPreview(itemData) : "-";
     }
 
@@ -812,13 +911,14 @@
           label: data.name ?? data.id ?? "Item",
           cells: [
             data.name,
+            data.itemType ?? "-",
             data.tierNumber ?? "-",
             data.tierKey ?? "-",
             Array.isArray(data.tags) ? data.tags.join(", ") : "-",
           ],
         }),
         transformBeforeSave: ({ data, docId }) => {
-          const merged = mergeItemInputs() ?? data;
+          const merged = { ...(data || {}) };
           merged.id = merged.id ?? docId;
           return merged;
         },
@@ -838,16 +938,25 @@
         "item-id",
         "item-slug",
         "item-name",
+        "item-type",
         "item-tier-number",
         "item-tier-key",
         "item-rarity-key",
         "item-tags",
-        "item-categories",
+        "item-stack",
+        "item-shop",
+        "item-requirements",
+        "item-equipment",
+        "item-consumable",
+        "item-quest",
+        "item-material",
+        "item-key-item",
+        "item-currency-item",
       ];
       previewInputs.forEach((id) => {
         const el = document.getElementById(id);
-        el?.addEventListener("input", updatePreviews);
-        el?.addEventListener("change", updatePreviews);
+        el?.addEventListener("input", () => updatePreviews(manager));
+        el?.addEventListener("change", () => updatePreviews(manager));
       });
 
       try {
@@ -856,7 +965,7 @@
         manager.attachDb(db);
         manager.resetForm();
         manager.loadTable();
-        updatePreviews();
+        updatePreviews(manager);
       } catch (error) {
         console.error(error);
         manager.setStatus("Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.", { persist: true });
