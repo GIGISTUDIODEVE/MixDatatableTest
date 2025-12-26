@@ -339,6 +339,32 @@
           </div>
           <div class="pill solid">장비 · 룬(키 아이템) · 퀘스트 · 소모 · 재료 · 재화 바우처를 모두 지원</div>
         </div>
+        <div class="preset-grid" style="margin-bottom: 1rem;">
+          <div>
+            <label for="preset-equipment">장비 프리셋</label>
+            <select id="preset-equipment"></select>
+          </div>
+          <div>
+            <label for="preset-consumable">소모품 프리셋</label>
+            <select id="preset-consumable"></select>
+          </div>
+          <div>
+            <label for="preset-quest">퀘스트 아이템 프리셋</label>
+            <select id="preset-quest"></select>
+          </div>
+          <div>
+            <label for="preset-material">재료 프리셋</label>
+            <select id="preset-material"></select>
+          </div>
+          <div>
+            <label for="preset-key_item">키 아이템(룬) 프리셋</label>
+            <select id="preset-key_item"></select>
+          </div>
+          <div>
+            <label for="preset-currency_item">재화 바우처 프리셋</label>
+            <select id="preset-currency_item"></select>
+          </div>
+        </div>
         <div class="split-grid">
           <div>
             <div class="grid">
@@ -1448,6 +1474,44 @@
       });
     }
 
+    function syncPresetSelectors(type, idx) {
+      const typeSelect = document.getElementById("preset-type");
+      const itemSelect = document.getElementById("preset-item");
+      if (!typeSelect || !itemSelect) return;
+      typeSelect.value = type;
+      populatePresetItems(type, itemSelect);
+      itemSelect.value = String(idx);
+    }
+
+    function populateCategoryDropdowns(manager) {
+      Object.entries(PRESETS).forEach(([type, list]) => {
+        const selectEl = document.getElementById(`preset-${type}`);
+        if (!selectEl) return;
+        selectEl.innerHTML = "";
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "(선택)";
+        selectEl.appendChild(placeholder);
+
+        list.forEach((preset, idx) => {
+          const opt = document.createElement("option");
+          const tier = preset.tierKey || preset.tierNumber || "-";
+          opt.value = String(idx);
+          opt.textContent = `[${tier}] ${preset.name}`;
+          selectEl.appendChild(opt);
+        });
+
+        selectEl.addEventListener("change", () => {
+          if (selectEl.value === "") return;
+          const idx = Number(selectEl.value);
+          if (Number.isNaN(idx)) return;
+          const preset = list[idx];
+          manager.loadSample(preset);
+          syncPresetSelectors(type, idx);
+        });
+      });
+    }
+
     const DEFAULT_SAMPLE = PRESETS.equipment[0];
 
     class SpecManager {
@@ -1857,14 +1921,13 @@
         const type = presetTypeEl.value;
         const idx = Number(presetItemEl.value || 0);
         const preset = getPreset(type, idx) ?? DEFAULT_SAMPLE;
+        syncPresetSelectors(type, idx);
         manager.loadSample(preset);
       });
 
       randomBtn?.addEventListener("click", () => {
         const { type, index, preset } = getRandomPreset();
-        presetTypeEl.value = type;
-        populatePresetItems(type, presetItemEl);
-        presetItemEl.value = String(index);
+        syncPresetSelectors(type, index);
         manager.loadSample(preset);
       });
     }
@@ -1873,6 +1936,7 @@
       const manager = createManager();
       registerFieldButtons(manager);
       registerPresetControls(manager);
+      populateCategoryDropdowns(manager);
 
       const previewInputs = [
         "item-json",
