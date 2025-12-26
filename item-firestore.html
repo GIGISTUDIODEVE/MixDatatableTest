@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>아이템 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 180px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      border: 1px solid #334155;
+    }
+
+    .preview-card {
+      margin-top: 0.75rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .preview-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .preview-card .label {
+      color: #cbd5e1;
+    }
+
+    .preview-card .value {
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 999px;
+      background: #111827;
+      border: 1px solid #1f2937;
+      color: #e2e8f0;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .badge.ok {
+      border-color: #16a34a;
+      color: #bbf7d0;
+      background: rgba(22, 163, 74, 0.15);
+    }
+
+    .badge.warn {
+      border-color: #f59e0b;
+      color: #fef08a;
+      background: rgba(245, 158, 11, 0.15);
+    }
+
+    details.collapsible {
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      background: #111827;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    details.collapsible[open] > summary {
+      border-bottom: 1px solid #1f2937;
+    }
+
+    details.collapsible summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+    }
+
+    details.collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.collapsible .content {
+      padding: 1rem 1.25rem;
+    }
+
+    .checkbox-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.35rem;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link" href="effect-system-firestore.html">EffectSpec 관리</a>
+      <a class="nav-link" href="monster-firestore.html">몬스터 관리</a>
+      <a class="nav-link active" href="item-firestore.html">아이템 관리</a>
+    </div>
+  </nav>
+  <div class="container">
+    <header class="card">
+      <h1>아이템/티어/재화 관리</h1>
+      <p class="muted">ItemSchema.md 기반으로 <code>items</code>, <code>itemTiers</code>, <code>currencies</code> 컬렉션을 생성/추가/삭제합니다. 티어/재화 키는 별도 컬렉션으로 관리하여 확장성과 오타 방지를 우선합니다.</p>
+      <div class="pill">권장 규칙: 비용 map의 키는 currencies에 존재하는 key만 사용, 티어는 문자열 키(T1, T2...)로 확장 가능</div>
+    </header>
+
+    <details class="card collapsible" open>
+      <summary>
+        <span>재화 관리</span>
+        <span class="pill">collection = currencies</span>
+      </summary>
+      <div class="content">
+        <div class="split-grid">
+          <div>
+            <div class="grid">
+              <div>
+                <label for="currency-key">key (docId)</label>
+                <input id="currency-key" type="text" placeholder="gold" />
+              </div>
+              <div>
+                <label for="currency-name">name</label>
+                <input id="currency-name" type="text" placeholder="Gold" />
+              </div>
+              <div>
+                <label for="currency-icon">iconKey</label>
+                <input id="currency-icon" type="text" placeholder="gold" />
+              </div>
+              <div>
+                <label for="currency-precision">precision</label>
+                <input id="currency-precision" type="number" min="0" step="1" placeholder="0" />
+              </div>
+            </div>
+            <div class="checkbox-row">
+              <input id="currency-enabled" type="checkbox" checked />
+              <label for="currency-enabled" style="margin: 0;">enabled</label>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="currency-apply-fields">필드값을 JSON에 반영</button>
+            </div>
+            <div>
+              <label for="currency-json">Currency JSON</label>
+              <textarea id="currency-json" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="currency-save">저장/업데이트</button>
+              <button class="secondary" id="currency-sample">샘플 불러오기</button>
+              <button class="secondary" id="currency-reset">새로 작성</button>
+              <button class="secondary" id="currency-refresh">목록 새로고침</button>
+            </div>
+            <div class="status" id="currency-status"></div>
+          </div>
+          <div>
+            <div class="preview-card" id="currency-preview">
+              <h3>Currency 프리뷰</h3>
+              <div class="value" id="currency-preview-text">-</div>
+            </div>
+            <p class="muted">재화 키를 중앙화하면 아이템 비용 map의 오타를 줄이고 통계를 수집하기 쉽습니다.</p>
+          </div>
+        </div>
+        <div>
+          <p class="muted">저장된 Currency 문서 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>key</th>
+                <th>name</th>
+                <th>precision</th>
+                <th>enabled</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="currency-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+
+    <details class="card collapsible" open>
+      <summary>
+        <span>아이템 티어 관리</span>
+        <span class="pill">collection = itemTiers</span>
+      </summary>
+      <div class="content">
+        <div class="split-grid">
+          <div>
+            <div class="grid">
+              <div>
+                <label for="tier-key">tierKey (docId)</label>
+                <input id="tier-key" type="text" placeholder="T3" />
+              </div>
+              <div>
+                <label for="tier-number">tierNumber</label>
+                <input id="tier-number" type="number" min="0" step="1" placeholder="3" />
+              </div>
+              <div>
+                <label for="tier-name">name</label>
+                <input id="tier-name" type="text" placeholder="Tier 3" />
+              </div>
+              <div>
+                <label for="tier-sort">sortOrder</label>
+                <input id="tier-sort" type="number" step="1" placeholder="300" />
+              </div>
+              <div>
+                <label for="tier-color">uiColorKey</label>
+                <input id="tier-color" type="text" placeholder="purple" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="tier-apply-fields">필드값을 JSON에 반영</button>
+            </div>
+            <div>
+              <label for="tier-json">Tier JSON</label>
+              <textarea id="tier-json" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="tier-save">저장/업데이트</button>
+              <button class="secondary" id="tier-sample">샘플 불러오기</button>
+              <button class="secondary" id="tier-reset">새로 작성</button>
+              <button class="secondary" id="tier-refresh">목록 새로고침</button>
+            </div>
+            <div class="status" id="tier-status"></div>
+          </div>
+          <div>
+            <div class="preview-card" id="tier-preview">
+              <h3>Tier 프리뷰</h3>
+              <div class="value" id="tier-preview-text">-</div>
+            </div>
+            <p class="muted">티어는 enum이 아닌 데이터로 확장합니다. tierNumber는 정렬/필터링 편의를 위해 함께 저장됩니다.</p>
+          </div>
+        </div>
+        <div>
+          <p class="muted">저장된 Tier 문서 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>tierKey</th>
+                <th>name</th>
+                <th>tierNumber</th>
+                <th>sortOrder</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="tier-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+
+    <details class="card collapsible" open>
+      <summary>
+        <span>아이템 관리</span>
+        <span class="pill">collection = items</span>
+      </summary>
+      <div class="content">
+        <div class="split-grid">
+          <div>
+            <div class="grid">
+              <div>
+                <label for="item-id">id (docId)</label>
+                <input id="item-id" type="text" placeholder="3031" />
+              </div>
+              <div>
+                <label for="item-slug">slug</label>
+                <input id="item-slug" type="text" placeholder="infinity-edge" />
+              </div>
+              <div>
+                <label for="item-name">name</label>
+                <input id="item-name" type="text" placeholder="Infinity Edge" />
+              </div>
+              <div>
+                <label for="item-tier-key">tierKey</label>
+                <input id="item-tier-key" type="text" placeholder="T3" />
+              </div>
+              <div>
+                <label for="item-tier-number">tierNumber</label>
+                <input id="item-tier-number" type="number" step="1" placeholder="3" />
+              </div>
+              <div>
+                <label for="item-rarity">rarityKey</label>
+                <input id="item-rarity" type="text" placeholder="legendary" />
+              </div>
+            </div>
+
+            <div class="grid">
+              <div>
+                <label for="item-tags">tags (콤마)</label>
+                <input id="item-tags" type="text" placeholder="damage, crit" />
+              </div>
+              <div>
+                <label for="item-categories">categories (콤마)</label>
+                <input id="item-categories" type="text" placeholder="epic, legendary" />
+              </div>
+            </div>
+
+            <div class="grid">
+              <div>
+                <label for="item-builds-from">build.buildsFrom (JSON 배열)</label>
+                <textarea id="item-builds-from" placeholder='[{"itemId":"1038","count":1}]'></textarea>
+              </div>
+              <div>
+                <label for="item-builds-into">build.buildsInto (JSON 배열)</label>
+                <textarea id="item-builds-into" placeholder='[{"itemId":"6673"}]'></textarea>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div>
+                <label for="item-base-cost">build.baseCost (map: key:value, ...)</label>
+                <input id="item-base-cost" type="text" placeholder="gold:3400" />
+              </div>
+              <div>
+                <label for="item-recipe-cost">build.recipeCost (map: key:value, ...)</label>
+                <input id="item-recipe-cost" type="text" placeholder="gold:625, token_event:2" />
+              </div>
+              <div>
+                <label for="item-total-cost">build.totalCost (map: key:value, ...)</label>
+                <input id="item-total-cost" type="text" placeholder="gold:3400, token_event:2" />
+              </div>
+            </div>
+
+            <div class="grid">
+              <div>
+                <label for="item-stats">stats (JSON map)</label>
+                <textarea id="item-stats" placeholder='{"attackDamage":70,"critChance":0.25}'></textarea>
+              </div>
+              <div>
+                <label for="item-effects">effects (JSON)</label>
+                <textarea id="item-effects" placeholder='{"passives":[{"key":"ie_crit_amp","name":"Perfection"}],"actives":[]}'></textarea>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="card" style="padding: 0.75rem 0.9rem;">
+                <h3 style="margin: 0 0 0.35rem;">shop</h3>
+                <div class="checkbox-row">
+                  <input id="item-shop-purchasable" type="checkbox" />
+                  <label for="item-shop-purchasable" style="margin: 0;">purchasable</label>
+                </div>
+                <div class="checkbox-row">
+                  <input id="item-shop-sellable" type="checkbox" />
+                  <label for="item-shop-sellable" style="margin: 0;">sellable</label>
+                </div>
+                <div class="checkbox-row">
+                  <input id="item-shop-consumable" type="checkbox" />
+                  <label for="item-shop-consumable" style="margin: 0;">consumable</label>
+                </div>
+                <div class="checkbox-row">
+                  <input id="item-shop-stackable" type="checkbox" />
+                  <label for="item-shop-stackable" style="margin: 0;">stackable</label>
+                </div>
+                <label for="item-shop-maxstack">maxStack</label>
+                <input id="item-shop-maxstack" type="number" min="0" step="1" placeholder="1" />
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="secondary" id="item-apply-fields">필드값을 JSON에 반영</button>
+            </div>
+
+            <div>
+              <label for="item-json">Item JSON</label>
+              <textarea id="item-json" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="item-save">저장/업데이트</button>
+              <button class="secondary" id="item-sample">샘플 불러오기</button>
+              <button class="secondary" id="item-reset">새로 작성</button>
+              <button class="secondary" id="item-refresh">목록 새로고침</button>
+            </div>
+            <div class="status" id="item-status"></div>
+          </div>
+          <div>
+            <div class="preview-card" id="item-preview">
+              <h3>Item 프리뷰</h3>
+              <div class="label">개요</div>
+              <div class="value" id="item-preview-text">-</div>
+            </div>
+            <p class="muted">필수 권장 필드: id, slug, name, tierKey. build/baseCost 및 shop.*은 게임 밸런스와 상점 로직 안정성을 위해 채워주세요.</p>
+            <p class="muted">buildsFrom/Into, stats, effects 등은 JSON 필드로 직접 확장 가능합니다.</p>
+          </div>
+        </div>
+        <div>
+          <p class="muted">저장된 Item 문서 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>id</th>
+                <th>name</th>
+                <th>tier</th>
+                <th>slug</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="item-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const SAMPLE_CURRENCY = {
+      key: "gold",
+      name: "Gold",
+      iconKey: "gold",
+      precision: 0,
+      enabled: true,
+    };
+
+    const SAMPLE_TIER = {
+      tierKey: "T3",
+      tierNumber: 3,
+      name: "Tier 3",
+      sortOrder: 300,
+      uiColorKey: "purple",
+    };
+
+    const SAMPLE_ITEM = {
+      id: "3031",
+      slug: "infinity-edge",
+      name: "Infinity Edge",
+      tierKey: "T3",
+      tierNumber: 3,
+      rarityKey: "legendary",
+      shop: {
+        purchasable: true,
+        sellable: true,
+        consumable: false,
+        stackable: false,
+        maxStack: 1,
+      },
+      build: {
+        buildsFrom: [
+          { itemId: "1038", count: 1 },
+          { itemId: "1018", count: 1 },
+        ],
+        buildsInto: [],
+        baseCost: { gold: 3400 },
+        recipeCost: { gold: 625, token_event: 2 },
+        totalCost: { gold: 3400, token_event: 2 },
+      },
+      tags: ["damage", "crit"],
+      categories: ["legendary"],
+      stats: {
+        attackDamage: 70,
+        critChance: 0.25,
+      },
+      effects: {
+        passives: [
+          {
+            key: "ie_crit_amp",
+            name: "Perfection",
+            unique: true,
+            uniqueGroupKey: "crit_modifier",
+            rulesText: "Critical strikes deal increased damage.",
+            scaling: { critDamageMultiplierBonus: 0.4 },
+          },
+        ],
+        actives: [],
+      },
+    };
+
+    function toStringArray(value) {
+      return value
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    }
+
+    function safeParseJson(value) {
+      if (!value || !value.trim()) return {};
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function parseKeyNumberMap(value) {
+      if (!value || !value.trim()) return {};
+      const result = {};
+      const parts = value.split(",");
+      for (const part of parts) {
+        const [rawKey, rawVal] = part.split(":").map((v) => v?.trim());
+        if (!rawKey || rawVal === undefined) return null;
+        const num = Number(rawVal);
+        if (Number.isNaN(num)) return null;
+        result[rawKey] = num;
+      }
+      return result;
+    }
+
+    class SpecManager {
+      constructor({
+        entityName,
+        collectionName,
+        idInputId,
+        jsonInputId,
+        statusId,
+        tableBodyId,
+        saveBtnId,
+        resetBtnId,
+        sampleBtnId,
+        refreshBtnId,
+        sampleData,
+        extraFill,
+        summaryExtractor,
+        transformBeforeSave,
+      }) {
+        this.entityName = entityName;
+        this.collectionName = collectionName;
+        this.idInput = document.getElementById(idInputId);
+        this.jsonInput = document.getElementById(jsonInputId);
+        this.statusEl = document.getElementById(statusId);
+        this.tableBody = document.getElementById(tableBodyId);
+        this.sampleData = sampleData;
+        this.extraFill = extraFill;
+        this.summaryExtractor = summaryExtractor;
+        this.transformBeforeSave = transformBeforeSave;
+
+        this.saveBtn = document.getElementById(saveBtnId);
+        this.resetBtn = document.getElementById(resetBtnId);
+        this.sampleBtn = document.getElementById(sampleBtnId);
+        this.refreshBtn = document.getElementById(refreshBtnId);
+
+        this.registerHandlers();
+      }
+
+      attachDb(db) {
+        this.db = db;
+        this.collectionRef = collection(db, this.collectionName);
+      }
+
+      registerHandlers() {
+        this.saveBtn?.addEventListener("click", () => this.handleSave());
+        this.resetBtn?.addEventListener("click", () => this.resetForm());
+        this.sampleBtn?.addEventListener("click", () => this.loadSample());
+        this.refreshBtn?.addEventListener("click", () => this.loadTable());
+      }
+
+      setStatus(message, { persist = false } = {}) {
+        this.statusEl.textContent = message;
+        if (!persist) {
+          clearTimeout(this._statusTimer);
+          this._statusTimer = setTimeout(() => {
+            this.statusEl.textContent = "";
+          }, 4500);
+        }
+      }
+
+      sanitizeId(rawId) {
+        return rawId.trim().replace(/[^A-Za-z0-9_.-]+/g, "_");
+      }
+
+      getDocIdOrWarn() {
+        const raw = this.idInput.value.trim();
+        if (!raw) {
+          this.setStatus(`${this.entityName} ID를 입력하세요.`);
+          return null;
+        }
+        const sanitized = this.sanitizeId(raw);
+        if (!sanitized) {
+          this.setStatus("유효한 ID를 입력하세요 (영문/숫자/._- 조합).");
+          return null;
+        }
+        if (sanitized !== raw) {
+          this.idInput.value = sanitized;
+        }
+        return sanitized;
+      }
+
+      parseJsonOrWarn() {
+        const raw = this.jsonInput.value.trim();
+        if (!raw) return {};
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("JSON 파싱에 실패했습니다. 포맷을 확인하세요.");
+          return null;
+        }
+      }
+
+      fillForm(id, data) {
+        this.idInput.value = id;
+        if (this.extraFill) this.extraFill({ manager: this, data });
+        this.jsonInput.value = JSON.stringify(data, null, 2);
+        this.setStatus(`'${id}' ${this.entityName}를 불러왔습니다.`);
+        updatePreviews();
+      }
+
+      resetForm() {
+        this.idInput.value = "";
+        if (this.extraFill) this.extraFill({ manager: this, data: this.sampleData });
+        this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
+        this.setStatus("새 문서를 작성하세요.");
+        updatePreviews();
+      }
+
+      loadSample() {
+        const docId =
+          this.sampleData.id ??
+          this.sampleData.key ??
+          this.sampleData.tierKey ??
+          this.sampleData.itemId ??
+          this.sampleData.variantId ??
+          this.sampleData[`${this.entityName.toLowerCase()}Id`] ??
+          "";
+        this.fillForm(docId, this.sampleData);
+        this.setStatus("샘플 데이터를 불러왔습니다.");
+      }
+
+      async handleSave() {
+        if (!this.db) return;
+        const docId = this.getDocIdOrWarn();
+        if (!docId) return;
+        const data = this.parseJsonOrWarn();
+        if (!data) return;
+        const transformed = this.transformBeforeSave
+          ? this.transformBeforeSave({ data, manager: this, docId })
+          : data;
+        if (!transformed) return;
+
+        this.toggleButtons(true);
+        try {
+          await setDoc(doc(this.collectionRef, docId), transformed, { merge: true });
+          this.setStatus(`'${docId}' ${this.entityName}를 저장했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("저장 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async handleDelete(docId, label) {
+        if (!this.db) return;
+        if (!confirm(`'${label}' ${this.entityName}를 삭제할까요?`)) return;
+        this.toggleButtons(true);
+        try {
+          await deleteDoc(doc(this.collectionRef, docId));
+          this.setStatus(`'${label}' ${this.entityName}를 삭제했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("삭제 중 오류가 발생했습니다. 네트워크/권한을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async loadTable() {
+        if (!this.db) return;
+        this.setStatus("목록을 불러오는 중...", { persist: true });
+        try {
+          const snapshot = await getDocs(this.collectionRef);
+          const rows = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            rows.push({ id: docSnap.id, data });
+          });
+          rows.sort((a, b) => a.id.localeCompare(b.id));
+          this.renderTable(rows);
+          this.setStatus(`총 ${rows.length}개 ${this.entityName}를 불러왔습니다.`);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("목록을 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        }
+      }
+
+      renderTable(rows) {
+        this.tableBody.innerHTML = "";
+        if (!rows.length) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 6;
+          td.textContent = "저장된 문서가 없습니다.";
+          tr.appendChild(td);
+          this.tableBody.appendChild(tr);
+          return;
+        }
+
+        rows.forEach(({ id, data }) => {
+          const tr = document.createElement("tr");
+          const summary = this.summaryExtractor ? this.summaryExtractor(data) : {};
+          const cells = summary.cells ?? [];
+          [id, ...cells].forEach((value) => {
+            const td = document.createElement("td");
+            td.textContent = value ?? "-";
+            tr.appendChild(td);
+          });
+
+          const actionsTd = document.createElement("td");
+          const loadBtn = document.createElement("button");
+          loadBtn.className = "secondary";
+          loadBtn.textContent = "불러오기";
+          loadBtn.addEventListener("click", () => this.fillForm(id, data));
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "danger";
+          deleteBtn.textContent = "삭제";
+          deleteBtn.addEventListener("click", () => this.handleDelete(id, summary.label ?? id));
+
+          actionsTd.append(loadBtn, deleteBtn);
+          tr.appendChild(actionsTd);
+          this.tableBody.appendChild(tr);
+        });
+      }
+
+      toggleButtons(disabled) {
+        [this.saveBtn, this.resetBtn, this.sampleBtn, this.refreshBtn].forEach((btn) => {
+          if (btn) btn.disabled = disabled;
+        });
+      }
+    }
+
+    function numberOrUndefined(value) {
+      const trimmed = value.trim();
+      if (trimmed === "") return undefined;
+      const num = Number(trimmed);
+      return Number.isNaN(num) ? undefined : num;
+    }
+
+    function fillCurrencyFields(data) {
+      document.getElementById("currency-name").value = data.name ?? "";
+      document.getElementById("currency-icon").value = data.iconKey ?? "";
+      document.getElementById("currency-precision").value = data.precision ?? "";
+      document.getElementById("currency-enabled").checked = data.enabled ?? false;
+    }
+
+    function fillTierFields(data) {
+      document.getElementById("tier-number").value = data.tierNumber ?? "";
+      document.getElementById("tier-name").value = data.name ?? "";
+      document.getElementById("tier-sort").value = data.sortOrder ?? "";
+      document.getElementById("tier-color").value = data.uiColorKey ?? "";
+    }
+
+    function fillItemFields(data) {
+      document.getElementById("item-slug").value = data.slug ?? "";
+      document.getElementById("item-name").value = data.name ?? "";
+      document.getElementById("item-tier-key").value = data.tierKey ?? "";
+      document.getElementById("item-tier-number").value = data.tierNumber ?? "";
+      document.getElementById("item-rarity").value = data.rarityKey ?? "";
+      document.getElementById("item-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
+      document.getElementById("item-categories").value = Array.isArray(data.categories) ? data.categories.join(", ") : "";
+      const build = data.build ?? {};
+      document.getElementById("item-builds-from").value = build.buildsFrom ? JSON.stringify(build.buildsFrom, null, 2) : "";
+      document.getElementById("item-builds-into").value = build.buildsInto ? JSON.stringify(build.buildsInto, null, 2) : "";
+      document.getElementById("item-base-cost").value = build.baseCost
+        ? Object.entries(build.baseCost).map(([k, v]) => `${k}:${v}`).join(", ")
+        : "";
+      document.getElementById("item-recipe-cost").value = build.recipeCost
+        ? Object.entries(build.recipeCost).map(([k, v]) => `${k}:${v}`).join(", ")
+        : "";
+      document.getElementById("item-total-cost").value = build.totalCost
+        ? Object.entries(build.totalCost).map(([k, v]) => `${k}:${v}`).join(", ")
+        : "";
+      const shop = data.shop ?? {};
+      document.getElementById("item-shop-purchasable").checked = shop.purchasable ?? false;
+      document.getElementById("item-shop-sellable").checked = shop.sellable ?? false;
+      document.getElementById("item-shop-consumable").checked = shop.consumable ?? false;
+      document.getElementById("item-shop-stackable").checked = shop.stackable ?? false;
+      document.getElementById("item-shop-maxstack").value = shop.maxStack ?? "";
+      document.getElementById("item-stats").value = data.stats ? JSON.stringify(data.stats, null, 2) : "";
+      document.getElementById("item-effects").value = data.effects ? JSON.stringify(data.effects, null, 2) : "";
+    }
+
+    function applyCurrencyFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.key = document.getElementById("currency-key").value.trim() || next.key;
+      next.name = document.getElementById("currency-name").value.trim() || next.name;
+      const icon = document.getElementById("currency-icon").value.trim();
+      if (icon) next.iconKey = icon;
+      const precision = numberOrUndefined(document.getElementById("currency-precision").value);
+      if (precision !== undefined) next.precision = precision;
+      next.enabled = document.getElementById("currency-enabled").checked;
+
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("필드 값이 JSON에 반영되었습니다.");
+      fillCurrencyFields(next);
+      updatePreviews();
+    }
+
+    function applyTierFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.tierKey = document.getElementById("tier-key").value.trim() || next.tierKey;
+      const number = numberOrUndefined(document.getElementById("tier-number").value);
+      if (number !== undefined) next.tierNumber = number;
+      next.name = document.getElementById("tier-name").value.trim() || next.name;
+      const sort = numberOrUndefined(document.getElementById("tier-sort").value);
+      if (sort !== undefined) next.sortOrder = sort;
+      const color = document.getElementById("tier-color").value.trim();
+      if (color) next.uiColorKey = color;
+
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("필드 값이 JSON에 반영되었습니다.");
+      fillTierFields(next);
+      updatePreviews();
+    }
+
+    function parseCostField(manager, elId, label) {
+      const parsed = parseKeyNumberMap(document.getElementById(elId).value);
+      if (parsed === null) {
+        manager.setStatus(`${label} 형식 오류: key:value 콤마 구분으로 입력하세요.`);
+        return null;
+      }
+      return parsed;
+    }
+
+    function parseJsonField(manager, elId, label, allowEmptyArray = false) {
+      const parsed = safeParseJson(document.getElementById(elId).value);
+      if (parsed === null) {
+        manager.setStatus(`${label} JSON 파싱 오류가 발생했습니다.`);
+        return null;
+      }
+      if (allowEmptyArray && Array.isArray(parsed)) return parsed;
+      return parsed;
+    }
+
+    function mergeItemInputs(manager) {
+      const base = safeParseJson(document.getElementById("item-json").value);
+      if (base === null) {
+        manager.setStatus("Item JSON 파싱 실패. 포맷을 확인하세요.", { persist: true });
+        return null;
+      }
+      const merged = { ...(base || {}) };
+
+      const id = document.getElementById("item-id").value.trim();
+      if (id) merged.id = id;
+      const slug = document.getElementById("item-slug").value.trim();
+      if (slug) merged.slug = slug;
+      const name = document.getElementById("item-name").value.trim();
+      if (name) merged.name = name;
+      const tierKey = document.getElementById("item-tier-key").value.trim();
+      if (tierKey) merged.tierKey = tierKey;
+      const tierNumber = numberOrUndefined(document.getElementById("item-tier-number").value);
+      if (tierNumber !== undefined) merged.tierNumber = tierNumber;
+      const rarity = document.getElementById("item-rarity").value.trim();
+      if (rarity) merged.rarityKey = rarity;
+
+      const tags = toStringArray(document.getElementById("item-tags").value);
+      if (tags.length) merged.tags = tags;
+      const categories = toStringArray(document.getElementById("item-categories").value);
+      if (categories.length) merged.categories = categories;
+
+      merged.shop = merged.shop ?? {};
+      merged.shop.purchasable = document.getElementById("item-shop-purchasable").checked;
+      merged.shop.sellable = document.getElementById("item-shop-sellable").checked;
+      merged.shop.consumable = document.getElementById("item-shop-consumable").checked;
+      merged.shop.stackable = document.getElementById("item-shop-stackable").checked;
+      const maxStack = numberOrUndefined(document.getElementById("item-shop-maxstack").value);
+      if (maxStack !== undefined) merged.shop.maxStack = maxStack;
+
+      merged.build = merged.build ?? {};
+      const buildsFrom = parseJsonField(manager, "item-builds-from", "build.buildsFrom", true);
+      if (buildsFrom === null) return null;
+      if (Array.isArray(buildsFrom) && buildsFrom.length) merged.build.buildsFrom = buildsFrom;
+      const buildsInto = parseJsonField(manager, "item-builds-into", "build.buildsInto", true);
+      if (buildsInto === null) return null;
+      if (Array.isArray(buildsInto) && buildsInto.length) merged.build.buildsInto = buildsInto;
+
+      const baseCost = parseCostField(manager, "item-base-cost", "baseCost");
+      if (baseCost === null) return null;
+      if (Object.keys(baseCost).length) merged.build.baseCost = baseCost;
+      const recipeCost = parseCostField(manager, "item-recipe-cost", "recipeCost");
+      if (recipeCost === null) return null;
+      if (Object.keys(recipeCost).length) merged.build.recipeCost = recipeCost;
+      const totalCost = parseCostField(manager, "item-total-cost", "totalCost");
+      if (totalCost === null) return null;
+      if (Object.keys(totalCost).length) merged.build.totalCost = totalCost;
+
+      const stats = parseJsonField(manager, "item-stats", "stats");
+      if (stats === null) return null;
+      if (Object.keys(stats).length) merged.stats = stats;
+      const effects = parseJsonField(manager, "item-effects", "effects");
+      if (effects === null) return null;
+      if (Object.keys(effects).length) merged.effects = effects;
+
+      return merged;
+    }
+
+    function applyItemFields(manager) {
+      const merged = mergeItemInputs(manager);
+      if (!merged) return;
+      manager.jsonInput.value = JSON.stringify(merged, null, 2);
+      manager.setStatus("필드 값이 JSON에 반영되었습니다.");
+      fillItemFields(merged);
+      updatePreviews();
+    }
+
+    function mergeCurrencyInputs(manager) {
+      const base = safeParseJson(document.getElementById("currency-json").value);
+      if (base === null) {
+        manager.setStatus("Currency JSON 파싱 실패. 포맷을 확인하세요.", { persist: true });
+        return null;
+      }
+      const merged = { ...(base || {}) };
+      const key = document.getElementById("currency-key").value.trim();
+      if (key) merged.key = key;
+      const name = document.getElementById("currency-name").value.trim();
+      if (name) merged.name = name;
+      const icon = document.getElementById("currency-icon").value.trim();
+      if (icon) merged.iconKey = icon;
+      const precision = numberOrUndefined(document.getElementById("currency-precision").value);
+      if (precision !== undefined) merged.precision = precision;
+      merged.enabled = document.getElementById("currency-enabled").checked;
+      return merged;
+    }
+
+    function mergeTierInputs(manager) {
+      const base = safeParseJson(document.getElementById("tier-json").value);
+      if (base === null) {
+        manager.setStatus("Tier JSON 파싱 실패. 포맷을 확인하세요.", { persist: true });
+        return null;
+      }
+      const merged = { ...(base || {}) };
+      const key = document.getElementById("tier-key").value.trim();
+      if (key) merged.tierKey = key;
+      const number = numberOrUndefined(document.getElementById("tier-number").value);
+      if (number !== undefined) merged.tierNumber = number;
+      const name = document.getElementById("tier-name").value.trim();
+      if (name) merged.name = name;
+      const sort = numberOrUndefined(document.getElementById("tier-sort").value);
+      if (sort !== undefined) merged.sortOrder = sort;
+      const color = document.getElementById("tier-color").value.trim();
+      if (color) merged.uiColorKey = color;
+      return merged;
+    }
+
+    function buildCurrencyPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 필드를 채워주세요.";
+      return `[${data.key ?? "-"}] ${data.name ?? "이름 미정"} · precision=${data.precision ?? 0} · enabled=${data.enabled ?? false}`;
+    }
+
+    function buildTierPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 필드를 채워주세요.";
+      return `[${data.tierKey ?? "-"}] ${data.name ?? "이름 미정"} · tier=${data.tierNumber ?? "?"} · sort=${data.sortOrder ?? "-"}`;
+    }
+
+    function buildItemPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 필드를 채워주세요.";
+      const id = data.id ?? "-";
+      const name = data.name ?? "이름 미정";
+      const slug = data.slug ?? "slug 미정";
+      const tier = data.tierKey ?? "tier 미정";
+      const tags = Array.isArray(data.tags) && data.tags.length ? ` | tags: ${data.tags.join(", ")}` : "";
+      const categories = Array.isArray(data.categories) && data.categories.length
+        ? ` | categories: ${data.categories.join(", ")}`
+        : "";
+      const costs = data.build?.totalCost ?? data.build?.baseCost;
+      const costText = costs ? ` | cost: ${Object.entries(costs).map(([k, v]) => `${k}:${v}`).join(", ")}` : "";
+      return `[${id}] ${name} (${slug}) · tier=${tier}${tags}${categories}${costText}`;
+    }
+
+    function updatePreviews() {
+      const currencyData = mergeCurrencyInputs(currencyManager);
+      const tierData = mergeTierInputs(tierManager);
+      const itemData = mergeItemInputs(itemManager);
+
+      document.getElementById("currency-preview-text").textContent = currencyData
+        ? buildCurrencyPreview(currencyData)
+        : "JSON 파싱 오류: Currency";
+      document.getElementById("tier-preview-text").textContent = tierData
+        ? buildTierPreview(tierData)
+        : "JSON 파싱 오류: Tier";
+      document.getElementById("item-preview-text").textContent = itemData
+        ? buildItemPreview(itemData)
+        : "JSON 파싱 오류: Item";
+    }
+
+    let currencyManager;
+    let tierManager;
+    let itemManager;
+
+    function createManagers() {
+      currencyManager = new SpecManager({
+        entityName: "Currency",
+        collectionName: "currencies",
+        idInputId: "currency-key",
+        jsonInputId: "currency-json",
+        statusId: "currency-status",
+        tableBodyId: "currency-table",
+        saveBtnId: "currency-save",
+        resetBtnId: "currency-reset",
+        sampleBtnId: "currency-sample",
+        refreshBtnId: "currency-refresh",
+        sampleData: SAMPLE_CURRENCY,
+        extraFill: ({ data }) => {
+          fillCurrencyFields(data);
+        },
+        summaryExtractor: (data) => ({
+          label: data.key ?? data.name ?? "Currency",
+          cells: [data.name, data.precision, data.enabled ? "true" : "false"],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const merged = mergeCurrencyInputs(currencyManager) ?? data;
+          merged.key = merged.key ?? docId;
+          return merged;
+        },
+      });
+
+      tierManager = new SpecManager({
+        entityName: "Tier",
+        collectionName: "itemTiers",
+        idInputId: "tier-key",
+        jsonInputId: "tier-json",
+        statusId: "tier-status",
+        tableBodyId: "tier-table",
+        saveBtnId: "tier-save",
+        resetBtnId: "tier-reset",
+        sampleBtnId: "tier-sample",
+        refreshBtnId: "tier-refresh",
+        sampleData: SAMPLE_TIER,
+        extraFill: ({ data }) => {
+          fillTierFields(data);
+        },
+        summaryExtractor: (data) => ({
+          label: data.tierKey ?? data.name ?? "Tier",
+          cells: [data.name, data.tierNumber, data.sortOrder],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const merged = mergeTierInputs(tierManager) ?? data;
+          merged.tierKey = merged.tierKey ?? docId;
+          return merged;
+        },
+      });
+
+      itemManager = new SpecManager({
+        entityName: "Item",
+        collectionName: "items",
+        idInputId: "item-id",
+        jsonInputId: "item-json",
+        statusId: "item-status",
+        tableBodyId: "item-table",
+        saveBtnId: "item-save",
+        resetBtnId: "item-reset",
+        sampleBtnId: "item-sample",
+        refreshBtnId: "item-refresh",
+        sampleData: SAMPLE_ITEM,
+        extraFill: ({ data }) => {
+          fillItemFields(data);
+        },
+        summaryExtractor: (data) => ({
+          label: data.id ?? data.name ?? "Item",
+          cells: [data.name, data.tierKey ?? data.tierNumber, data.slug],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const merged = mergeItemInputs(itemManager) ?? data;
+          merged.id = merged.id ?? docId;
+          return merged;
+        },
+      });
+    }
+
+    function registerFieldButtons() {
+      document.getElementById("currency-apply-fields")?.addEventListener("click", () => applyCurrencyFields(currencyManager));
+      document.getElementById("tier-apply-fields")?.addEventListener("click", () => applyTierFields(tierManager));
+      document.getElementById("item-apply-fields")?.addEventListener("click", () => applyItemFields(itemManager));
+    }
+
+    function registerPreviewInputs() {
+      const previewInputs = [
+        "currency-json",
+        "currency-key",
+        "currency-name",
+        "currency-icon",
+        "currency-precision",
+        "currency-enabled",
+        "tier-json",
+        "tier-key",
+        "tier-number",
+        "tier-name",
+        "tier-sort",
+        "tier-color",
+        "item-json",
+        "item-id",
+        "item-slug",
+        "item-name",
+        "item-tier-key",
+        "item-tier-number",
+        "item-rarity",
+        "item-tags",
+        "item-categories",
+        "item-builds-from",
+        "item-builds-into",
+        "item-base-cost",
+        "item-recipe-cost",
+        "item-total-cost",
+        "item-stats",
+        "item-effects",
+        "item-shop-purchasable",
+        "item-shop-sellable",
+        "item-shop-consumable",
+        "item-shop-stackable",
+        "item-shop-maxstack",
+      ];
+      previewInputs.forEach((id) => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", updatePreviews);
+        el?.addEventListener("change", updatePreviews);
+      });
+    }
+
+    async function initialize() {
+      createManagers();
+      registerFieldButtons();
+      registerPreviewInputs();
+
+      try {
+        const app = initializeApp(await getFirebaseConfig());
+        const db = getFirestore(app);
+        [currencyManager, tierManager, itemManager].forEach((manager) => {
+          manager.attachDb(db);
+          manager.resetForm();
+          manager.loadTable();
+        });
+        updatePreviews();
+      } catch (error) {
+        console.error(error);
+        [currencyManager, tierManager, itemManager].forEach((manager) => {
+          manager.setStatus("Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.", { persist: true });
+          manager.toggleButtons(true);
+        });
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
