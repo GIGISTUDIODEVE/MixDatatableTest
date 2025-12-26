@@ -175,3 +175,4 @@ LoL의 핵심 구조인 `buildsFrom / buildsInto` 조합 트리를 유지합니�
 - 비용 map의 키는 `currencies`에 정의된 key만 사용하도록 관리 페이지/검증 로직을 둡니다.
 - `build.buildsFrom`는 **재료 수량(count)** 을 포함하여 동일 재료 2개 같은 케이스를 지원합니다.
 - `uniqueGroupKey`로 LoL의 "고유 효과 중첩 제한"을 구현할 수 있습니다.
+ 
