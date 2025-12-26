@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>아이템 관리 (Firestore)</title>
+  <title>티어 관리 (Firestore)</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -92,12 +92,6 @@
       gap: 0.75rem 1rem;
     }
 
-    .split-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1rem 1.25rem;
-    }
-
     label {
       display: block;
       font-weight: 700;
@@ -117,7 +111,7 @@
     }
 
     textarea {
-      min-height: 220px;
+      min-height: 200px;
       resize: vertical;
       line-height: 1.45;
     }
@@ -280,108 +274,91 @@
       <a class="nav-link" href="effect-system-firestore.html">EffectSpec 관리</a>
       <a class="nav-link" href="monster-firestore.html">몬스터 관리</a>
       <a class="nav-link" href="currency-firestore.html">재화 관리</a>
-      <a class="nav-link active" href="item-firestore.html">아이템 관리</a>
-      <a class="nav-link" href="tier-firestore.html">티어 관리</a>
+      <a class="nav-link" href="item-firestore.html">아이템 관리</a>
+      <a class="nav-link active" href="tier-firestore.html">티어 관리</a>
     </div>
   </nav>
   <div class="container">
     <header class="card">
-      <h1>아이템 관리</h1>
-      <p class="muted">ItemSchema.md 스펙을 기반으로 Firestore 컬렉션 <code>items</code>에 저장/불러오기/수정/삭제합니다. 티어/조합/강화 정보를 모두 JSON으로 관리하도록 설계되었습니다.</p>
-      <div class="pill">핵심 필드: id · slug · name · tierNumber/tierKey · build · stats · effects</div>
+      <h1>티어 관리</h1>
+      <p class="muted">ItemSchema.md에서 정의된 <code>itemTiers</code> 컬렉션을 관리합니다. 티어 키/정렬/표시명을 생성·수정·삭제하여 아이템/몬스터 설정에 사용하세요.</p>
+      <div class="pill">핵심 필드: tierKey · tierNumber · displayName · description · tags</div>
     </header>
 
     <details class="card collapsible" open>
       <summary>
-        <span>Item 관리</span>
-        <span class="pill">collection = items</span>
+        <span>Tier 관리</span>
+        <span class="pill">collection = itemTiers</span>
       </summary>
       <div class="content">
-        <div class="split-grid">
+        <div class="grid">
           <div>
-            <div class="grid">
-              <div>
-                <label for="item-id">문서 ID (itemId)</label>
-                <input id="item-id" type="text" placeholder="3031" />
-              </div>
-              <div>
-                <label for="item-slug">slug</label>
-                <input id="item-slug" type="text" placeholder="infinity-edge" />
-              </div>
-              <div>
-                <label for="item-name">name</label>
-                <input id="item-name" type="text" placeholder="Infinity Edge" />
-              </div>
-            </div>
-            <div class="grid">
-              <div>
-                <label for="item-tier-number">tierNumber</label>
-                <input id="item-tier-number" type="number" min="0" />
-              </div>
-              <div>
-                <label for="item-tier-key">tierKey</label>
-                <input id="item-tier-key" type="text" placeholder="T3" />
-              </div>
-              <div>
-                <label for="item-rarity-key">rarityKey</label>
-                <input id="item-rarity-key" type="text" placeholder="legendary" />
-              </div>
-            </div>
-            <div class="grid">
-              <div>
-                <label for="item-tags">tags (콤마)</label>
-                <input id="item-tags" type="text" placeholder="damage, crit" />
-              </div>
-              <div>
-                <label for="item-categories">categories (콤마)</label>
-                <input id="item-categories" type="text" placeholder="legendary" />
-              </div>
-            </div>
-            <div class="actions">
-              <button class="secondary" id="item-apply-fields">필드값을 JSON에 반영</button>
-            </div>
-            <div>
-              <label for="item-json">Item JSON</label>
-              <textarea id="item-json" spellcheck="false"></textarea>
-            </div>
-            <div class="actions">
-              <button class="primary" id="item-save">저장/업데이트</button>
-              <button class="secondary" id="item-sample">샘플 불러오기</button>
-              <button class="secondary" id="item-reset">새로 작성</button>
-              <button class="secondary" id="item-refresh">목록 새로고침</button>
-            </div>
-            <div class="status" id="item-status"></div>
+            <label for="tier-id">tierKey (문서 ID)</label>
+            <input id="tier-id" type="text" placeholder="T3" />
           </div>
           <div>
-            <div class="preview-card" id="item-preview">
-              <h3>Item 프리뷰</h3>
-              <div class="label">핵심 정보</div>
-              <div class="value" id="item-preview-text">-</div>
-              <div class="label" style="margin-top: 0.75rem;">조합/비용</div>
-              <div class="value" id="item-cost-preview">-</div>
-            </div>
-            <p class="muted">스키마는 확장 가능합니다. shop, build, stats, effects, enhancement, metadata 등을 JSON에 작성하세요.</p>
-            <p class="muted">비용 map 키는 currencies 컬렉션에서 관리되는 값을 사용하는 것을 권장합니다.</p>
+            <label for="tier-display">displayName</label>
+            <input id="tier-display" type="text" placeholder="티어 3" />
+          </div>
+          <div>
+            <label for="tier-number">tierNumber (정렬용)</label>
+            <input id="tier-number" type="number" min="0" value="0" />
+          </div>
+        </div>
+        <div class="grid">
+          <div>
+            <label for="tier-tags">tags (콤마)</label>
+            <input id="tier-tags" type="text" placeholder="legendary, seasonal" />
           </div>
         </div>
         <div>
-          <p class="muted">저장된 Item 문서 목록</p>
-          <table>
-            <thead>
-              <tr>
-                <th>itemId</th>
-                <th>name</th>
-                <th>tier</th>
-                <th>tierKey</th>
-                <th>tags</th>
-                <th>작업</th>
-              </tr>
-            </thead>
-            <tbody id="item-table"></tbody>
-          </table>
+          <label for="tier-desc">description</label>
+          <textarea id="tier-desc" spellcheck="false" placeholder="운영 메모나 사용자 설명을 입력하세요."></textarea>
         </div>
+        <div class="actions">
+          <button class="secondary" id="tier-apply-fields">필드값을 JSON에 반영</button>
+        </div>
+        <div>
+          <label for="tier-json">Tier JSON</label>
+          <textarea id="tier-json" spellcheck="false"></textarea>
+        </div>
+        <div class="actions">
+          <button class="primary" id="tier-save">저장/업데이트</button>
+          <button class="secondary" id="tier-sample">샘플 불러오기</button>
+          <button class="secondary" id="tier-reset">새로 작성</button>
+          <button class="secondary" id="tier-refresh">목록 새로고침</button>
+        </div>
+        <div class="status" id="tier-status"></div>
       </div>
     </details>
+
+    <div class="card">
+      <h2>티어 프리뷰</h2>
+      <div class="preview-card">
+        <div class="label">요약</div>
+        <div class="value" id="tier-preview-text">-</div>
+        <div class="label" style="margin-top: 0.75rem;">설명/메타데이터</div>
+        <div class="value" id="tier-desc-preview">-</div>
+      </div>
+      <p class="muted">tierKey는 아이템/몬스터/프리셋에서 참조하므로 삭제 시 영향도를 확인하세요.</p>
+    </div>
+
+    <div class="card">
+      <h2>저장된 티어 목록</h2>
+      <p class="muted">tierNumber와 tierKey 기준으로 정렬됩니다.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>tierKey</th>
+            <th>displayName</th>
+            <th>tierNumber</th>
+            <th>tags</th>
+            <th>작업</th>
+          </tr>
+        </thead>
+        <tbody id="tier-table"></tbody>
+      </table>
+    </div>
   </div>
 
   <script type="module">
@@ -396,76 +373,14 @@
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
     import { getFirebaseConfig } from "./firebase-config.js";
 
-    const SAMPLE_ITEM = {
-      id: "3031",
-      slug: "infinity-edge",
-      name: "Infinity Edge",
-      tierNumber: 3,
+    const SAMPLE_TIER = {
       tierKey: "T3",
-      rarityKey: "legendary",
-      shop: {
-        purchasable: true,
-        sellable: true,
-        consumable: false,
-        stackable: false,
-        maxStack: 1,
-      },
-      requirements: {
-        levelMin: 0,
-        uniqueGroupKey: "crit_modifier",
-      },
-      build: {
-        buildsFrom: [
-          { itemId: "1038", count: 1 },
-          { itemId: "1018", count: 1 },
-        ],
-        buildsInto: [],
-        baseCost: { gold: 3400 },
-        recipeCost: { gold: 625, token_event: 2 },
-        totalCost: { gold: 3400, token_event: 2 },
-      },
-      tags: ["damage", "crit"],
-      categories: ["legendary"],
-      stats: {
-        attackDamage: 70,
-        critChance: 0.25,
-      },
-      effects: {
-        passives: [
-          {
-            key: "ie_crit_amp",
-            name: "Perfection",
-            unique: true,
-            rulesText: "Critical strikes deal increased damage.",
-            scaling: { critDamageMultiplierBonus: 0.4 },
-          },
-        ],
-        actives: [],
-      },
-      enhancement: {
-        enabled: true,
-        levelMin: 0,
-        levelMax: 15,
-        profileKey: "enh_weapon_v1",
-        rules: {
-          downgradeOnFail: false,
-          breakOnFail: false,
-        },
-        costByLevel: {
-          "1": { gold: 200, shard: 1 },
-          "2": { gold: 300, shard: 1 },
-          "3": { gold: 450, shard: 2 },
-        },
-        successRateByLevel: {
-          "1": 1.0,
-          "2": 0.9,
-          "3": 0.8,
-        },
-        statScaling: {
-          perLevelAdd: { attackDamage: 2 },
-          perLevelMul: { attackDamage: 0.0 },
-        },
-        effectUnlocks: [{ atLevel: 7, addPassiveKey: "ie_bonus_crit" }],
+      tierNumber: 3,
+      displayName: "티어 3",
+      description: "레전더리급 티어",
+      tags: ["legendary"],
+      metadata: {
+        updatedBy: "admin",
       },
     };
 
@@ -535,7 +450,7 @@
       getDocIdOrWarn() {
         const raw = this.idInput.value.trim();
         if (!raw) {
-          this.setStatus("아이템 ID를 입력하세요.");
+          this.setStatus("tierKey를 입력하세요.");
           return null;
         }
         const sanitized = this.sanitizeId(raw);
@@ -563,7 +478,7 @@
         this.idInput.value = id;
         if (this.extraFill) this.extraFill({ data, manager: this });
         this.jsonInput.value = JSON.stringify(data, null, 2);
-        this.setStatus(`'${id}' 아이템을 불러왔습니다.`);
+        this.setStatus(`'${id}' 티어를 불러왔습니다.`);
         updatePreviews();
       }
 
@@ -576,7 +491,7 @@
       }
 
       loadSample() {
-        const id = this.sampleData.id ?? "";
+        const id = this.sampleData.tierKey ?? "";
         this.fillForm(id, this.sampleData);
         this.setStatus("샘플 데이터를 불러왔습니다.");
       }
@@ -592,7 +507,7 @@
         this.toggleButtons(true);
         try {
           await setDoc(doc(this.collectionRef, docId), transformed, { merge: true });
-          this.setStatus(`'${docId}' 아이템을 저장했습니다.`);
+          this.setStatus(`'${docId}' 티어를 저장했습니다.`);
           await this.loadTable();
         } catch (error) {
           console.error(error);
@@ -604,11 +519,11 @@
 
       async handleDelete(docId, label) {
         if (!this.db) return;
-        if (!confirm(`'${label}' 아이템을 삭제할까요?`)) return;
+        if (!confirm(`'${label}' 티어를 삭제할까요? 참조 데이터에 영향이 있을 수 있습니다.`)) return;
         this.toggleButtons(true);
         try {
           await deleteDoc(doc(this.collectionRef, docId));
-          this.setStatus(`'${label}' 아이템을 삭제했습니다.`);
+          this.setStatus(`'${label}' 티어를 삭제했습니다.`);
           await this.loadTable();
         } catch (error) {
           console.error(error);
@@ -628,9 +543,14 @@
             const data = docSnap.data();
             rows.push({ id: docSnap.id, data });
           });
-          rows.sort((a, b) => a.id.localeCompare(b.id));
+          rows.sort((a, b) => {
+            const numA = Number(a.data?.tierNumber ?? 0);
+            const numB = Number(b.data?.tierNumber ?? 0);
+            if (numA !== numB) return numA - numB;
+            return a.id.localeCompare(b.id);
+          });
           this.renderTable(rows);
-          this.setStatus(`총 ${rows.length}개 아이템을 불러왔습니다.`);
+          this.setStatus(`총 ${rows.length}개 티어를 불러왔습니다.`);
         } catch (error) {
           console.error(error);
           this.setStatus("목록을 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
@@ -642,7 +562,7 @@
         if (!rows.length) {
           const tr = document.createElement("tr");
           const td = document.createElement("td");
-          td.colSpan = 6;
+          td.colSpan = 5;
           td.textContent = "저장된 문서가 없습니다.";
           tr.appendChild(td);
           this.tableBody.appendChild(tr);
@@ -683,151 +603,110 @@
       }
     }
 
-    function fillItemQuickFields(data) {
-      document.getElementById("item-id").value = data.id ?? "";
-      document.getElementById("item-slug").value = data.slug ?? "";
-      document.getElementById("item-name").value = data.name ?? "";
-      document.getElementById("item-tier-number").value = data.tierNumber ?? "";
-      document.getElementById("item-tier-key").value = data.tierKey ?? "";
-      document.getElementById("item-rarity-key").value = data.rarityKey ?? "";
-      document.getElementById("item-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
-      document.getElementById("item-categories").value = Array.isArray(data.categories)
-        ? data.categories.join(", ")
-        : "";
+    function fillTierQuickFields(data) {
+      document.getElementById("tier-id").value = data.tierKey ?? "";
+      document.getElementById("tier-display").value = data.displayName ?? "";
+      document.getElementById("tier-number").value = data.tierNumber ?? "";
+      document.getElementById("tier-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
+      document.getElementById("tier-desc").value = data.description ?? "";
     }
 
-    function applyItemFields(manager) {
+    function applyTierFields(manager) {
       const data = manager.parseJsonOrWarn();
       if (data === null) return;
       const next = { ...(data || {}) };
-      next.id = document.getElementById("item-id").value.trim() || next.id;
-      next.slug = document.getElementById("item-slug").value.trim() || next.slug;
-      next.name = document.getElementById("item-name").value.trim() || next.name;
-      const tierNum = document.getElementById("item-tier-number").value.trim();
-      if (tierNum !== "") {
-        const parsed = Number(tierNum);
+      next.tierKey = document.getElementById("tier-id").value.trim() || next.tierKey;
+      next.displayName = document.getElementById("tier-display").value.trim() || next.displayName;
+      const tierNumber = document.getElementById("tier-number").value.trim();
+      if (tierNumber !== "") {
+        const parsed = Number(tierNumber);
         if (!Number.isNaN(parsed)) next.tierNumber = parsed;
       }
-      const tierKey = document.getElementById("item-tier-key").value.trim();
-      if (tierKey) next.tierKey = tierKey;
-      const rarityKey = document.getElementById("item-rarity-key").value.trim();
-      if (rarityKey) next.rarityKey = rarityKey;
-      const tags = toStringArray(document.getElementById("item-tags").value);
+      const tags = toStringArray(document.getElementById("tier-tags").value);
       if (tags.length) next.tags = tags;
-      const categories = toStringArray(document.getElementById("item-categories").value);
-      if (categories.length) next.categories = categories;
+      const desc = document.getElementById("tier-desc").value.trim();
+      if (desc) next.description = desc;
 
       manager.jsonInput.value = JSON.stringify(next, null, 2);
       manager.setStatus("입력값을 JSON에 반영했습니다.");
-      fillItemQuickFields(next);
+      fillTierQuickFields(next);
       updatePreviews();
     }
 
-    function mergeItemInputs() {
-      const base = safeParseJson(document.getElementById("item-json").value);
+    function mergeTierInputs() {
+      const base = safeParseJson(document.getElementById("tier-json").value);
       if (base === null) return null;
       const merged = { ...(base || {}) };
-      const id = document.getElementById("item-id").value.trim();
-      if (id) merged.id = id;
-      const slug = document.getElementById("item-slug").value.trim();
-      if (slug) merged.slug = slug;
-      const name = document.getElementById("item-name").value.trim();
-      if (name) merged.name = name;
-      const tierNum = document.getElementById("item-tier-number").value.trim();
-      if (tierNum !== "") {
-        const parsed = Number(tierNum);
+      const key = document.getElementById("tier-id").value.trim();
+      if (key) merged.tierKey = key;
+      const name = document.getElementById("tier-display").value.trim();
+      if (name) merged.displayName = name;
+      const tierNumber = document.getElementById("tier-number").value.trim();
+      if (tierNumber !== "") {
+        const parsed = Number(tierNumber);
         if (!Number.isNaN(parsed)) merged.tierNumber = parsed;
       }
-      const tierKey = document.getElementById("item-tier-key").value.trim();
-      if (tierKey) merged.tierKey = tierKey;
-      const rarityKey = document.getElementById("item-rarity-key").value.trim();
-      if (rarityKey) merged.rarityKey = rarityKey;
-      const tags = toStringArray(document.getElementById("item-tags").value);
+      const tags = toStringArray(document.getElementById("tier-tags").value);
       if (tags.length) merged.tags = tags;
-      const categories = toStringArray(document.getElementById("item-categories").value);
-      if (categories.length) merged.categories = categories;
+      const desc = document.getElementById("tier-desc").value.trim();
+      if (desc) merged.description = desc;
       return merged;
     }
 
-    function summarizeCosts(build = {}) {
-      const base = build.baseCost || {};
-      const recipe = build.recipeCost || {};
-      const total = build.totalCost || {};
-      const formatMap = (map) => {
-        const entries = Object.entries(map || {});
-        if (!entries.length) return "-";
-        return entries.map(([key, val]) => `${key}:${val}`).join(" / ");
-      };
-      return {
-        base: formatMap(base),
-        recipe: formatMap(recipe),
-        total: formatMap(total),
-      };
-    }
-
-    function buildItemPreview(data) {
+    function buildTierPreview(data) {
       if (!data) return "유효한 JSON을 입력하거나 필드를 채워주세요.";
-      const id = data.id ?? "-";
-      const name = data.name ?? "이름 미정";
-      const slug = data.slug ? ` (${data.slug})` : "";
-      const tierNumber = data.tierNumber ?? "-";
-      const tierKey = data.tierKey ? ` · ${data.tierKey}` : "";
-      const rarity = data.rarityKey ? ` · rarity=${data.rarityKey}` : "";
+      const key = data.tierKey ?? "-";
+      const name = data.displayName ?? "이름 미정";
+      const number = data.tierNumber ?? "-";
       const tags = Array.isArray(data.tags) && data.tags.length ? ` | 태그: ${data.tags.join(", ")}` : "";
-      const categories =
-        Array.isArray(data.categories) && data.categories.length ? ` | 카테고리: ${data.categories.join(", ")}` : "";
-      return `[${id}] ${name}${slug} · tier=${tierNumber}${tierKey}${rarity}${tags}${categories}`;
+      return `[${key}] ${name} · tierNumber=${number}${tags}`;
     }
 
-    function buildCostPreview(data) {
-      if (!data || !data.build) return "build.* 비용 정보를 입력하세요.";
-      const costs = summarizeCosts(data.build);
-      const buildsFrom = Array.isArray(data.build.buildsFrom)
-        ? data.build.buildsFrom.map((b) => `${b.itemId ?? "-"}x${b.count ?? 1}`).join(", ")
-        : "-";
-      return `base=${costs.base} | recipe=${costs.recipe} | total=${costs.total} | 조합=${buildsFrom}`;
+    function buildDescPreview(data) {
+      if (!data) return "-";
+      const meta = data.metadata ? ` | metadata=${JSON.stringify(data.metadata)}` : "";
+      return `${data.description ?? "설명 없음"}${meta}`;
     }
 
     function updatePreviews() {
-      const itemData = mergeItemInputs();
-      const itemPreview = document.getElementById("item-preview-text");
-      const costPreview = document.getElementById("item-cost-preview");
-      itemPreview.textContent = itemData ? buildItemPreview(itemData) : "JSON 파싱 오류: Item";
-      costPreview.textContent = itemData ? buildCostPreview(itemData) : "-";
+      const tierData = mergeTierInputs();
+      const preview = document.getElementById("tier-preview-text");
+      const descPreview = document.getElementById("tier-desc-preview");
+      preview.textContent = tierData ? buildTierPreview(tierData) : "JSON 파싱 오류: Tier";
+      descPreview.textContent = tierData ? buildDescPreview(tierData) : "-";
     }
 
     function createManager() {
       return new SpecManager({
-        collectionName: "items",
-        idInputId: "item-id",
-        jsonInputId: "item-json",
-        statusId: "item-status",
-        tableBodyId: "item-table",
-        saveBtnId: "item-save",
-        resetBtnId: "item-reset",
-        sampleBtnId: "item-sample",
-        refreshBtnId: "item-refresh",
-        sampleData: SAMPLE_ITEM,
-        extraFill: ({ data }) => fillItemQuickFields(data),
+        collectionName: "itemTiers",
+        idInputId: "tier-id",
+        jsonInputId: "tier-json",
+        statusId: "tier-status",
+        tableBodyId: "tier-table",
+        saveBtnId: "tier-save",
+        resetBtnId: "tier-reset",
+        sampleBtnId: "tier-sample",
+        refreshBtnId: "tier-refresh",
+        sampleData: SAMPLE_TIER,
+        extraFill: ({ data }) => fillTierQuickFields(data),
         summaryExtractor: (data) => ({
-          label: data.name ?? data.id ?? "Item",
+          label: data.displayName ?? data.tierKey ?? "Tier",
           cells: [
-            data.name,
+            data.displayName,
             data.tierNumber ?? "-",
-            data.tierKey ?? "-",
             Array.isArray(data.tags) ? data.tags.join(", ") : "-",
           ],
         }),
         transformBeforeSave: ({ data, docId }) => {
-          const merged = mergeItemInputs() ?? data;
-          merged.id = merged.id ?? docId;
+          const merged = mergeTierInputs() ?? data;
+          merged.tierKey = merged.tierKey ?? docId;
           return merged;
         },
       });
     }
 
     function registerFieldButtons(manager) {
-      document.getElementById("item-apply-fields")?.addEventListener("click", () => applyItemFields(manager));
+      document.getElementById("tier-apply-fields")?.addEventListener("click", () => applyTierFields(manager));
     }
 
     async function initialize() {
@@ -835,15 +714,12 @@
       registerFieldButtons(manager);
 
       const previewInputs = [
-        "item-json",
-        "item-id",
-        "item-slug",
-        "item-name",
-        "item-tier-number",
-        "item-tier-key",
-        "item-rarity-key",
-        "item-tags",
-        "item-categories",
+        "tier-json",
+        "tier-id",
+        "tier-display",
+        "tier-number",
+        "tier-tags",
+        "tier-desc",
       ];
       previewInputs.forEach((id) => {
         const el = document.getElementById(id);
