@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>아이템 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      border: 1px solid #334155;
+    }
+
+    .preview-card {
+      margin-top: 0.75rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .preview-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .preview-card .label {
+      color: #cbd5e1;
+    }
+
+    .preview-card .value {
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    details.collapsible {
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      background: #111827;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    details.collapsible[open] > summary {
+      border-bottom: 1px solid #1f2937;
+    }
+
+    details.collapsible summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+    }
+
+    details.collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.collapsible .content {
+      padding: 1rem 1.25rem;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link" href="effect-system-firestore.html">EffectSpec 관리</a>
+      <a class="nav-link" href="monster-firestore.html">몬스터 관리</a>
+      <a class="nav-link active" href="item-firestore.html">아이템 관리</a>
+    </div>
+  </nav>
+  <div class="container">
+    <header class="card">
+      <h1>아이템 관리</h1>
+      <p class="muted">ItemSchema.md 스펙을 기반으로 Firestore 컬렉션 <code>items</code>에 저장/불러오기/수정/삭제합니다. 티어/조합/강화 정보를 모두 JSON으로 관리하도록 설계되었습니다.</p>
+      <div class="pill">핵심 필드: id · slug · name · tierNumber/tierKey · build · stats · effects</div>
+    </header>
+
+    <details class="card collapsible" open>
+      <summary>
+        <span>Item 관리</span>
+        <span class="pill">collection = items</span>
+      </summary>
+      <div class="content">
+        <div class="split-grid">
+          <div>
+            <div class="grid">
+              <div>
+                <label for="item-id">문서 ID (itemId)</label>
+                <input id="item-id" type="text" placeholder="3031" />
+              </div>
+              <div>
+                <label for="item-slug">slug</label>
+                <input id="item-slug" type="text" placeholder="infinity-edge" />
+              </div>
+              <div>
+                <label for="item-name">name</label>
+                <input id="item-name" type="text" placeholder="Infinity Edge" />
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="item-tier-number">tierNumber</label>
+                <input id="item-tier-number" type="number" min="0" />
+              </div>
+              <div>
+                <label for="item-tier-key">tierKey</label>
+                <input id="item-tier-key" type="text" placeholder="T3" />
+              </div>
+              <div>
+                <label for="item-rarity-key">rarityKey</label>
+                <input id="item-rarity-key" type="text" placeholder="legendary" />
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="item-tags">tags (콤마)</label>
+                <input id="item-tags" type="text" placeholder="damage, crit" />
+              </div>
+              <div>
+                <label for="item-categories">categories (콤마)</label>
+                <input id="item-categories" type="text" placeholder="legendary" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="item-apply-fields">필드값을 JSON에 반영</button>
+            </div>
+            <div>
+              <label for="item-json">Item JSON</label>
+              <textarea id="item-json" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="item-save">저장/업데이트</button>
+              <button class="secondary" id="item-sample">샘플 불러오기</button>
+              <button class="secondary" id="item-reset">새로 작성</button>
+              <button class="secondary" id="item-refresh">목록 새로고침</button>
+            </div>
+            <div class="status" id="item-status"></div>
+          </div>
+          <div>
+            <div class="preview-card" id="item-preview">
+              <h3>Item 프리뷰</h3>
+              <div class="label">핵심 정보</div>
+              <div class="value" id="item-preview-text">-</div>
+              <div class="label" style="margin-top: 0.75rem;">조합/비용</div>
+              <div class="value" id="item-cost-preview">-</div>
+            </div>
+            <p class="muted">스키마는 확장 가능합니다. shop, build, stats, effects, enhancement, metadata 등을 JSON에 작성하세요.</p>
+            <p class="muted">비용 map 키는 currencies 컬렉션에서 관리되는 값을 사용하는 것을 권장합니다.</p>
+          </div>
+        </div>
+        <div>
+          <p class="muted">저장된 Item 문서 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>itemId</th>
+                <th>name</th>
+                <th>tier</th>
+                <th>tierKey</th>
+                <th>tags</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="item-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const SAMPLE_ITEM = {
+      id: "3031",
+      slug: "infinity-edge",
+      name: "Infinity Edge",
+      tierNumber: 3,
+      tierKey: "T3",
+      rarityKey: "legendary",
+      shop: {
+        purchasable: true,
+        sellable: true,
+        consumable: false,
+        stackable: false,
+        maxStack: 1,
+      },
+      requirements: {
+        levelMin: 0,
+        uniqueGroupKey: "crit_modifier",
+      },
+      build: {
+        buildsFrom: [
+          { itemId: "1038", count: 1 },
+          { itemId: "1018", count: 1 },
+        ],
+        buildsInto: [],
+        baseCost: { gold: 3400 },
+        recipeCost: { gold: 625, token_event: 2 },
+        totalCost: { gold: 3400, token_event: 2 },
+      },
+      tags: ["damage", "crit"],
+      categories: ["legendary"],
+      stats: {
+        attackDamage: 70,
+        critChance: 0.25,
+      },
+      effects: {
+        passives: [
+          {
+            key: "ie_crit_amp",
+            name: "Perfection",
+            unique: true,
+            rulesText: "Critical strikes deal increased damage.",
+            scaling: { critDamageMultiplierBonus: 0.4 },
+          },
+        ],
+        actives: [],
+      },
+      enhancement: {
+        enabled: true,
+        levelMin: 0,
+        levelMax: 15,
+        profileKey: "enh_weapon_v1",
+        rules: {
+          downgradeOnFail: false,
+          breakOnFail: false,
+        },
+        costByLevel: {
+          "1": { gold: 200, shard: 1 },
+          "2": { gold: 300, shard: 1 },
+          "3": { gold: 450, shard: 2 },
+        },
+        successRateByLevel: {
+          "1": 1.0,
+          "2": 0.9,
+          "3": 0.8,
+        },
+        statScaling: {
+          perLevelAdd: { attackDamage: 2 },
+          perLevelMul: { attackDamage: 0.0 },
+        },
+        effectUnlocks: [{ atLevel: 7, addPassiveKey: "ie_bonus_crit" }],
+      },
+    };
+
+    function toStringArray(value) {
+      return value
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    }
+
+    function safeParseJson(value) {
+      if (!value || !value.trim()) return {};
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+
+    class SpecManager {
+      constructor({ collectionName, idInputId, jsonInputId, statusId, tableBodyId, saveBtnId, resetBtnId, sampleBtnId, refreshBtnId, sampleData, extraFill, summaryExtractor, transformBeforeSave }) {
+        this.collectionName = collectionName;
+        this.idInput = document.getElementById(idInputId);
+        this.jsonInput = document.getElementById(jsonInputId);
+        this.statusEl = document.getElementById(statusId);
+        this.tableBody = document.getElementById(tableBodyId);
+        this.sampleData = sampleData;
+        this.extraFill = extraFill;
+        this.summaryExtractor = summaryExtractor;
+        this.transformBeforeSave = transformBeforeSave;
+
+        this.saveBtn = document.getElementById(saveBtnId);
+        this.resetBtn = document.getElementById(resetBtnId);
+        this.sampleBtn = document.getElementById(sampleBtnId);
+        this.refreshBtn = document.getElementById(refreshBtnId);
+
+        this.registerHandlers();
+      }
+
+      attachDb(db) {
+        this.db = db;
+        this.collectionRef = collection(db, this.collectionName);
+      }
+
+      registerHandlers() {
+        this.saveBtn?.addEventListener("click", () => this.handleSave());
+        this.resetBtn?.addEventListener("click", () => this.resetForm());
+        this.sampleBtn?.addEventListener("click", () => this.loadSample());
+        this.refreshBtn?.addEventListener("click", () => this.loadTable());
+      }
+
+      setStatus(message, { persist = false } = {}) {
+        this.statusEl.textContent = message;
+        if (!persist) {
+          clearTimeout(this._statusTimer);
+          this._statusTimer = setTimeout(() => {
+            this.statusEl.textContent = "";
+          }, 4500);
+        }
+      }
+
+      sanitizeId(rawId) {
+        return rawId.trim().replace(/[^A-Za-z0-9_.-]+/g, "_");
+      }
+
+      getDocIdOrWarn() {
+        const raw = this.idInput.value.trim();
+        if (!raw) {
+          this.setStatus("아이템 ID를 입력하세요.");
+          return null;
+        }
+        const sanitized = this.sanitizeId(raw);
+        if (!sanitized) {
+          this.setStatus("유효한 ID를 입력하세요 (영문/숫자/._- 조합).");
+          return null;
+        }
+        if (sanitized !== raw) this.idInput.value = sanitized;
+        return sanitized;
+      }
+
+      parseJsonOrWarn() {
+        const raw = this.jsonInput.value.trim();
+        if (!raw) return {};
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("JSON 파싱에 실패했습니다. 포맷을 확인하세요.");
+          return null;
+        }
+      }
+
+      fillForm(id, data) {
+        this.idInput.value = id;
+        if (this.extraFill) this.extraFill({ data, manager: this });
+        this.jsonInput.value = JSON.stringify(data, null, 2);
+        this.setStatus(`'${id}' 아이템을 불러왔습니다.`);
+        updatePreviews();
+      }
+
+      resetForm() {
+        this.idInput.value = "";
+        if (this.extraFill) this.extraFill({ data: this.sampleData, manager: this });
+        this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
+        this.setStatus("새 문서를 작성하세요.");
+        updatePreviews();
+      }
+
+      loadSample() {
+        const id = this.sampleData.id ?? "";
+        this.fillForm(id, this.sampleData);
+        this.setStatus("샘플 데이터를 불러왔습니다.");
+      }
+
+      async handleSave() {
+        if (!this.db) return;
+        const docId = this.getDocIdOrWarn();
+        if (!docId) return;
+        const data = this.parseJsonOrWarn();
+        if (!data) return;
+        const transformed = this.transformBeforeSave ? this.transformBeforeSave({ data, manager: this, docId }) : data;
+
+        this.toggleButtons(true);
+        try {
+          await setDoc(doc(this.collectionRef, docId), transformed, { merge: true });
+          this.setStatus(`'${docId}' 아이템을 저장했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("저장 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async handleDelete(docId, label) {
+        if (!this.db) return;
+        if (!confirm(`'${label}' 아이템을 삭제할까요?`)) return;
+        this.toggleButtons(true);
+        try {
+          await deleteDoc(doc(this.collectionRef, docId));
+          this.setStatus(`'${label}' 아이템을 삭제했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("삭제 중 오류가 발생했습니다. 네트워크/권한을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async loadTable() {
+        if (!this.db) return;
+        this.setStatus("목록을 불러오는 중...", { persist: true });
+        try {
+          const snapshot = await getDocs(this.collectionRef);
+          const rows = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            rows.push({ id: docSnap.id, data });
+          });
+          rows.sort((a, b) => a.id.localeCompare(b.id));
+          this.renderTable(rows);
+          this.setStatus(`총 ${rows.length}개 아이템을 불러왔습니다.`);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("목록을 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        }
+      }
+
+      renderTable(rows) {
+        this.tableBody.innerHTML = "";
+        if (!rows.length) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 6;
+          td.textContent = "저장된 문서가 없습니다.";
+          tr.appendChild(td);
+          this.tableBody.appendChild(tr);
+          return;
+        }
+
+        rows.forEach(({ id, data }) => {
+          const tr = document.createElement("tr");
+          const summary = this.summaryExtractor ? this.summaryExtractor(data) : {};
+          const cells = summary.cells ?? [];
+          [id, ...cells].forEach((value) => {
+            const td = document.createElement("td");
+            td.textContent = value ?? "-";
+            tr.appendChild(td);
+          });
+
+          const actionsTd = document.createElement("td");
+          const loadBtn = document.createElement("button");
+          loadBtn.className = "secondary";
+          loadBtn.textContent = "불러오기";
+          loadBtn.addEventListener("click", () => this.fillForm(id, data));
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "danger";
+          deleteBtn.textContent = "삭제";
+          deleteBtn.addEventListener("click", () => this.handleDelete(id, summary.label ?? id));
+
+          actionsTd.append(loadBtn, deleteBtn);
+          tr.appendChild(actionsTd);
+          this.tableBody.appendChild(tr);
+        });
+      }
+
+      toggleButtons(disabled) {
+        [this.saveBtn, this.resetBtn, this.sampleBtn, this.refreshBtn].forEach((btn) => {
+          if (btn) btn.disabled = disabled;
+        });
+      }
+    }
+
+    function fillItemQuickFields(data) {
+      document.getElementById("item-id").value = data.id ?? "";
+      document.getElementById("item-slug").value = data.slug ?? "";
+      document.getElementById("item-name").value = data.name ?? "";
+      document.getElementById("item-tier-number").value = data.tierNumber ?? "";
+      document.getElementById("item-tier-key").value = data.tierKey ?? "";
+      document.getElementById("item-rarity-key").value = data.rarityKey ?? "";
+      document.getElementById("item-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
+      document.getElementById("item-categories").value = Array.isArray(data.categories)
+        ? data.categories.join(", ")
+        : "";
+    }
+
+    function applyItemFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.id = document.getElementById("item-id").value.trim() || next.id;
+      next.slug = document.getElementById("item-slug").value.trim() || next.slug;
+      next.name = document.getElementById("item-name").value.trim() || next.name;
+      const tierNum = document.getElementById("item-tier-number").value.trim();
+      if (tierNum !== "") {
+        const parsed = Number(tierNum);
+        if (!Number.isNaN(parsed)) next.tierNumber = parsed;
+      }
+      const tierKey = document.getElementById("item-tier-key").value.trim();
+      if (tierKey) next.tierKey = tierKey;
+      const rarityKey = document.getElementById("item-rarity-key").value.trim();
+      if (rarityKey) next.rarityKey = rarityKey;
+      const tags = toStringArray(document.getElementById("item-tags").value);
+      if (tags.length) next.tags = tags;
+      const categories = toStringArray(document.getElementById("item-categories").value);
+      if (categories.length) next.categories = categories;
+
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillItemQuickFields(next);
+      updatePreviews();
+    }
+
+    function mergeItemInputs() {
+      const base = safeParseJson(document.getElementById("item-json").value);
+      if (base === null) return null;
+      const merged = { ...(base || {}) };
+      const id = document.getElementById("item-id").value.trim();
+      if (id) merged.id = id;
+      const slug = document.getElementById("item-slug").value.trim();
+      if (slug) merged.slug = slug;
+      const name = document.getElementById("item-name").value.trim();
+      if (name) merged.name = name;
+      const tierNum = document.getElementById("item-tier-number").value.trim();
+      if (tierNum !== "") {
+        const parsed = Number(tierNum);
+        if (!Number.isNaN(parsed)) merged.tierNumber = parsed;
+      }
+      const tierKey = document.getElementById("item-tier-key").value.trim();
+      if (tierKey) merged.tierKey = tierKey;
+      const rarityKey = document.getElementById("item-rarity-key").value.trim();
+      if (rarityKey) merged.rarityKey = rarityKey;
+      const tags = toStringArray(document.getElementById("item-tags").value);
+      if (tags.length) merged.tags = tags;
+      const categories = toStringArray(document.getElementById("item-categories").value);
+      if (categories.length) merged.categories = categories;
+      return merged;
+    }
+
+    function summarizeCosts(build = {}) {
+      const base = build.baseCost || {};
+      const recipe = build.recipeCost || {};
+      const total = build.totalCost || {};
+      const formatMap = (map) => {
+        const entries = Object.entries(map || {});
+        if (!entries.length) return "-";
+        return entries.map(([key, val]) => `${key}:${val}`).join(" / ");
+      };
+      return {
+        base: formatMap(base),
+        recipe: formatMap(recipe),
+        total: formatMap(total),
+      };
+    }
+
+    function buildItemPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 필드를 채워주세요.";
+      const id = data.id ?? "-";
+      const name = data.name ?? "이름 미정";
+      const slug = data.slug ? ` (${data.slug})` : "";
+      const tierNumber = data.tierNumber ?? "-";
+      const tierKey = data.tierKey ? ` · ${data.tierKey}` : "";
+      const rarity = data.rarityKey ? ` · rarity=${data.rarityKey}` : "";
+      const tags = Array.isArray(data.tags) && data.tags.length ? ` | 태그: ${data.tags.join(", ")}` : "";
+      const categories =
+        Array.isArray(data.categories) && data.categories.length ? ` | 카테고리: ${data.categories.join(", ")}` : "";
+      return `[${id}] ${name}${slug} · tier=${tierNumber}${tierKey}${rarity}${tags}${categories}`;
+    }
+
+    function buildCostPreview(data) {
+      if (!data || !data.build) return "build.* 비용 정보를 입력하세요.";
+      const costs = summarizeCosts(data.build);
+      const buildsFrom = Array.isArray(data.build.buildsFrom)
+        ? data.build.buildsFrom.map((b) => `${b.itemId ?? "-"}x${b.count ?? 1}`).join(", ")
+        : "-";
+      return `base=${costs.base} | recipe=${costs.recipe} | total=${costs.total} | 조합=${buildsFrom}`;
+    }
+
+    function updatePreviews() {
+      const itemData = mergeItemInputs();
+      const itemPreview = document.getElementById("item-preview-text");
+      const costPreview = document.getElementById("item-cost-preview");
+      itemPreview.textContent = itemData ? buildItemPreview(itemData) : "JSON 파싱 오류: Item";
+      costPreview.textContent = itemData ? buildCostPreview(itemData) : "-";
+    }
+
+    function createManager() {
+      return new SpecManager({
+        collectionName: "items",
+        idInputId: "item-id",
+        jsonInputId: "item-json",
+        statusId: "item-status",
+        tableBodyId: "item-table",
+        saveBtnId: "item-save",
+        resetBtnId: "item-reset",
+        sampleBtnId: "item-sample",
+        refreshBtnId: "item-refresh",
+        sampleData: SAMPLE_ITEM,
+        extraFill: ({ data }) => fillItemQuickFields(data),
+        summaryExtractor: (data) => ({
+          label: data.name ?? data.id ?? "Item",
+          cells: [
+            data.name,
+            data.tierNumber ?? "-",
+            data.tierKey ?? "-",
+            Array.isArray(data.tags) ? data.tags.join(", ") : "-",
+          ],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const merged = mergeItemInputs() ?? data;
+          merged.id = merged.id ?? docId;
+          return merged;
+        },
+      });
+    }
+
+    function registerFieldButtons(manager) {
+      document.getElementById("item-apply-fields")?.addEventListener("click", () => applyItemFields(manager));
+    }
+
+    async function initialize() {
+      const manager = createManager();
+      registerFieldButtons(manager);
+
+      const previewInputs = [
+        "item-json",
+        "item-id",
+        "item-slug",
+        "item-name",
+        "item-tier-number",
+        "item-tier-key",
+        "item-rarity-key",
+        "item-tags",
+        "item-categories",
+      ];
+      previewInputs.forEach((id) => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", updatePreviews);
+        el?.addEventListener("change", updatePreviews);
+      });
+
+      try {
+        const app = initializeApp(await getFirebaseConfig());
+        const db = getFirestore(app);
+        manager.attachDb(db);
+        manager.resetForm();
+        manager.loadTable();
+        updatePreviews();
+      } catch (error) {
+        console.error(error);
+        manager.setStatus("Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.", { persist: true });
+        manager.toggleButtons(true);
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
