@@ -94,8 +94,15 @@
 
     .split-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 1rem 1.25rem;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem 1rem;
+      align-items: end;
     }
 
     label {
@@ -106,6 +113,7 @@
 
     input[type="text"],
     input[type="number"],
+    select,
     textarea {
       width: 100%;
       padding: 0.55rem 0.65rem;
@@ -117,7 +125,7 @@
     }
 
     textarea {
-      min-height: 220px;
+      min-height: 140px;
       resize: vertical;
       line-height: 1.45;
     }
@@ -214,6 +222,12 @@
       border: 1px solid #334155;
     }
 
+    .pill.solid {
+      background: linear-gradient(90deg, #8b5cf6, #06b6d4);
+      color: #0b1220;
+      border: none;
+    }
+
     .preview-card {
       margin-top: 0.75rem;
       padding: 0.9rem 1rem;
@@ -267,6 +281,16 @@
     details.collapsible .content {
       padding: 1rem 1.25rem;
     }
+
+    .hint-list {
+      display: grid;
+      gap: 0.45rem;
+      margin: 0.5rem 0 0;
+      padding: 0;
+      list-style: none;
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
   </style>
 </head>
 <body>
@@ -286,8 +310,12 @@
   <div class="container">
     <header class="card">
       <h1>아이템 관리</h1>
-      <p class="muted">ItemSchema.md 스펙을 기반으로 Firestore 컬렉션 <code>items</code>에 저장/불러오기/수정/삭제합니다. 티어/조합/강화 정보를 모두 JSON으로 관리하도록 설계되었습니다.</p>
-      <div class="pill">핵심 필드: id · slug · name · tierNumber/tierKey · build · stats · effects</div>
+      <p class="muted">ItemSchema.md (타입 기반 스키마) 기준으로 Firestore 컬렉션 <code>items</code>에 저장/불러오기/수정/삭제합니다. 공통 필드 + itemType별 블록(equipment/consumable/quest/material/key_item/currency_item)을 모두 JSON으로 관리하도록 설계되었습니다.</p>
+      <div class="pill">핵심 필드: id · slug · name · itemType · tierNumber/tierKey · stack/shop/requirements · equipment/consumable/quest/material/keyItem/currencyItem</div>
+      <ul class="hint-list">
+        <li>① 좌측 입력 → JSON 자동 병합 → 저장. ② 우측 프리뷰로 핵심/비용/타입 블록을 즉시 확인.</li>
+        <li>프리셋 탭에서 타입별 샘플 10개를 바로 불러올 수 있습니다. (기본: 장비)</li>
+      </ul>
     </header>
 
     <details class="card collapsible" open>
@@ -296,6 +324,21 @@
         <span class="pill">collection = items</span>
       </summary>
       <div class="content">
+        <div class="preset-grid" style="margin-bottom: 0.75rem;">
+          <div>
+            <label for="preset-type">프리셋 타입 (10개씩 준비됨)</label>
+            <select id="preset-type"></select>
+          </div>
+          <div>
+            <label for="preset-item">프리셋 아이템</label>
+            <select id="preset-item"></select>
+          </div>
+          <div class="actions" style="margin: 0;">
+            <button class="secondary" id="preset-load">프리셋 불러오기</button>
+            <button class="secondary" id="preset-random">랜덤 프리셋</button>
+          </div>
+          <div class="pill solid">장비 · 룬(키 아이템) · 퀘스트 · 소모 · 재료 · 재화 바우처를 모두 지원</div>
+        </div>
         <div class="split-grid">
           <div>
             <div class="grid">
@@ -311,6 +354,18 @@
                 <label for="item-name">name</label>
                 <input id="item-name" type="text" placeholder="Infinity Edge" />
               </div>
+              <div>
+                <label for="item-type">itemType</label>
+                <select id="item-type">
+                  <option value="">(선택)</option>
+                  <option value="equipment">equipment</option>
+                  <option value="consumable">consumable</option>
+                  <option value="quest">quest</option>
+                  <option value="material">material</option>
+                  <option value="key_item">key_item</option>
+                  <option value="currency_item">currency_item</option>
+                </select>
+              </div>
             </div>
             <div class="grid">
               <div>
@@ -325,27 +380,63 @@
                 <label for="item-rarity-key">rarityKey</label>
                 <input id="item-rarity-key" type="text" placeholder="legendary" />
               </div>
-            </div>
-            <div class="grid">
               <div>
                 <label for="item-tags">tags (콤마)</label>
                 <input id="item-tags" type="text" placeholder="damage, crit" />
               </div>
+            </div>
+            <div class="grid">
               <div>
-                <label for="item-categories">categories (콤마)</label>
-                <input id="item-categories" type="text" placeholder="legendary" />
+                <label for="item-stack">stack (JSON)</label>
+                <textarea id="item-stack" spellcheck="false" placeholder='{"stackable": false, "maxStack": 1}'></textarea>
+              </div>
+              <div>
+                <label for="item-shop">shop (JSON)</label>
+                <textarea id="item-shop" spellcheck="false" placeholder='{"purchasable": true, "sellable": true, "sellValue": {"gold": 2380}}'></textarea>
+              </div>
+              <div>
+                <label for="item-requirements">requirements (JSON)</label>
+                <textarea id="item-requirements" spellcheck="false" placeholder='{"levelMin": 0, "uniqueGroupKey": "crit_modifier"}'></textarea>
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="item-equipment">equipment 블록 (JSON)</label>
+                <textarea id="item-equipment" spellcheck="false" placeholder="equipment.* 스키마"></textarea>
+              </div>
+              <div>
+                <label for="item-consumable">consumable 블록 (JSON)</label>
+                <textarea id="item-consumable" spellcheck="false" placeholder="consumable.* 스키마"></textarea>
+              </div>
+              <div>
+                <label for="item-quest">quest 블록 (JSON)</label>
+                <textarea id="item-quest" spellcheck="false" placeholder="quest.* 스키마"></textarea>
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="item-material">material 블록 (JSON)</label>
+                <textarea id="item-material" spellcheck="false" placeholder="material.* 스키마"></textarea>
+              </div>
+              <div>
+                <label for="item-key-item">key_item 블록 (JSON)</label>
+                <textarea id="item-key-item" spellcheck="false" placeholder="keyItem.* 스키마"></textarea>
+              </div>
+              <div>
+                <label for="item-currency-item">currency_item 블록 (JSON)</label>
+                <textarea id="item-currency-item" spellcheck="false" placeholder="currencyItem.* 스키마"></textarea>
               </div>
             </div>
             <div class="actions">
               <button class="secondary" id="item-apply-fields">필드값을 JSON에 반영</button>
             </div>
             <div>
-              <label for="item-json">Item JSON</label>
+              <label for="item-json">Item JSON (전체 문서)</label>
               <textarea id="item-json" spellcheck="false"></textarea>
             </div>
             <div class="actions">
               <button class="primary" id="item-save">저장/업데이트</button>
-              <button class="secondary" id="item-sample">샘플 불러오기</button>
+              <button class="secondary" id="item-sample">샘플(기본) 불러오기</button>
               <button class="secondary" id="item-reset">새로 작성</button>
               <button class="secondary" id="item-refresh">목록 새로고침</button>
             </div>
@@ -356,11 +447,11 @@
               <h3>Item 프리뷰</h3>
               <div class="label">핵심 정보</div>
               <div class="value" id="item-preview-text">-</div>
-              <div class="label" style="margin-top: 0.75rem;">조합/비용</div>
+              <div class="label" style="margin-top: 0.75rem;">주요 비용/타입 블록</div>
               <div class="value" id="item-cost-preview">-</div>
             </div>
-            <p class="muted">스키마는 확장 가능합니다. shop, build, stats, effects, enhancement, metadata 등을 JSON에 작성하세요.</p>
-            <p class="muted">비용 map 키는 currencies 컬렉션에서 관리되는 값을 사용하는 것을 권장합니다.</p>
+            <p class="muted">공통 필드는 얕게 관리하고, 타입별 기능은 itemType에 맞는 블록(equipment/consumable/quest/material/keyItem/currencyItem)에 작성하세요.</p>
+            <p class="muted">비용 map의 키는 currencies 컬렉션에서 관리되는 값을 사용하는 것을 권장합니다. 강화/효과/조합 등은 ItemSchema.md의 예시 포맷을 참고하세요.</p>
           </div>
         </div>
         <div>
@@ -370,6 +461,7 @@
               <tr>
                 <th>itemId</th>
                 <th>name</th>
+                <th>itemType</th>
                 <th>tier</th>
                 <th>tierKey</th>
                 <th>tags</th>
@@ -395,77 +487,881 @@
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
     import { getFirebaseConfig } from "./firebase-config.js";
 
-    const SAMPLE_ITEM = {
-      id: "3031",
-      slug: "infinity-edge",
-      name: "Infinity Edge",
-      tierNumber: 3,
-      tierKey: "T3",
-      rarityKey: "legendary",
-      shop: {
-        purchasable: true,
-        sellable: true,
-        consumable: false,
-        stackable: false,
-        maxStack: 1,
-      },
-      requirements: {
-        levelMin: 0,
-        uniqueGroupKey: "crit_modifier",
-      },
-      build: {
-        buildsFrom: [
-          { itemId: "1038", count: 1 },
-          { itemId: "1018", count: 1 },
-        ],
-        buildsInto: [],
-        baseCost: { gold: 3400 },
-        recipeCost: { gold: 625, token_event: 2 },
-        totalCost: { gold: 3400, token_event: 2 },
-      },
-      tags: ["damage", "crit"],
-      categories: ["legendary"],
-      stats: {
-        attackDamage: 70,
-        critChance: 0.25,
-      },
-      effects: {
-        passives: [
-          {
-            key: "ie_crit_amp",
-            name: "Perfection",
-            unique: true,
-            rulesText: "Critical strikes deal increased damage.",
-            scaling: { critDamageMultiplierBonus: 0.4 },
+    const PRESETS = {
+      equipment: [
+        {
+          id: "3031",
+          slug: "infinity-edge",
+          name: "Infinity Edge",
+          itemType: "equipment",
+          tierNumber: 3,
+          tierKey: "T3",
+          rarityKey: "legendary",
+          stack: { stackable: false, maxStack: 1 },
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 2380 } },
+          requirements: { levelMin: 0, uniqueGroupKey: "crit_modifier" },
+          tags: ["damage", "crit"],
+          equipment: {
+            build: {
+              buildsFrom: [
+                { itemId: "1038", count: 1 },
+                { itemId: "1018", count: 1 },
+              ],
+              buildsInto: [],
+              baseCost: { gold: 3400 },
+              recipeCost: { gold: 625, token_event: 2 },
+              totalCost: { gold: 3400, token_event: 2 },
+            },
+            stats: { attackDamage: 70, critChance: 0.25 },
+            effects: {
+              passives: [
+                {
+                  key: "ie_crit_amp",
+                  name: "Perfection",
+                  unique: true,
+                  rulesText: "Critical strikes deal increased damage.",
+                  scaling: { critDamageMultiplierBonus: 0.4 },
+                },
+              ],
+              actives: [],
+            },
+            enhancement: {
+              enabled: true,
+              levelMin: 0,
+              levelMax: 15,
+              profileKey: "enh_weapon_v1",
+              rules: { downgradeOnFail: false, breakOnFail: false },
+              costByLevel: {
+                "1": { gold: 200, shard: 1 },
+                "2": { gold: 300, shard: 1 },
+                "3": { gold: 450, shard: 2 },
+              },
+              successRateByLevel: { "1": 1.0, "2": 0.9, "3": 0.8 },
+              statScaling: { perLevelAdd: { attackDamage: 2 }, perLevelMul: { attackDamage: 0.0 } },
+              effectUnlocks: [{ atLevel: 7, addPassiveKey: "ie_bonus_crit" }],
+            },
           },
-        ],
-        actives: [],
-      },
-      enhancement: {
-        enabled: true,
-        levelMin: 0,
-        levelMax: 15,
-        profileKey: "enh_weapon_v1",
-        rules: {
-          downgradeOnFail: false,
-          breakOnFail: false,
         },
-        costByLevel: {
-          "1": { gold: 200, shard: 1 },
-          "2": { gold: 300, shard: 1 },
-          "3": { gold: 450, shard: 2 },
+        {
+          id: "3078",
+          slug: "trinity-force",
+          name: "Trinity Force",
+          itemType: "equipment",
+          tierNumber: 3,
+          tierKey: "T3",
+          rarityKey: "legendary",
+          tags: ["damage", "haste", "health"],
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 2100 } },
+          equipment: {
+            build: {
+              buildsFrom: [
+                { itemId: "3057", count: 1 },
+                { itemId: "1042", count: 2 },
+              ],
+              buildsInto: [],
+              baseCost: { gold: 3333 },
+              recipeCost: { gold: 733 },
+              totalCost: { gold: 3333 },
+            },
+            stats: { attackDamage: 35, attackSpeed: 0.33, abilityHaste: 20, health: 300 },
+            effects: {
+              passives: [
+                { key: "spellblade", name: "Spellblade", unique: true, rulesText: "After using an ability, your next attack is empowered." },
+              ],
+              actives: [],
+            },
+          },
         },
-        successRateByLevel: {
-          "1": 1.0,
-          "2": 0.9,
-          "3": 0.8,
+        {
+          id: "3089",
+          slug: "rabadons-deathcap",
+          name: "Rabadon's Deathcap",
+          itemType: "equipment",
+          tierNumber: 3,
+          tierKey: "T3",
+          rarityKey: "legendary",
+          tags: ["ability_power"],
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 3000 } },
+          equipment: {
+            build: {
+              buildsFrom: [
+                { itemId: "1052", count: 2 },
+                { itemId: "1026", count: 1 },
+              ],
+              buildsInto: [],
+              baseCost: { gold: 3600 },
+              recipeCost: { gold: 1100 },
+              totalCost: { gold: 3600 },
+            },
+            stats: { abilityPower: 120 },
+            effects: {
+              passives: [
+                {
+                  key: "ap_amp",
+                  name: "Magic Amplification",
+                  unique: true,
+                  rulesText: "Increases total Ability Power by 35%.",
+                  scaling: { abilityPowerMultiplier: 0.35 },
+                },
+              ],
+              actives: [],
+            },
+          },
         },
-        statScaling: {
-          perLevelAdd: { attackDamage: 2 },
-          perLevelMul: { attackDamage: 0.0 },
+        {
+          id: "3026",
+          slug: "guardian-angel",
+          name: "Guardian Angel",
+          itemType: "equipment",
+          tierNumber: 3,
+          tierKey: "T3",
+          rarityKey: "legendary",
+          tags: ["damage", "defense"],
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 2100 } },
+          equipment: {
+            build: {
+              buildsFrom: [
+                { itemId: "1038", count: 1 },
+                { itemId: "1031", count: 1 },
+              ],
+              buildsInto: [],
+              baseCost: { gold: 3000 },
+              recipeCost: { gold: 350 },
+              totalCost: { gold: 3000 },
+            },
+            stats: { attackDamage: 40, armor: 40 },
+            effects: {
+              passives: [
+                {
+                  key: "revive",
+                  name: "Resurrection",
+                  unique: true,
+                  rulesText: "Upon taking lethal damage, revive after 4s with 50% base health and 50% mana.",
+                },
+              ],
+              actives: [],
+            },
+          },
         },
-        effectUnlocks: [{ atLevel: 7, addPassiveKey: "ie_bonus_crit" }],
-      },
+        {
+          id: "3110",
+          slug: "frozen-heart",
+          name: "Frozen Heart",
+          itemType: "equipment",
+          tierNumber: 3,
+          tierKey: "T3",
+          rarityKey: "legendary",
+          tags: ["armor", "mana", "haste"],
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 1900 } },
+          equipment: {
+            build: {
+              buildsFrom: [
+                { itemId: "3024", count: 1 },
+                { itemId: "1029", count: 2 },
+              ],
+              buildsInto: [],
+              baseCost: { gold: 2600 },
+              recipeCost: { gold: 400 },
+              totalCost: { gold: 2600 },
+            },
+            stats: { armor: 80, mana: 400, abilityHaste: 20 },
+            effects: {
+              passives: [
+                { key: "frost_aura", name: "Winter's Caress", unique: true, rulesText: "Reduce nearby enemy attack speed by 20%." },
+              ],
+              actives: [],
+            },
+          },
+        },
+        {
+          id: "3072",
+          slug: "bloodthirster",
+          name: "Bloodthirster",
+          itemType: "equipment",
+          tierNumber: 3,
+          tierKey: "T3",
+          rarityKey: "legendary",
+          tags: ["damage", "lifesteal", "shield"],
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 2000 } },
+          equipment: {
+            build: {
+              buildsFrom: [
+                { itemId: "1038", count: 1 },
+                { itemId: "1053", count: 1 },
+              ],
+              buildsInto: [],
+              baseCost: { gold: 3400 },
+              recipeCost: { gold: 650 },
+              totalCost: { gold: 3400 },
+            },
+            stats: { attackDamage: 80, lifeSteal: 0.18 },
+            effects: {
+              passives: [
+                { key: "overheal", name: "Lifeline", unique: true, rulesText: "Excess healing grants a decaying shield." },
+              ],
+              actives: [],
+            },
+          },
+        },
+        {
+          id: "3153",
+          slug: "blade-of-the-ruined-king",
+          name: "Blade of the Ruined King",
+          itemType: "equipment",
+          tierNumber: 3,
+          tierKey: "T3",
+          rarityKey: "legendary",
+          tags: ["damage", "attack_speed", "lifesteal"],
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 1900 } },
+          equipment: {
+            build: {
+              buildsFrom: [
+                { itemId: "1043", count: 1 },
+                { itemId: "1037", count: 1 },
+              ],
+              buildsInto: [],
+              baseCost: { gold: 3200 },
+              recipeCost: { gold: 450 },
+              totalCost: { gold: 3200 },
+            },
+            stats: { attackDamage: 40, attackSpeed: 0.35, lifeSteal: 0.1 },
+            effects: {
+              passives: [
+                { key: "siphon", name: "Siphon", unique: true, rulesText: "On-hit %current health damage and steal movement speed." },
+              ],
+              actives: [
+                { key: "chill", name: "Active Slow", rulesText: "Deal bonus damage and slow the target for 3s." },
+              ],
+            },
+          },
+        },
+        {
+          id: "3068",
+          slug: "sunfire-aegis",
+          name: "Sunfire Aegis",
+          itemType: "equipment",
+          tierNumber: 3,
+          tierKey: "T3",
+          rarityKey: "legendary",
+          tags: ["health", "armor", "aoe"],
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 2000 } },
+          equipment: {
+            build: {
+              buildsFrom: [
+                { itemId: "3751", count: 1 },
+                { itemId: "1029", count: 1 },
+              ],
+              buildsInto: [],
+              baseCost: { gold: 3200 },
+              recipeCost: { gold: 850 },
+              totalCost: { gold: 3200 },
+            },
+            stats: { health: 450, armor: 35, abilityHaste: 10 },
+            effects: {
+              passives: [
+                { key: "immolate", name: "Immolate", unique: true, rulesText: "Deal persistent AoE burn damage that ramps in combat." },
+              ],
+              actives: [],
+            },
+          },
+        },
+        {
+          id: "3040",
+          slug: "seraphs-embrace",
+          name: "Seraph's Embrace",
+          itemType: "equipment",
+          tierNumber: 3,
+          tierKey: "T3",
+          rarityKey: "legendary",
+          tags: ["mana", "shield", "ability_power"],
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 2100 } },
+          equipment: {
+            build: {
+              buildsFrom: [
+                { itemId: "3003", count: 1 },
+              ],
+              buildsInto: [],
+              baseCost: { gold: 2800 },
+              recipeCost: { gold: 450 },
+              totalCost: { gold: 2800 },
+            },
+            stats: { abilityPower: 80, abilityHaste: 15, mana: 1000 },
+            effects: {
+              passives: [
+                { key: "awe", name: "Awe", unique: true, rulesText: "Gain bonus Ability Power based on mana." },
+                { key: "lifeline_mana", name: "Mana Shield", unique: true, rulesText: "When low, consume mana to gain a shield." },
+              ],
+              actives: [],
+            },
+          },
+        },
+        {
+          id: "6692",
+          slug: "eclipse",
+          name: "Eclipse",
+          itemType: "equipment",
+          tierNumber: 3,
+          tierKey: "T3",
+          rarityKey: "legendary",
+          tags: ["lethality", "omnivamp"],
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 1900 } },
+          equipment: {
+            build: {
+              buildsFrom: [
+                { itemId: "3133", count: 1 },
+                { itemId: "3108", count: 1 },
+              ],
+              buildsInto: [],
+              baseCost: { gold: 3100 },
+              recipeCost: { gold: 800 },
+              totalCost: { gold: 3100 },
+            },
+            stats: { attackDamage: 60, lethality: 12, omnivamp: 0.08 },
+            effects: {
+              passives: [
+                { key: "cresent", name: "Crescent", unique: true, rulesText: "Two hits on a champion within 1.5s deal %max health damage and grant move speed + shield." },
+              ],
+              actives: [],
+            },
+          },
+        },
+      ],
+      consumable: [
+        {
+          id: "potion_hp_small",
+          slug: "potion-hp-small",
+          name: "Small Health Potion",
+          itemType: "consumable",
+          tierKey: "T1",
+          rarityKey: "common",
+          stack: { stackable: true, maxStack: 99 },
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 10 } },
+          tags: ["healing"],
+          consumable: {
+            consumeOnUse: true,
+            cooldownSeconds: 10,
+            useConditions: { combatOnly: false },
+            onUseEffects: [
+              { key: "heal_over_time", name: "Restore Health", scaling: { healTotal: 120, durationSeconds: 15 } },
+            ],
+          },
+        },
+        {
+          id: "potion_hp_large",
+          slug: "potion-hp-large",
+          name: "Large Health Potion",
+          itemType: "consumable",
+          tierKey: "T2",
+          rarityKey: "uncommon",
+          stack: { stackable: true, maxStack: 99 },
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 35 } },
+          tags: ["healing"],
+          consumable: {
+            consumeOnUse: true,
+            cooldownSeconds: 10,
+            onUseEffects: [
+              { key: "heal_over_time", name: "Restore Health", scaling: { healTotal: 250, durationSeconds: 12 } },
+            ],
+          },
+        },
+        {
+          id: "potion_mana_small",
+          slug: "potion-mana-small",
+          name: "Small Mana Potion",
+          itemType: "consumable",
+          tierKey: "T1",
+          rarityKey: "common",
+          stack: { stackable: true, maxStack: 99 },
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 10 } },
+          tags: ["mana"],
+          consumable: {
+            consumeOnUse: true,
+            cooldownSeconds: 10,
+            onUseEffects: [
+              { key: "mana_over_time", name: "Restore Mana", scaling: { manaTotal: 120, durationSeconds: 12 } },
+            ],
+          },
+        },
+        {
+          id: "elixir_warrior",
+          slug: "elixir-warrior",
+          name: "Elixir of the Warrior",
+          itemType: "consumable",
+          tierKey: "T3",
+          rarityKey: "epic",
+          stack: { stackable: false, maxStack: 1 },
+          shop: { purchasable: true, sellable: false, sellValue: { gold: 0 } },
+          tags: ["buff", "damage"],
+          consumable: {
+            consumeOnUse: true,
+            cooldownSeconds: 1,
+            onUseEffects: [
+              {
+                key: "buff_ad",
+                name: "Warrior's Might",
+                scaling: { attackDamage: 30, trueDamagePerHit: 12, durationSeconds: 180 },
+              },
+            ],
+          },
+        },
+        {
+          id: "elixir_sorcery",
+          slug: "elixir-sorcery",
+          name: "Elixir of Sorcery",
+          itemType: "consumable",
+          tierKey: "T3",
+          rarityKey: "epic",
+          stack: { stackable: false, maxStack: 1 },
+          shop: { purchasable: true, sellable: false },
+          tags: ["buff", "ap"],
+          consumable: {
+            consumeOnUse: true,
+            cooldownSeconds: 1,
+            onUseEffects: [
+              {
+                key: "buff_ap",
+                name: "Sorcery Surge",
+                scaling: { abilityPower: 50, burnMagicDamage: 25, durationSeconds: 180 },
+              },
+            ],
+          },
+        },
+        {
+          id: "camping_tent",
+          slug: "camping-tent",
+          name: "Camping Tent",
+          itemType: "consumable",
+          tierKey: "T2",
+          rarityKey: "rare",
+          stack: { stackable: false, maxStack: 1 },
+          shop: { purchasable: false, sellable: false },
+          tags: ["rest", "utility"],
+          consumable: {
+            consumeOnUse: false,
+            charges: { maxCharges: 3, startCharges: 1 },
+            cooldownSeconds: 60,
+            useConditions: { combatOnly: false },
+            onUseEffects: [
+              { key: "rest_heal", name: "Safe Rest", scaling: { healTotal: 400, manaTotal: 200, durationSeconds: 10 } },
+            ],
+          },
+        },
+        {
+          id: "scroll_town_portal",
+          slug: "scroll-town-portal",
+          name: "Town Portal Scroll",
+          itemType: "consumable",
+          tierKey: "T2",
+          rarityKey: "uncommon",
+          stack: { stackable: true, maxStack: 20 },
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 50 } },
+          tags: ["mobility"],
+          consumable: {
+            consumeOnUse: true,
+            cooldownSeconds: 120,
+            useConditions: { combatOnly: false },
+            onUseEffects: [
+              { key: "teleport", name: "Return", scaling: { castTimeSeconds: 4.5 } },
+            ],
+          },
+        },
+        {
+          id: "explosive_potion",
+          slug: "explosive-potion",
+          name: "Explosive Potion",
+          itemType: "consumable",
+          tierKey: "T2",
+          rarityKey: "uncommon",
+          stack: { stackable: true, maxStack: 30 },
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 60 } },
+          tags: ["damage", "aoe"],
+          consumable: {
+            consumeOnUse: true,
+            cooldownSeconds: 5,
+            onUseEffects: [
+              { key: "throw_bomb", name: "Volatile Burst", scaling: { magicDamage: 220, radius: 3.5 } },
+            ],
+          },
+        },
+        {
+          id: "smoke_bomb",
+          slug: "smoke-bomb",
+          name: "Smoke Bomb",
+          itemType: "consumable",
+          tierKey: "T1",
+          rarityKey: "common",
+          stack: { stackable: true, maxStack: 40 },
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 25 } },
+          tags: ["stealth", "utility"],
+          consumable: {
+            consumeOnUse: true,
+            cooldownSeconds: 8,
+            onUseEffects: [
+              { key: "smoke", name: "Cover", scaling: { radius: 4, durationSeconds: 6 } },
+            ],
+          },
+        },
+        {
+          id: "buff_food_hero",
+          slug: "buff-food-hero",
+          name: "Hero's Feast",
+          itemType: "consumable",
+          tierKey: "T3",
+          rarityKey: "epic",
+          stack: { stackable: true, maxStack: 5 },
+          shop: { purchasable: true, sellable: true, sellValue: { gold: 200 } },
+          tags: ["buff", "all"],
+          consumable: {
+            consumeOnUse: true,
+            cooldownSeconds: 30,
+            onUseEffects: [
+              {
+                key: "feast_buff",
+                name: "Banquet",
+                scaling: { health: 200, attackDamage: 10, abilityPower: 15, durationSeconds: 300 },
+              },
+            ],
+          },
+        },
+      ],
+      quest: [
+        {
+          id: "quest_relic_001",
+          slug: "ancient-relic",
+          name: "Ancient Relic",
+          itemType: "quest",
+          stack: { stackable: false, maxStack: 1 },
+          shop: { purchasable: false, sellable: false },
+          tags: ["quest"],
+          quest: { bindQuestIds: ["q_main_07_step_2"], unique: true, consumeOnTurnIn: true },
+        },
+        {
+          id: "quest_relic_002",
+          slug: "sun-fragment",
+          name: "Sun Fragment",
+          itemType: "quest",
+          tags: ["quest", "key"],
+          quest: { bindQuestIds: ["q_main_sun"], unique: true },
+        },
+        {
+          id: "quest_relic_003",
+          slug: "moon-fragment",
+          name: "Moon Fragment",
+          itemType: "quest",
+          tags: ["quest", "key"],
+          quest: { bindQuestIds: ["q_main_moon"], unique: true },
+        },
+        {
+          id: "quest_token_bandit",
+          slug: "bandit-token",
+          name: "Bandit Token",
+          itemType: "quest",
+          tags: ["quest", "bounty"],
+          stack: { stackable: true, maxStack: 20 },
+          quest: { bindQuestIds: ["q_bounty_board"], unique: false, consumeOnTurnIn: true },
+        },
+        {
+          id: "quest_map_ruins",
+          slug: "map-ruins",
+          name: "Ruins Map",
+          itemType: "quest",
+          tags: ["quest", "map"],
+          quest: { bindQuestIds: ["q_ruins"], unique: true, consumeOnTurnIn: false },
+        },
+        {
+          id: "quest_catalyst_crystal",
+          slug: "catalyst-crystal",
+          name: "Catalyst Crystal",
+          itemType: "quest",
+          tags: ["quest", "upgrade"],
+          stack: { stackable: true, maxStack: 5 },
+          quest: { bindQuestIds: ["q_catalyst"], consumeOnTurnIn: true },
+        },
+        {
+          id: "quest_guild_letter",
+          slug: "guild-letter",
+          name: "Guild Recommendation Letter",
+          itemType: "quest",
+          tags: ["quest", "document"],
+          quest: { bindQuestIds: ["q_join_guild"], unique: true, consumeOnTurnIn: true },
+        },
+        {
+          id: "quest_prison_key",
+          slug: "prison-key",
+          name: "Prison Cell Key",
+          itemType: "quest",
+          tags: ["quest", "key"],
+          quest: { bindQuestIds: ["q_rescue"], unique: true, consumeOnTurnIn: true },
+        },
+        {
+          id: "quest_mysterious_seed",
+          slug: "mysterious-seed",
+          name: "Mysterious Seed",
+          itemType: "quest",
+          tags: ["quest", "seed"],
+          stack: { stackable: true, maxStack: 10 },
+          quest: { bindQuestIds: ["q_green"], consumeOnTurnIn: true },
+        },
+        {
+          id: "quest_war_report",
+          slug: "war-report",
+          name: "Warfront Report",
+          itemType: "quest",
+          tags: ["quest", "document"],
+          quest: { bindQuestIds: ["q_warfront"], unique: true, consumeOnTurnIn: true },
+        },
+      ],
+      material: [
+        {
+          id: "mat_iron_ore",
+          slug: "iron-ore",
+          name: "Iron Ore",
+          itemType: "material",
+          stack: { stackable: true, maxStack: 999 },
+          shop: { purchasable: false, sellable: true, sellValue: { gold: 1 } },
+          tags: ["crafting"],
+          material: { gradeKey: "common", sourceTags: ["mine", "field_drop"], isCraftingIngredient: true },
+        },
+        {
+          id: "mat_silver_ore",
+          slug: "silver-ore",
+          name: "Silver Ore",
+          itemType: "material",
+          stack: { stackable: true, maxStack: 999 },
+          shop: { purchasable: false, sellable: true, sellValue: { gold: 3 } },
+          tags: ["crafting"],
+          material: { gradeKey: "uncommon", sourceTags: ["mine"], isCraftingIngredient: true },
+        },
+        {
+          id: "mat_gold_ore",
+          slug: "gold-ore",
+          name: "Gold Ore",
+          itemType: "material",
+          stack: { stackable: true, maxStack: 999 },
+          shop: { purchasable: false, sellable: true, sellValue: { gold: 6 } },
+          tags: ["crafting"],
+          material: { gradeKey: "rare", sourceTags: ["mine"] },
+        },
+        {
+          id: "mat_arcane_dust",
+          slug: "arcane-dust",
+          name: "Arcane Dust",
+          itemType: "material",
+          stack: { stackable: true, maxStack: 500 },
+          tags: ["enchant", "crafting"],
+          material: { gradeKey: "common", sourceTags: ["dismantle"], isCraftingIngredient: true },
+        },
+        {
+          id: "mat_magic_thread",
+          slug: "magic-thread",
+          name: "Magic Thread",
+          itemType: "material",
+          stack: { stackable: true, maxStack: 500 },
+          tags: ["crafting", "cloth"],
+          material: { gradeKey: "uncommon", sourceTags: ["spider_silk", "loom"], isCraftingIngredient: true },
+        },
+        {
+          id: "mat_dragon_scale",
+          slug: "dragon-scale",
+          name: "Dragon Scale",
+          itemType: "material",
+          stack: { stackable: true, maxStack: 50 },
+          tags: ["crafting", "defense"],
+          material: { gradeKey: "epic", sourceTags: ["dragon"], isCraftingIngredient: true },
+        },
+        {
+          id: "mat_shadow_core",
+          slug: "shadow-core",
+          name: "Shadow Core",
+          itemType: "material",
+          stack: { stackable: true, maxStack: 99 },
+          tags: ["crafting", "dark"],
+          material: { gradeKey: "legendary", sourceTags: ["raid", "abyss"], isCraftingIngredient: true },
+        },
+        {
+          id: "mat_primal_flame",
+          slug: "primal-flame",
+          name: "Primal Flame",
+          itemType: "material",
+          stack: { stackable: true, maxStack: 99 },
+          tags: ["crafting", "fire"],
+          material: { gradeKey: "epic", sourceTags: ["volcano", "elemental"] },
+        },
+        {
+          id: "mat_eternal_leaf",
+          slug: "eternal-leaf",
+          name: "Eternal Leaf",
+          itemType: "material",
+          stack: { stackable: true, maxStack: 200 },
+          tags: ["alchemy", "healing"],
+          material: { gradeKey: "rare", sourceTags: ["ancient_tree"], isCraftingIngredient: true },
+        },
+        {
+          id: "mat_ancient_bone",
+          slug: "ancient-bone",
+          name: "Ancient Bone",
+          itemType: "material",
+          stack: { stackable: true, maxStack: 200 },
+          tags: ["crafting", "bone"],
+          material: { gradeKey: "rare", sourceTags: ["fossil"], isCraftingIngredient: true },
+        },
+      ],
+      key_item: [
+        {
+          id: "key_ruined_gate",
+          slug: "ruined-gate-key",
+          name: "Ruined Gate Key",
+          itemType: "key_item",
+          tags: ["unlock"],
+          keyItem: { unlockKeys: ["ruined_gate"], consumeOnUse: true },
+        },
+        {
+          id: "key_arcane_library",
+          slug: "arcane-library-pass",
+          name: "Arcane Library Pass",
+          itemType: "key_item",
+          tags: ["access", "rune"],
+          keyItem: { unlockKeys: ["arcane_library"], consumeOnUse: false },
+        },
+        {
+          id: "key_skybridge",
+          slug: "skybridge-token",
+          name: "Skybridge Token",
+          itemType: "key_item",
+          tags: ["unlock", "travel"],
+          keyItem: { unlockKeys: ["skybridge"], consumeOnUse: true },
+        },
+        {
+          id: "key_shadow_lock",
+          slug: "shadow-lock-key",
+          name: "Shadow Lock Key",
+          itemType: "key_item",
+          tags: ["unlock", "shadow"],
+          keyItem: { unlockKeys: ["shadow_door"], consumeOnUse: true, useConditions: { requiresQuest: "q_shadow" } },
+        },
+        {
+          id: "key_frost_keep",
+          slug: "frost-keep-sigil",
+          name: "Frost Keep Sigil",
+          itemType: "key_item",
+          tags: ["unlock", "ice"],
+          keyItem: { unlockKeys: ["frost_keep"], consumeOnUse: false },
+        },
+        {
+          id: "key_ember_vault",
+          slug: "ember-vault-key",
+          name: "Ember Vault Key",
+          itemType: "key_item",
+          tags: ["unlock", "fire"],
+          keyItem: { unlockKeys: ["ember_vault"], consumeOnUse: true },
+        },
+        {
+          id: "key_ancient_rune",
+          slug: "ancient-rune-plate",
+          name: "Ancient Rune Plate",
+          itemType: "key_item",
+          tags: ["rune", "unlock"],
+          keyItem: { unlockKeys: ["rune_tablet"], consumeOnUse: false },
+        },
+        {
+          id: "key_storm_pass",
+          slug: "storm-pass",
+          name: "Storm Pass",
+          itemType: "key_item",
+          tags: ["unlock", "storm"],
+          keyItem: { unlockKeys: ["storm_keep"], consumeOnUse: false },
+        },
+        {
+          id: "key_voidgate",
+          slug: "voidgate-key",
+          name: "Voidgate Key",
+          itemType: "key_item",
+          tags: ["unlock", "void"],
+          keyItem: { unlockKeys: ["voidgate"], consumeOnUse: true, useConditions: { levelMin: 30 } },
+        },
+        {
+          id: "key_guild_hall",
+          slug: "guild-hall-badge",
+          name: "Guild Hall Badge",
+          itemType: "key_item",
+          tags: ["access", "guild"],
+          keyItem: { unlockKeys: ["guild_hall"], consumeOnUse: false },
+        },
+      ],
+      currency_item: [
+        {
+          id: "voucher_gold_100",
+          slug: "voucher-gold-100",
+          name: "Gold Voucher (100)",
+          itemType: "currency_item",
+          stack: { stackable: true, maxStack: 999 },
+          currencyItem: { grants: { gold: 100 } },
+        },
+        {
+          id: "voucher_gold_1000",
+          slug: "voucher-gold-1000",
+          name: "Gold Voucher (1000)",
+          itemType: "currency_item",
+          stack: { stackable: true, maxStack: 999 },
+          currencyItem: { grants: { gold: 1000 } },
+        },
+        {
+          id: "voucher_token_event",
+          slug: "voucher-token-event",
+          name: "Event Token Bundle",
+          itemType: "currency_item",
+          currencyItem: { grants: { token_event: 10, gold: 200 } },
+        },
+        {
+          id: "voucher_gem_premium",
+          slug: "voucher-gem-premium",
+          name: "Premium Gem Voucher",
+          itemType: "currency_item",
+          currencyItem: { grants: { gem: 50 } },
+        },
+        {
+          id: "voucher_arena_ticket",
+          slug: "voucher-arena-ticket",
+          name: "Arena Ticket",
+          itemType: "currency_item",
+          currencyItem: { grants: { arena_ticket: 1 } },
+        },
+        {
+          id: "voucher_raid_pass",
+          slug: "voucher-raid-pass",
+          name: "Raid Pass",
+          itemType: "currency_item",
+          currencyItem: { grants: { raid_pass: 1, gold: 300 } },
+        },
+        {
+          id: "voucher_enchant_shard",
+          slug: "voucher-enchant-shard",
+          name: "Enchant Shard Pouch",
+          itemType: "currency_item",
+          currencyItem: { grants: { shard: 15 } },
+        },
+        {
+          id: "voucher_reputation",
+          slug: "voucher-reputation",
+          name: "Guild Reputation Note",
+          itemType: "currency_item",
+          currencyItem: { grants: { reputation: 150 } },
+        },
+        {
+          id: "voucher_pvp_coin",
+          slug: "voucher-pvp-coin",
+          name: "PvP Coin Bundle",
+          itemType: "currency_item",
+          currencyItem: { grants: { pvp_coin: 40 } },
+        },
+        {
+          id: "voucher_daily_pack",
+          slug: "voucher-daily-pack",
+          name: "Daily Supply Pack",
+          itemType: "currency_item",
+          currencyItem: { grants: { gold: 300, token_daily: 3, potion_ticket: 2 } },
+        },
+      ],
     };
 
     function toStringArray(value) {
@@ -484,6 +1380,75 @@
         return null;
       }
     }
+
+    function parseJsonField(id, label, manager) {
+      const el = document.getElementById(id);
+      if (!el) return { ok: true, empty: true, value: undefined };
+      const raw = el.value ?? "";
+      const parsed = safeParseJson(raw);
+      if (parsed === null) {
+        manager?.setStatus(`${label} JSON 파싱 오류. 포맷을 확인하세요.`);
+        return { ok: false };
+      }
+      return { ok: true, empty: raw.trim().length === 0, value: parsed };
+    }
+
+    function setJsonFieldValue(id, data) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (data && typeof data === "object" && Object.keys(data).length > 0) {
+        el.value = JSON.stringify(data, null, 2);
+      } else {
+        el.value = "";
+      }
+    }
+
+    function getPresetTypeKeys() {
+      return Object.keys(PRESETS);
+    }
+
+    function getPreset(type, index) {
+      const list = PRESETS[type] || [];
+      return list[index] ?? null;
+    }
+
+    function getRandomPreset() {
+      const types = getPresetTypeKeys();
+      const type = types[Math.floor(Math.random() * types.length)];
+      const list = PRESETS[type] || [];
+      const index = Math.floor(Math.random() * list.length);
+      return { type, index, preset: list[index] };
+    }
+
+    function populatePresetSelectors() {
+      const typeSelect = document.getElementById("preset-type");
+      const itemSelect = document.getElementById("preset-item");
+      typeSelect.innerHTML = "";
+      getPresetTypeKeys().forEach((key) => {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = `${key} (x${PRESETS[key].length})`;
+        typeSelect.appendChild(opt);
+      });
+
+      const selectedType = typeSelect.value || getPresetTypeKeys()[0];
+      typeSelect.value = selectedType;
+      populatePresetItems(selectedType, itemSelect);
+    }
+
+    function populatePresetItems(type, selectEl = document.getElementById("preset-item")) {
+      if (!selectEl) return;
+      selectEl.innerHTML = "";
+      (PRESETS[type] || []).forEach((preset, idx) => {
+        const opt = document.createElement("option");
+        const tier = preset.tierKey || preset.tierNumber || "-";
+        opt.value = String(idx);
+        opt.textContent = `[${tier}] ${preset.name} (${preset.slug})`;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    const DEFAULT_SAMPLE = PRESETS.equipment[0];
 
     class SpecManager {
       constructor({ collectionName, idInputId, jsonInputId, statusId, tableBodyId, saveBtnId, resetBtnId, sampleBtnId, refreshBtnId, sampleData, extraFill, summaryExtractor, transformBeforeSave }) {
@@ -563,7 +1528,7 @@
         if (this.extraFill) this.extraFill({ data, manager: this });
         this.jsonInput.value = JSON.stringify(data, null, 2);
         this.setStatus(`'${id}' 아이템을 불러왔습니다.`);
-        updatePreviews();
+        updatePreviews(this);
       }
 
       resetForm() {
@@ -571,12 +1536,12 @@
         if (this.extraFill) this.extraFill({ data: this.sampleData, manager: this });
         this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
         this.setStatus("새 문서를 작성하세요.");
-        updatePreviews();
+        updatePreviews(this);
       }
 
-      loadSample() {
-        const id = this.sampleData.id ?? "";
-        this.fillForm(id, this.sampleData);
+      loadSample(sample = this.sampleData) {
+        const id = sample.id ?? "";
+        this.fillForm(id, sample);
         this.setStatus("샘플 데이터를 불러왔습니다.");
       }
 
@@ -584,13 +1549,13 @@
         if (!this.db) return;
         const docId = this.getDocIdOrWarn();
         if (!docId) return;
-        const data = this.parseJsonOrWarn();
-        if (!data) return;
-        const transformed = this.transformBeforeSave ? this.transformBeforeSave({ data, manager: this, docId }) : data;
+        const merged = mergeItemInputs(this);
+        if (!merged) return;
+        const data = this.transformBeforeSave ? this.transformBeforeSave({ data: merged, manager: this, docId }) : merged;
 
         this.toggleButtons(true);
         try {
-          await setDoc(doc(this.collectionRef, docId), transformed, { merge: true });
+          await setDoc(doc(this.collectionRef, docId), data, { merge: true });
           this.setStatus(`'${docId}' 아이템을 저장했습니다.`);
           await this.loadTable();
         } catch (error) {
@@ -641,7 +1606,7 @@
         if (!rows.length) {
           const tr = document.createElement("tr");
           const td = document.createElement("td");
-          td.colSpan = 6;
+          td.colSpan = 7;
           td.textContent = "저장된 문서가 없습니다.";
           tr.appendChild(td);
           this.tableBody.appendChild(tr);
@@ -686,45 +1651,29 @@
       document.getElementById("item-id").value = data.id ?? "";
       document.getElementById("item-slug").value = data.slug ?? "";
       document.getElementById("item-name").value = data.name ?? "";
+      document.getElementById("item-type").value = data.itemType ?? "";
       document.getElementById("item-tier-number").value = data.tierNumber ?? "";
       document.getElementById("item-tier-key").value = data.tierKey ?? "";
       document.getElementById("item-rarity-key").value = data.rarityKey ?? "";
       document.getElementById("item-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
-      document.getElementById("item-categories").value = Array.isArray(data.categories)
-        ? data.categories.join(", ")
-        : "";
+      setJsonFieldValue("item-stack", data.stack);
+      setJsonFieldValue("item-shop", data.shop);
+      setJsonFieldValue("item-requirements", data.requirements);
+      setJsonFieldValue("item-equipment", data.equipment);
+      setJsonFieldValue("item-consumable", data.consumable);
+      setJsonFieldValue("item-quest", data.quest);
+      setJsonFieldValue("item-material", data.material);
+      setJsonFieldValue("item-key-item", data.keyItem);
+      setJsonFieldValue("item-currency-item", data.currencyItem);
     }
 
-    function applyItemFields(manager) {
-      const data = manager.parseJsonOrWarn();
-      if (data === null) return;
-      const next = { ...(data || {}) };
-      next.id = document.getElementById("item-id").value.trim() || next.id;
-      next.slug = document.getElementById("item-slug").value.trim() || next.slug;
-      next.name = document.getElementById("item-name").value.trim() || next.name;
-      const tierNum = document.getElementById("item-tier-number").value.trim();
-      if (tierNum !== "") {
-        const parsed = Number(tierNum);
-        if (!Number.isNaN(parsed)) next.tierNumber = parsed;
-      }
-      const tierKey = document.getElementById("item-tier-key").value.trim();
-      if (tierKey) next.tierKey = tierKey;
-      const rarityKey = document.getElementById("item-rarity-key").value.trim();
-      if (rarityKey) next.rarityKey = rarityKey;
-      const tags = toStringArray(document.getElementById("item-tags").value);
-      if (tags.length) next.tags = tags;
-      const categories = toStringArray(document.getElementById("item-categories").value);
-      if (categories.length) next.categories = categories;
-
-      manager.jsonInput.value = JSON.stringify(next, null, 2);
-      manager.setStatus("입력값을 JSON에 반영했습니다.");
-      fillItemQuickFields(next);
-      updatePreviews();
-    }
-
-    function mergeItemInputs() {
+    function mergeItemInputs(manager) {
       const base = safeParseJson(document.getElementById("item-json").value);
-      if (base === null) return null;
+      if (base === null) {
+        manager?.setStatus("Item JSON 파싱 오류. 포맷을 확인하세요.");
+        return null;
+      }
+
       const merged = { ...(base || {}) };
       const id = document.getElementById("item-id").value.trim();
       if (id) merged.id = id;
@@ -732,6 +1681,8 @@
       if (slug) merged.slug = slug;
       const name = document.getElementById("item-name").value.trim();
       if (name) merged.name = name;
+      const itemType = document.getElementById("item-type").value;
+      if (itemType) merged.itemType = itemType;
       const tierNum = document.getElementById("item-tier-number").value.trim();
       if (tierNum !== "") {
         const parsed = Number(tierNum);
@@ -743,9 +1694,41 @@
       if (rarityKey) merged.rarityKey = rarityKey;
       const tags = toStringArray(document.getElementById("item-tags").value);
       if (tags.length) merged.tags = tags;
-      const categories = toStringArray(document.getElementById("item-categories").value);
-      if (categories.length) merged.categories = categories;
+
+      const applyField = (prop, fieldId, label) => {
+        const parsed = parseJsonField(fieldId, label, manager);
+        if (!parsed?.ok) return false;
+        if (!parsed.empty) {
+          merged[prop] = parsed.value;
+        } else {
+          delete merged[prop];
+        }
+        return true;
+      };
+
+      const results = [
+        applyField("stack", "item-stack", "stack"),
+        applyField("shop", "item-shop", "shop"),
+        applyField("requirements", "item-requirements", "requirements"),
+        applyField("equipment", "item-equipment", "equipment"),
+        applyField("consumable", "item-consumable", "consumable"),
+        applyField("quest", "item-quest", "quest"),
+        applyField("material", "item-material", "material"),
+        applyField("keyItem", "item-key-item", "key_item"),
+        applyField("currencyItem", "item-currency-item", "currency_item"),
+      ];
+
+      if (results.includes(false)) return null;
       return merged;
+    }
+
+    function applyItemFields(manager) {
+      const merged = mergeItemInputs(manager);
+      if (!merged) return;
+      manager.jsonInput.value = JSON.stringify(merged, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillItemQuickFields(merged);
+      updatePreviews(manager);
     }
 
     function summarizeCosts(build = {}) {
@@ -769,29 +1752,57 @@
       const id = data.id ?? "-";
       const name = data.name ?? "이름 미정";
       const slug = data.slug ? ` (${data.slug})` : "";
+      const itemType = data.itemType ? ` · type=${data.itemType}` : "";
       const tierNumber = data.tierNumber ?? "-";
       const tierKey = data.tierKey ? ` · ${data.tierKey}` : "";
       const rarity = data.rarityKey ? ` · rarity=${data.rarityKey}` : "";
       const tags = Array.isArray(data.tags) && data.tags.length ? ` | 태그: ${data.tags.join(", ")}` : "";
-      const categories =
-        Array.isArray(data.categories) && data.categories.length ? ` | 카테고리: ${data.categories.join(", ")}` : "";
-      return `[${id}] ${name}${slug} · tier=${tierNumber}${tierKey}${rarity}${tags}${categories}`;
+      return `[${id}] ${name}${slug}${itemType} · tier=${tierNumber}${tierKey}${rarity}${tags}`;
     }
 
     function buildCostPreview(data) {
-      if (!data || !data.build) return "build.* 비용 정보를 입력하세요.";
-      const costs = summarizeCosts(data.build);
-      const buildsFrom = Array.isArray(data.build.buildsFrom)
-        ? data.build.buildsFrom.map((b) => `${b.itemId ?? "-"}x${b.count ?? 1}`).join(", ")
-        : "-";
-      return `base=${costs.base} | recipe=${costs.recipe} | total=${costs.total} | 조합=${buildsFrom}`;
+      if (!data) return "유효한 JSON을 입력하세요.";
+      if (data.itemType === "equipment" && data.equipment?.build) {
+        const costs = summarizeCosts(data.equipment.build);
+        const buildsFrom = Array.isArray(data.equipment.build.buildsFrom)
+          ? data.equipment.build.buildsFrom.map((b) => `${b.itemId ?? "-"}x${b.count ?? 1}`).join(", ")
+          : "-";
+        return `equipment.build → base=${costs.base} | recipe=${costs.recipe} | total=${costs.total} | 조합=${buildsFrom}`;
+      }
+      if (data.itemType === "consumable" && data.consumable) {
+        const charges = data.consumable.charges ? JSON.stringify(data.consumable.charges) : "no charges";
+        const effects = Array.isArray(data.consumable.onUseEffects)
+          ? `${data.consumable.onUseEffects.length} onUseEffects`
+          : "onUseEffects 없음";
+        return `consumable → consumeOnUse=${data.consumable.consumeOnUse ?? true} | charges=${charges} | ${effects}`;
+      }
+      if (data.itemType === "quest" && data.quest) {
+        return `quest → unique=${data.quest.unique ?? false} | bindQuestIds=${
+          Array.isArray(data.quest.bindQuestIds) ? data.quest.bindQuestIds.join(", ") : "-"
+        }`;
+      }
+      if (data.itemType === "material" && data.material) {
+        return `material → grade=${data.material.gradeKey ?? "-"} | crafting=${
+          data.material.isCraftingIngredient ?? true
+        }`;
+      }
+      if (data.itemType === "key_item" && data.keyItem) {
+        return `key_item → unlockKeys=${
+          Array.isArray(data.keyItem.unlockKeys) ? data.keyItem.unlockKeys.join(", ") : "-"
+        }`;
+      }
+      if (data.itemType === "currency_item" && data.currencyItem) {
+        const grants = summarizeCosts({ baseCost: data.currencyItem.grants }).base;
+        return `currency_item → grants=${grants}`;
+      }
+      return "타입 블록을 입력하세요.";
     }
 
-    function updatePreviews() {
-      const itemData = mergeItemInputs();
+    function updatePreviews(manager) {
+      const itemData = mergeItemInputs(manager);
       const itemPreview = document.getElementById("item-preview-text");
       const costPreview = document.getElementById("item-cost-preview");
-      itemPreview.textContent = itemData ? buildItemPreview(itemData) : "JSON 파싱 오류: Item";
+      itemPreview.textContent = itemData ? buildItemPreview(itemData) : "JSON 파싱 오류";
       costPreview.textContent = itemData ? buildCostPreview(itemData) : "-";
     }
 
@@ -806,19 +1817,20 @@
         resetBtnId: "item-reset",
         sampleBtnId: "item-sample",
         refreshBtnId: "item-refresh",
-        sampleData: SAMPLE_ITEM,
+        sampleData: DEFAULT_SAMPLE,
         extraFill: ({ data }) => fillItemQuickFields(data),
         summaryExtractor: (data) => ({
           label: data.name ?? data.id ?? "Item",
           cells: [
             data.name,
+            data.itemType ?? "-",
             data.tierNumber ?? "-",
             data.tierKey ?? "-",
             Array.isArray(data.tags) ? data.tags.join(", ") : "-",
           ],
         }),
         transformBeforeSave: ({ data, docId }) => {
-          const merged = mergeItemInputs() ?? data;
+          const merged = { ...(data || {}) };
           merged.id = merged.id ?? docId;
           return merged;
         },
@@ -829,25 +1841,63 @@
       document.getElementById("item-apply-fields")?.addEventListener("click", () => applyItemFields(manager));
     }
 
+    function registerPresetControls(manager) {
+      const presetTypeEl = document.getElementById("preset-type");
+      const presetItemEl = document.getElementById("preset-item");
+      const loadBtn = document.getElementById("preset-load");
+      const randomBtn = document.getElementById("preset-random");
+
+      populatePresetSelectors();
+
+      presetTypeEl?.addEventListener("change", () => {
+        populatePresetItems(presetTypeEl.value, presetItemEl);
+      });
+
+      loadBtn?.addEventListener("click", () => {
+        const type = presetTypeEl.value;
+        const idx = Number(presetItemEl.value || 0);
+        const preset = getPreset(type, idx) ?? DEFAULT_SAMPLE;
+        manager.loadSample(preset);
+      });
+
+      randomBtn?.addEventListener("click", () => {
+        const { type, index, preset } = getRandomPreset();
+        presetTypeEl.value = type;
+        populatePresetItems(type, presetItemEl);
+        presetItemEl.value = String(index);
+        manager.loadSample(preset);
+      });
+    }
+
     async function initialize() {
       const manager = createManager();
       registerFieldButtons(manager);
+      registerPresetControls(manager);
 
       const previewInputs = [
         "item-json",
         "item-id",
         "item-slug",
         "item-name",
+        "item-type",
         "item-tier-number",
         "item-tier-key",
         "item-rarity-key",
         "item-tags",
-        "item-categories",
+        "item-stack",
+        "item-shop",
+        "item-requirements",
+        "item-equipment",
+        "item-consumable",
+        "item-quest",
+        "item-material",
+        "item-key-item",
+        "item-currency-item",
       ];
       previewInputs.forEach((id) => {
         const el = document.getElementById(id);
-        el?.addEventListener("input", updatePreviews);
-        el?.addEventListener("change", updatePreviews);
+        el?.addEventListener("input", () => updatePreviews(manager));
+        el?.addEventListener("change", () => updatePreviews(manager));
       });
 
       try {
@@ -856,7 +1906,7 @@
         manager.attachDb(db);
         manager.resetForm();
         manager.loadTable();
-        updatePreviews();
+        updatePreviews(manager);
       } catch (error) {
         console.error(error);
         manager.setStatus("Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.", { persist: true });
@@ -864,6 +1914,7 @@
       }
     }
 
+    populatePresetSelectors();
     initialize();
   </script>
 </body>
