@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>재화 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 200px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      border: 1px solid #334155;
+    }
+
+    .preview-card {
+      margin-top: 0.75rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .preview-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .preview-card .label {
+      color: #cbd5e1;
+    }
+
+    .preview-card .value {
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    details.collapsible {
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      background: #111827;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    details.collapsible[open] > summary {
+      border-bottom: 1px solid #1f2937;
+    }
+
+    details.collapsible summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+    }
+
+    details.collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.collapsible .content {
+      padding: 1rem 1.25rem;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link" href="effect-system-firestore.html">EffectSpec 관리</a>
+      <a class="nav-link" href="monster-firestore.html">몬스터 관리</a>
+      <a class="nav-link" href="item-firestore.html">아이템 관리</a>
+      <a class="nav-link active" href="currency-firestore.html">재화 관리</a>
+      <a class="nav-link" href="tier-firestore.html">티어 관리</a>
+    </div>
+  </nav>
+  <div class="container">
+    <header class="card">
+      <h1>재화 관리</h1>
+      <p class="muted">ItemSchema.md의 currencies 컬렉션을 기반으로 Firestore 컬렉션 <code>currencies</code>에서 재화 키를 생성/수정/삭제합니다. 비용 map 키로 사용되므로 삭제 시 주의하세요.</p>
+      <div class="pill">핵심 필드: currencyKey · displayName · symbol · decimals · description</div>
+    </header>
+
+    <details class="card collapsible" open>
+      <summary>
+        <span>Currency 관리</span>
+        <span class="pill">collection = currencies</span>
+      </summary>
+      <div class="content">
+        <div class="grid">
+          <div>
+            <label for="currency-id">currencyKey (문서 ID)</label>
+            <input id="currency-id" type="text" placeholder="gold" />
+          </div>
+          <div>
+            <label for="currency-name">displayName</label>
+            <input id="currency-name" type="text" placeholder="골드" />
+          </div>
+          <div>
+            <label for="currency-symbol">symbol</label>
+            <input id="currency-symbol" type="text" placeholder="G" />
+          </div>
+          <div>
+            <label for="currency-decimals">decimals (소수 자릿수)</label>
+            <input id="currency-decimals" type="number" min="0" value="0" />
+          </div>
+        </div>
+        <div class="grid">
+          <div>
+            <label for="currency-tags">tags (콤마)</label>
+            <input id="currency-tags" type="text" placeholder="core, paid" />
+          </div>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="currency-apply-fields">필드값을 JSON에 반영</button>
+        </div>
+        <div>
+          <label for="currency-json">Currency JSON</label>
+          <textarea id="currency-json" spellcheck="false"></textarea>
+        </div>
+        <div class="actions">
+          <button class="primary" id="currency-save">저장/업데이트</button>
+          <button class="secondary" id="currency-sample">샘플 불러오기</button>
+          <button class="secondary" id="currency-reset">새로 작성</button>
+          <button class="secondary" id="currency-refresh">목록 새로고침</button>
+        </div>
+        <div class="status" id="currency-status"></div>
+      </div>
+    </details>
+
+    <div class="card">
+      <h2>재화 프리뷰</h2>
+      <div class="preview-card">
+        <div class="label">요약</div>
+        <div class="value" id="currency-preview-text">-</div>
+        <div class="label" style="margin-top: 0.75rem;">메타데이터</div>
+        <div class="value" id="currency-meta-preview">-</div>
+      </div>
+      <p class="muted">삭제 시 아이템/가격 데이터의 참조 무결성을 확인하세요. decimals는 표시/계산 규칙에 사용됩니다.</p>
+    </div>
+
+    <div class="card">
+      <h2>저장된 재화 목록</h2>
+      <p class="muted">비용 map에 쓰이는 모든 키는 여기서 관리하세요.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>currencyKey</th>
+            <th>displayName</th>
+            <th>symbol</th>
+            <th>decimals</th>
+            <th>tags</th>
+            <th>작업</th>
+          </tr>
+        </thead>
+        <tbody id="currency-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const SAMPLE_CURRENCY = {
+      currencyKey: "gold",
+      displayName: "골드",
+      symbol: "G",
+      decimals: 0,
+      description: "게임 기본 화폐",
+      tags: ["core"],
+      metadata: {
+        updatedBy: "admin",
+      },
+    };
+
+    function toStringArray(value) {
+      return value
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    }
+
+    function safeParseJson(value) {
+      if (!value || !value.trim()) return {};
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+
+    class SpecManager {
+      constructor({ collectionName, idInputId, jsonInputId, statusId, tableBodyId, saveBtnId, resetBtnId, sampleBtnId, refreshBtnId, sampleData, extraFill, summaryExtractor, transformBeforeSave }) {
+        this.collectionName = collectionName;
+        this.idInput = document.getElementById(idInputId);
+        this.jsonInput = document.getElementById(jsonInputId);
+        this.statusEl = document.getElementById(statusId);
+        this.tableBody = document.getElementById(tableBodyId);
+        this.sampleData = sampleData;
+        this.extraFill = extraFill;
+        this.summaryExtractor = summaryExtractor;
+        this.transformBeforeSave = transformBeforeSave;
+
+        this.saveBtn = document.getElementById(saveBtnId);
+        this.resetBtn = document.getElementById(resetBtnId);
+        this.sampleBtn = document.getElementById(sampleBtnId);
+        this.refreshBtn = document.getElementById(refreshBtnId);
+
+        this.registerHandlers();
+      }
+
+      attachDb(db) {
+        this.db = db;
+        this.collectionRef = collection(db, this.collectionName);
+      }
+
+      registerHandlers() {
+        this.saveBtn?.addEventListener("click", () => this.handleSave());
+        this.resetBtn?.addEventListener("click", () => this.resetForm());
+        this.sampleBtn?.addEventListener("click", () => this.loadSample());
+        this.refreshBtn?.addEventListener("click", () => this.loadTable());
+      }
+
+      setStatus(message, { persist = false } = {}) {
+        this.statusEl.textContent = message;
+        if (!persist) {
+          clearTimeout(this._statusTimer);
+          this._statusTimer = setTimeout(() => {
+            this.statusEl.textContent = "";
+          }, 4500);
+        }
+      }
+
+      sanitizeId(rawId) {
+        return rawId.trim().replace(/[^A-Za-z0-9_.-]+/g, "_");
+      }
+
+      getDocIdOrWarn() {
+        const raw = this.idInput.value.trim();
+        if (!raw) {
+          this.setStatus("currencyKey를 입력하세요.");
+          return null;
+        }
+        const sanitized = this.sanitizeId(raw);
+        if (!sanitized) {
+          this.setStatus("유효한 ID를 입력하세요 (영문/숫자/._- 조합).");
+          return null;
+        }
+        if (sanitized !== raw) this.idInput.value = sanitized;
+        return sanitized;
+      }
+
+      parseJsonOrWarn() {
+        const raw = this.jsonInput.value.trim();
+        if (!raw) return {};
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("JSON 파싱에 실패했습니다. 포맷을 확인하세요.");
+          return null;
+        }
+      }
+
+      fillForm(id, data) {
+        this.idInput.value = id;
+        if (this.extraFill) this.extraFill({ data, manager: this });
+        this.jsonInput.value = JSON.stringify(data, null, 2);
+        this.setStatus(`'${id}' 재화를 불러왔습니다.`);
+        updatePreviews();
+      }
+
+      resetForm() {
+        this.idInput.value = "";
+        if (this.extraFill) this.extraFill({ data: this.sampleData, manager: this });
+        this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
+        this.setStatus("새 문서를 작성하세요.");
+        updatePreviews();
+      }
+
+      loadSample() {
+        const id = this.sampleData.currencyKey ?? "";
+        this.fillForm(id, this.sampleData);
+        this.setStatus("샘플 데이터를 불러왔습니다.");
+      }
+
+      async handleSave() {
+        if (!this.db) return;
+        const docId = this.getDocIdOrWarn();
+        if (!docId) return;
+        const data = this.parseJsonOrWarn();
+        if (!data) return;
+        const transformed = this.transformBeforeSave ? this.transformBeforeSave({ data, manager: this, docId }) : data;
+
+        this.toggleButtons(true);
+        try {
+          await setDoc(doc(this.collectionRef, docId), transformed, { merge: true });
+          this.setStatus(`'${docId}' 재화를 저장했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("저장 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async handleDelete(docId, label) {
+        if (!this.db) return;
+        if (!confirm(`'${label}' 재화를 삭제할까요? 비용 map 참조에 영향이 있습니다.`)) return;
+        this.toggleButtons(true);
+        try {
+          await deleteDoc(doc(this.collectionRef, docId));
+          this.setStatus(`'${label}' 재화를 삭제했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("삭제 중 오류가 발생했습니다. 네트워크/권한을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async loadTable() {
+        if (!this.db) return;
+        this.setStatus("목록을 불러오는 중...", { persist: true });
+        try {
+          const snapshot = await getDocs(this.collectionRef);
+          const rows = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            rows.push({ id: docSnap.id, data });
+          });
+          rows.sort((a, b) => a.id.localeCompare(b.id));
+          this.renderTable(rows);
+          this.setStatus(`총 ${rows.length}개 재화를 불러왔습니다.`);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("목록을 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        }
+      }
+
+      renderTable(rows) {
+        this.tableBody.innerHTML = "";
+        if (!rows.length) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 6;
+          td.textContent = "저장된 문서가 없습니다.";
+          tr.appendChild(td);
+          this.tableBody.appendChild(tr);
+          return;
+        }
+
+        rows.forEach(({ id, data }) => {
+          const tr = document.createElement("tr");
+          const summary = this.summaryExtractor ? this.summaryExtractor(data) : {};
+          const cells = summary.cells ?? [];
+          [id, ...cells].forEach((value) => {
+            const td = document.createElement("td");
+            td.textContent = value ?? "-";
+            tr.appendChild(td);
+          });
+
+          const actionsTd = document.createElement("td");
+          const loadBtn = document.createElement("button");
+          loadBtn.className = "secondary";
+          loadBtn.textContent = "불러오기";
+          loadBtn.addEventListener("click", () => this.fillForm(id, data));
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "danger";
+          deleteBtn.textContent = "삭제";
+          deleteBtn.addEventListener("click", () => this.handleDelete(id, summary.label ?? id));
+
+          actionsTd.append(loadBtn, deleteBtn);
+          tr.appendChild(actionsTd);
+          this.tableBody.appendChild(tr);
+        });
+      }
+
+      toggleButtons(disabled) {
+        [this.saveBtn, this.resetBtn, this.sampleBtn, this.refreshBtn].forEach((btn) => {
+          if (btn) btn.disabled = disabled;
+        });
+      }
+    }
+
+    function fillCurrencyQuickFields(data) {
+      document.getElementById("currency-id").value = data.currencyKey ?? "";
+      document.getElementById("currency-name").value = data.displayName ?? "";
+      document.getElementById("currency-symbol").value = data.symbol ?? "";
+      document.getElementById("currency-decimals").value = data.decimals ?? "";
+      document.getElementById("currency-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
+    }
+
+    function applyCurrencyFields(manager) {
+      const data = manager.parseJsonOrWarn();
+      if (data === null) return;
+      const next = { ...(data || {}) };
+      next.currencyKey = document.getElementById("currency-id").value.trim() || next.currencyKey;
+      next.displayName = document.getElementById("currency-name").value.trim() || next.displayName;
+      next.symbol = document.getElementById("currency-symbol").value.trim() || next.symbol;
+      const decimals = document.getElementById("currency-decimals").value.trim();
+      if (decimals !== "") {
+        const parsed = Number(decimals);
+        if (!Number.isNaN(parsed)) next.decimals = parsed;
+      }
+      const tags = toStringArray(document.getElementById("currency-tags").value);
+      if (tags.length) next.tags = tags;
+
+      manager.jsonInput.value = JSON.stringify(next, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillCurrencyQuickFields(next);
+      updatePreviews();
+    }
+
+    function mergeCurrencyInputs() {
+      const base = safeParseJson(document.getElementById("currency-json").value);
+      if (base === null) return null;
+      const merged = { ...(base || {}) };
+      const key = document.getElementById("currency-id").value.trim();
+      if (key) merged.currencyKey = key;
+      const name = document.getElementById("currency-name").value.trim();
+      if (name) merged.displayName = name;
+      const symbol = document.getElementById("currency-symbol").value.trim();
+      if (symbol) merged.symbol = symbol;
+      const decimals = document.getElementById("currency-decimals").value.trim();
+      if (decimals !== "") {
+        const parsed = Number(decimals);
+        if (!Number.isNaN(parsed)) merged.decimals = parsed;
+      }
+      const tags = toStringArray(document.getElementById("currency-tags").value);
+      if (tags.length) merged.tags = tags;
+      return merged;
+    }
+
+    function buildCurrencyPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 필드를 채워주세요.";
+      const key = data.currencyKey ?? "-";
+      const name = data.displayName ?? "이름 미정";
+      const symbol = data.symbol ? ` (${data.symbol})` : "";
+      const decimals = data.decimals ?? 0;
+      const tags = Array.isArray(data.tags) && data.tags.length ? ` | 태그: ${data.tags.join(", ")}` : "";
+      const desc = data.description ? ` | ${data.description}` : "";
+      return `[${key}] ${name}${symbol} · decimals=${decimals}${tags}${desc}`;
+    }
+
+    function buildMetaPreview(data) {
+      if (!data) return "-";
+      const metaKeys = ["description", "metadata"];
+      const parts = [];
+      metaKeys.forEach((key) => {
+        if (data[key] !== undefined) parts.push(`${key}: ${JSON.stringify(data[key])}`);
+      });
+      return parts.length ? parts.join(" | ") : "메타 필드가 없습니다.";
+    }
+
+    function updatePreviews() {
+      const currencyData = mergeCurrencyInputs();
+      const preview = document.getElementById("currency-preview-text");
+      const metaPreview = document.getElementById("currency-meta-preview");
+      preview.textContent = currencyData ? buildCurrencyPreview(currencyData) : "JSON 파싱 오류: Currency";
+      metaPreview.textContent = currencyData ? buildMetaPreview(currencyData) : "-";
+    }
+
+    function createManager() {
+      return new SpecManager({
+        collectionName: "currencies",
+        idInputId: "currency-id",
+        jsonInputId: "currency-json",
+        statusId: "currency-status",
+        tableBodyId: "currency-table",
+        saveBtnId: "currency-save",
+        resetBtnId: "currency-reset",
+        sampleBtnId: "currency-sample",
+        refreshBtnId: "currency-refresh",
+        sampleData: SAMPLE_CURRENCY,
+        extraFill: ({ data }) => fillCurrencyQuickFields(data),
+        summaryExtractor: (data) => ({
+          label: data.displayName ?? data.currencyKey ?? "Currency",
+          cells: [
+            data.displayName,
+            data.symbol ?? "-",
+            data.decimals ?? 0,
+            Array.isArray(data.tags) ? data.tags.join(", ") : "-",
+          ],
+        }),
+        transformBeforeSave: ({ data, docId }) => {
+          const merged = mergeCurrencyInputs() ?? data;
+          merged.currencyKey = merged.currencyKey ?? docId;
+          return merged;
+        },
+      });
+    }
+
+    function registerFieldButtons(manager) {
+      document.getElementById("currency-apply-fields")?.addEventListener("click", () => applyCurrencyFields(manager));
+    }
+
+    async function initialize() {
+      const manager = createManager();
+      registerFieldButtons(manager);
+
+      const previewInputs = [
+        "currency-json",
+        "currency-id",
+        "currency-name",
+        "currency-symbol",
+        "currency-decimals",
+        "currency-tags",
+      ];
+      previewInputs.forEach((id) => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", updatePreviews);
+        el?.addEventListener("change", updatePreviews);
+      });
+
+      try {
+        const app = initializeApp(await getFirebaseConfig());
+        const db = getFirestore(app);
+        manager.attachDb(db);
+        manager.resetForm();
+        manager.loadTable();
+        updatePreviews();
+      } catch (error) {
+        console.error(error);
+        manager.setStatus("Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.", { persist: true });
+        manager.toggleButtons(true);
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
