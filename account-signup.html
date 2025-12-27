@@ -419,9 +419,33 @@
         }
 
         const user = userCredential.user;
-        await sendEmailVerification(user, { url: window.location.href });
-        await signOut(state.auth);
-        setSignupStatus("인증 메일을 보냈습니다. 메일의 인증 링크에서 oobCode를 복사한 뒤 인증번호 확인을 눌러 주세요.", "success");
+        const safeUrl = `${window.location.origin}${window.location.pathname}`;
+        let sent = false;
+
+        try {
+          await sendEmailVerification(user, { url: safeUrl });
+          sent = true;
+          setSignupStatus("인증 메일을 보냈습니다. 메일의 인증 링크에서 oobCode를 복사한 뒤 인증번호 확인을 눌러 주세요.", "success");
+        } catch (sendError) {
+          if (sendError.code === "auth/unauthorized-continue-uri") {
+            setSignupStatus("인증 메일 전송이 도메인 미등록으로 거부되어 기본 링크로 재시도합니다. Firebase 콘솔에서 이 도메인을 허용하세요.", "error");
+            try {
+              await sendEmailVerification(user);
+              sent = true;
+              setSignupStatus("인증 메일을 기본 링크로 전송했습니다. Firebase 콘솔에 현재 도메인을 허용하면 맞춤 링크를 사용할 수 있습니다.", "success");
+            } catch (fallbackError) {
+              throw fallbackError;
+            }
+          } else {
+            throw sendError;
+          }
+        } finally {
+          await signOut(state.auth);
+        }
+
+        if (!sent) {
+          return;
+        }
       } catch (error) {
         setSignupStatus(`인증 메일 전송에 실패했습니다: ${error.message}`, "error");
       } finally {
