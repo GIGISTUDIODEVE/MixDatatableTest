@@ -264,6 +264,8 @@
       </div>
       <hr style="border: 1px solid #1f2937; margin: 1rem 0;" />
       <div class="field">
+        <h3 style="margin: 0 0 0.3rem;">받은 인증번호 입력</h3>
+        <p class="muted" style="margin: 0 0 0.5rem;">인증번호 확인 단계에서는 비밀번호를 요구하지 않습니다.</p>
         <label for="verification">인증번호 또는 메일 링크</label>
         <input id="verification" type="text" placeholder="oobCode 값 또는 메일 전체 링크를 붙여넣으세요." />
         <p class="muted">팝업을 열 때 현재 URL에 포함된 인증번호가 있으면 자동으로 입력합니다.</p>
@@ -305,8 +307,6 @@
 
     const state = {
       auth: null,
-      lastEmail: "",
-      lastPassword: "",
     };
 
     function setStatus(message, tone = "info") {
@@ -396,8 +396,6 @@
       }
 
       toggleBusy(true);
-      state.lastEmail = email;
-      state.lastPassword = password;
 
       try {
         let userCredential;
@@ -436,6 +434,9 @@
             } catch (fallbackError) {
               throw fallbackError;
             }
+          } else if (sendError.code === "auth/too-many-requests") {
+            setSignupStatus("요청이 너무 많아 인증 메일 전송이 차단되었습니다. 잠시 후 다시 시도하세요.", "error");
+            throw sendError;
           } else {
             throw sendError;
           }
@@ -469,19 +470,7 @@
 
       try {
         await applyActionCode(state.auth, code);
-        setSignupStatus("이메일 인증이 완료되었습니다. 계정이 활성화되었습니다.", "success");
-
-        if (state.lastEmail && state.lastPassword) {
-          const credential = await signInWithEmailAndPassword(state.auth, state.lastEmail, state.lastPassword);
-          await reload(credential.user);
-          if (credential.user.emailVerified) {
-            setSignupStatus("이메일 인증이 확인되었으며 로그인되었습니다. 로그인 화면에서 이용해 주세요.", "success");
-          } else {
-            setSignupStatus("이메일 인증은 완료되었지만 세션 재확인이 필요합니다. 다시 로그인해 주세요.", "info");
-          }
-        } else {
-          setSignupStatus("이메일 인증이 완료되었습니다. 로그인 화면으로 이동하거나 다시 로그인해 주세요.", "success");
-        }
+        setSignupStatus("이메일 인증이 완료되었습니다. 로그인 화면으로 이동해 이메일/비밀번호로 로그인하세요.", "success");
       } catch (error) {
         setSignupStatus(`인증번호 확인에 실패했습니다: ${error.message}`, "error");
       } finally {
