@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Firebase 이메일 로그인</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .hero {
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+    }
+
+    .hero h1 {
+      margin: 0 0 0.35rem;
+      font-size: clamp(1.3rem, 3vw, 1.5rem);
+      letter-spacing: -0.01em;
+    }
+
+    .hero p {
+      margin: 0.1rem 0;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      align-items: start;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.35rem;
+      font-size: 1.05rem;
+    }
+
+    .card p {
+      margin: 0.25rem 0 0.5rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .instruction-list {
+      list-style: decimal;
+      padding-left: 1.1rem;
+      margin: 0.25rem 0 0;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .field {
+      display: grid;
+      gap: 0.35rem;
+      margin-top: 0.5rem;
+    }
+
+    label {
+      font-weight: 700;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 0.8rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.65rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      margin-top: 0.9rem;
+      padding: 0.75rem 0.9rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .status[data-tone="success"] {
+      border-color: #16a34a;
+      color: #bef264;
+    }
+
+    .status[data-tone="error"] {
+      border-color: #ef4444;
+      color: #fecdd3;
+    }
+
+    .status[data-tone="info"] {
+      border-color: #1f2937;
+      color: #cbd5e1;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+    }
+
+    .modal {
+      width: min(520px, 92vw);
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .close-btn {
+      background: transparent;
+      color: #e2e8f0;
+      border: none;
+      padding: 0.35rem 0.55rem;
+      font-size: 1rem;
+      line-height: 1;
+      border-radius: 8px;
+    }
+
+    .close-btn:hover {
+      background: #1f2937;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>Firebase 이메일 로그인</h1>
+    <p>이메일/비밀번호로 로그인하고, 필요 시 팝업에서 이메일 인증 기반 회원가입을 진행하세요.</p>
+    <p class="muted">Firebase 설정이 비어 있으면 먼저 입력 창이 표시됩니다. 인증을 완료한 계정만 로그인할 수 있습니다.</p>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>로그인 안내</h2>
+      <ol class="instruction-list">
+        <li>이메일과 비밀번호를 입력하고 <strong>로그인</strong>을 누릅니다.</li>
+        <li>아직 계정이 없거나 이메일 인증이 필요하면 <strong>회원가입</strong> 버튼을 눌러 팝업에서 진행하세요.</li>
+        <li>메일로 받은 인증 링크의 <code>oobCode</code>를 입력해 인증을 완료해야 로그인할 수 있습니다.</li>
+      </ol>
+      <p class="muted">이미 인증된 계정만 로그인됩니다. 인증되지 않은 계정은 로그인 시도를 차단하고 안내합니다.</p>
+    </section>
+
+    <section class="card">
+      <h2>로그인</h2>
+      <div class="field">
+        <label for="email">이메일</label>
+        <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+      </div>
+      <div class="field">
+        <label for="password">비밀번호</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="비밀번호를 입력하세요." required />
+      </div>
+      <div class="actions">
+        <button id="login" class="primary" type="button">로그인</button>
+        <button id="signup-open" class="secondary" type="button">회원가입</button>
+        <button id="sign-out" class="secondary" type="button">로그아웃</button>
+      </div>
+      <div id="status" class="status" data-tone="info" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <div id="signup-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="signup-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="signup-title" style="margin: 0;">이메일 인증 기반 회원가입</h2>
+        <button id="signup-close" class="close-btn" type="button" aria-label="닫기">✕</button>
+      </div>
+      <p class="muted" style="margin-top: 0;">인증 메일의 oobCode를 입력해야 회원가입이 완료됩니다.</p>
+      <div class="field">
+        <label for="signup-email">이메일</label>
+        <input id="signup-email" type="email" autocomplete="email" placeholder="you@example.com" required />
+      </div>
+      <div class="field">
+        <label for="signup-password">비밀번호</label>
+        <input id="signup-password" type="password" autocomplete="new-password" placeholder="6자 이상 입력하세요." required />
+      </div>
+      <div class="actions">
+        <button id="send-code" class="primary" type="button">인증번호 전송</button>
+      </div>
+      <hr style="border: 1px solid #1f2937; margin: 1rem 0;" />
+      <div class="field">
+        <label for="verification">인증번호 또는 메일 링크</label>
+        <input id="verification" type="text" placeholder="oobCode 값 또는 메일 전체 링크를 붙여넣으세요." />
+        <p class="muted">팝업을 열 때 현재 URL에 포함된 인증번호가 있으면 자동으로 입력합니다.</p>
+      </div>
+      <div class="actions">
+        <button id="confirm-code" class="primary" type="button">인증번호 확인</button>
+      </div>
+      <div id="signup-status" class="status" data-tone="info" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      sendEmailVerification,
+      signInWithEmailAndPassword,
+      applyActionCode,
+      reload,
+      signOut,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const verificationInput = document.getElementById("verification");
+    const statusEl = document.getElementById("status");
+    const signupStatusEl = document.getElementById("signup-status");
+    const sendBtn = document.getElementById("send-code");
+    const confirmBtn = document.getElementById("confirm-code");
+    const loginBtn = document.getElementById("login");
+    const openSignupBtn = document.getElementById("signup-open");
+    const closeSignupBtn = document.getElementById("signup-close");
+    const modal = document.getElementById("signup-modal");
+    const signupEmailInput = document.getElementById("signup-email");
+    const signupPasswordInput = document.getElementById("signup-password");
+    const signOutBtn = document.getElementById("sign-out");
+
+    const state = {
+      auth: null,
+      lastEmail: "",
+      lastPassword: "",
+    };
+
+    function setStatus(message, tone = "info") {
+      statusEl.textContent = message;
+      statusEl.dataset.tone = tone;
+    }
+
+    function setSignupStatus(message, tone = "info") {
+      signupStatusEl.textContent = message;
+      signupStatusEl.dataset.tone = tone;
+    }
+
+    function toggleBusy(isBusy) {
+      sendBtn.disabled = isBusy;
+      confirmBtn.disabled = isBusy;
+      loginBtn.disabled = isBusy;
+    }
+
+    function extractOobCode(raw) {
+      if (!raw) return "";
+      const trimmed = raw.trim();
+
+      try {
+        const url = new URL(trimmed);
+        const codeFromUrl = url.searchParams.get("oobCode");
+        if (codeFromUrl) return codeFromUrl;
+      } catch (_) {
+        // noop
+      }
+
+      const match = trimmed.match(/[?&]oobCode=([^&]+)/);
+      if (match) {
+        return decodeURIComponent(match[1]);
+      }
+
+      if (/^[A-Za-z0-9_-]{20,}$/.test(trimmed)) {
+        return trimmed;
+      }
+
+      return "";
+    }
+
+    async function initializeFirebase() {
+      setStatus("Firebase 설정을 불러오는 중입니다...");
+      const config = await getFirebaseConfig();
+      const app = initializeApp(config);
+      state.auth = getAuth(app);
+      setStatus("Firebase 초기화 완료. 이메일로 로그인하거나 회원가입을 진행하세요.", "success");
+      preloadOobCode();
+    }
+
+    function preloadOobCode() {
+      const codeFromUrl = extractOobCode(window.location.href);
+      if (codeFromUrl) {
+        verificationInput.value = codeFromUrl;
+        setSignupStatus("링크에 포함된 인증번호를 자동으로 불러왔습니다. 인증번호 확인을 눌러 주세요.", "info");
+      }
+    }
+
+    function openSignup() {
+      preloadOobCode();
+      modal.style.display = "flex";
+      signupEmailInput.focus();
+    }
+
+    function closeSignup() {
+      modal.style.display = "none";
+    }
+
+    async function sendVerification() {
+      if (!state.auth) {
+        setSignupStatus("Firebase가 아직 초기화되지 않았습니다.", "error");
+        return;
+      }
+
+      const email = signupEmailInput.value.trim();
+      const password = signupPasswordInput.value;
+
+      if (!email || !password) {
+        setSignupStatus("이메일과 비밀번호를 모두 입력하세요.", "error");
+        return;
+      }
+
+      if (password.length < 6) {
+        setSignupStatus("비밀번호는 6자 이상이어야 합니다.", "error");
+        return;
+      }
+
+      toggleBusy(true);
+      state.lastEmail = email;
+      state.lastPassword = password;
+
+      try {
+        let userCredential;
+        try {
+          userCredential = await createUserWithEmailAndPassword(state.auth, email, password);
+          setSignupStatus("새 계정을 만들었습니다. 인증 메일을 전송합니다...", "info");
+        } catch (error) {
+          if (error.code === "auth/email-already-in-use") {
+            userCredential = await signInWithEmailAndPassword(state.auth, email, password);
+            if (userCredential.user.emailVerified) {
+              setSignupStatus("이미 인증이 완료된 계정입니다. 바로 로그인할 수 있습니다. 로그인 화면으로 돌아가세요.", "success");
+              toggleBusy(false);
+              return;
+            }
+            setSignupStatus("기존 계정을 찾았습니다. 인증 메일을 다시 보냅니다...", "info");
+          } else {
+            throw error;
+          }
+        }
+
+        const user = userCredential.user;
+        await sendEmailVerification(user, { url: window.location.href });
+        await signOut(state.auth);
+        setSignupStatus("인증 메일을 보냈습니다. 메일의 인증 링크에서 oobCode를 복사한 뒤 인증번호 확인을 눌러 주세요.", "success");
+      } catch (error) {
+        setSignupStatus(`인증 메일 전송에 실패했습니다: ${error.message}`, "error");
+      } finally {
+        toggleBusy(false);
+      }
+    }
+
+    async function confirmVerification() {
+      if (!state.auth) {
+        setSignupStatus("Firebase가 아직 초기화되지 않았습니다.", "error");
+        return;
+      }
+
+      const code = extractOobCode(verificationInput.value || window.location.href);
+      if (!code) {
+        setSignupStatus("메일에 포함된 인증번호(oobCode)나 링크를 입력해 주세요.", "error");
+        return;
+      }
+
+      toggleBusy(true);
+
+      try {
+        await applyActionCode(state.auth, code);
+        setSignupStatus("이메일 인증이 완료되었습니다. 계정이 활성화되었습니다.", "success");
+
+        if (state.lastEmail && state.lastPassword) {
+          const credential = await signInWithEmailAndPassword(state.auth, state.lastEmail, state.lastPassword);
+          await reload(credential.user);
+          if (credential.user.emailVerified) {
+            setSignupStatus("이메일 인증이 확인되었으며 로그인되었습니다. 로그인 화면에서 이용해 주세요.", "success");
+          } else {
+            setSignupStatus("이메일 인증은 완료되었지만 세션 재확인이 필요합니다. 다시 로그인해 주세요.", "info");
+          }
+        } else {
+          setSignupStatus("이메일 인증이 완료되었습니다. 로그인 화면으로 이동하거나 다시 로그인해 주세요.", "success");
+        }
+      } catch (error) {
+        setSignupStatus(`인증번호 확인에 실패했습니다: ${error.message}`, "error");
+      } finally {
+        toggleBusy(false);
+      }
+    }
+
+    async function handleSignOut() {
+      if (!state.auth) return;
+      try {
+        await signOut(state.auth);
+        setStatus("로그아웃했습니다. 필요 시 이메일 인증을 다시 진행하세요.", "info");
+      } catch (error) {
+        setStatus(`로그아웃에 실패했습니다: ${error.message}`, "error");
+      }
+    }
+
+    async function handleLogin() {
+      if (!state.auth) {
+        setStatus("Firebase가 아직 초기화되지 않았습니다.", "error");
+        return;
+      }
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!email || !password) {
+        setStatus("이메일과 비밀번호를 모두 입력하세요.", "error");
+        return;
+      }
+
+      toggleBusy(true);
+      try {
+        const credential = await signInWithEmailAndPassword(state.auth, email, password);
+        await reload(credential.user);
+        if (!credential.user.emailVerified) {
+          await signOut(state.auth);
+          setStatus("이메일 인증이 완료되지 않았습니다. 회원가입 팝업에서 인증 메일을 확인하세요.", "error");
+          return;
+        }
+        setStatus("로그인에 성공했습니다. 인증이 확인되었습니다.", "success");
+      } catch (error) {
+        setStatus(`로그인에 실패했습니다: ${error.message}`, "error");
+      } finally {
+        toggleBusy(false);
+      }
+    }
+
+    sendBtn.addEventListener("click", () => {
+      sendVerification();
+    });
+    confirmBtn.addEventListener("click", () => {
+      confirmVerification();
+    });
+    loginBtn.addEventListener("click", () => {
+      handleLogin();
+    });
+    openSignupBtn.addEventListener("click", () => {
+      openSignup();
+    });
+    closeSignupBtn.addEventListener("click", () => {
+      closeSignup();
+    });
+    signOutBtn.addEventListener("click", () => {
+      handleSignOut();
+    });
+
+    initializeFirebase().catch((error) => {
+      setStatus(`Firebase 초기화에 실패했습니다: ${error.message}`, "error");
+    });
+  </script>
+</body>
+</html>
