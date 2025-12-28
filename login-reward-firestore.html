@@ -299,6 +299,10 @@
           <input id="reset-cycle" type="number" min="1" value="7" />
         </div>
         <div>
+          <label for="total-days">보상 기간(일)</label>
+          <input id="total-days" type="number" min="1" max="60" value="7" />
+        </div>
+        <div>
           <label for="start-at">시작 시각 (선택)</label>
           <input id="start-at" type="datetime-local" />
         </div>
@@ -317,8 +321,21 @@
         <button class="secondary" id="reset-form-btn">폼 초기화</button>
       </div>
 
+      <div class="grid" style="margin-top: 0.35rem; align-items: end;">
+        <div>
+          <label for="preset-key">보상 프리셋</label>
+          <select id="preset-key">
+            <option value="">선택하세요</option>
+          </select>
+          <div class="muted">프리셋을 선택하면 기간과 보상이 함께 채워집니다.</div>
+        </div>
+        <div class="actions" style="margin: 0;">
+          <button class="secondary" id="apply-preset-btn">프리셋 적용</button>
+        </div>
+      </div>
+
       <div style="margin-top: 1rem;">
-        <h3 style="margin: 0 0 0.35rem;">일차별 보상 (7개 모두 필수)</h3>
+        <h3 style="margin: 0 0 0.35rem;">일차별 보상 (설정한 기간 전체 필수)</h3>
         <div class="muted">각 일차는 최소 1개 수량을 요구하며, 비어 있는 값은 저장 전에 기본값으로 대체됩니다.</div>
         <table>
           <thead>
@@ -373,6 +390,7 @@
       description: document.getElementById("description"),
       isActive: document.getElementById("is-active"),
       resetCycle: document.getElementById("reset-cycle"),
+      totalDays: document.getElementById("total-days"),
       startAt: document.getElementById("start-at"),
       endAt: document.getElementById("end-at"),
       rewardRows: document.getElementById("reward-rows"),
@@ -380,6 +398,8 @@
       preview: document.getElementById("preview-json"),
       fillPreset: document.getElementById("fill-preset-btn"),
       resetForm: document.getElementById("reset-form-btn"),
+      presetSelect: document.getElementById("preset-key"),
+      applyPresetBtn: document.getElementById("apply-preset-btn"),
       saveBtn: document.getElementById("save-btn"),
       loadBtn: document.getElementById("load-btn"),
       deleteBtn: document.getElementById("delete-btn"),
@@ -397,7 +417,8 @@
       { value: "other", label: "기타" },
     ];
 
-    let rewardsState = Array.from({ length: 7 }, (_, idx) => createDefaultReward(idx + 1));
+    let totalDays = 7;
+    let rewardsState = Array.from({ length: totalDays }, (_, idx) => createDefaultReward(idx + 1));
 
     function createDefaultReward(day) {
       return {
@@ -420,18 +441,19 @@
       elements.status.innerHTML = `<strong style="color:${colors[tone] ?? colors.info}">${tone.toUpperCase()}</strong> ${message}`;
     }
 
-    function clampNumber(value, min = 1) {
+    function clampNumber(value, min = 1, max = Number.POSITIVE_INFINITY) {
       const parsed = Number(value);
       if (Number.isNaN(parsed)) return min;
-      return Math.max(parsed, min);
+      return Math.min(Math.max(parsed, min), max);
     }
 
-    function normalizeRewards(rawRewards = []) {
+    function normalizeRewards(rawRewards = [], targetDays = totalDays) {
+      const safeTarget = clampNumber(targetDays, 1, 60);
       const map = new Map();
       rawRewards.forEach((entry) => {
         if (!entry) return;
-        const day = clampNumber(entry.day, 1);
-        if (day > 7) return;
+        const day = clampNumber(entry.day, 1, safeTarget);
+        if (day > safeTarget) return;
         map.set(day, {
           day,
           rewardType: entry.rewardType || "item",
@@ -443,10 +465,16 @@
       });
 
       const normalized = [];
-      for (let i = 1; i <= 7; i += 1) {
+      for (let i = 1; i <= safeTarget; i += 1) {
         normalized.push(map.get(i) ?? createDefaultReward(i));
       }
       return normalized;
+    }
+
+    function inferTotalDaysFromData(data) {
+      const rewardLength = Array.isArray(data?.rewards) ? data.rewards.length : 0;
+      const inferred = data?.totalDays ?? rewardLength || 7;
+      return clampNumber(inferred, 1, 60);
     }
 
     function renderRewards() {
@@ -529,6 +557,9 @@
     function readForm() {
       const docId = elements.docId.value.trim();
       const resetCycle = clampNumber(elements.resetCycle.value || "7", 1);
+      totalDays = clampNumber(elements.totalDays.value || totalDays, 1, 60);
+      const normalizedRewards = normalizeRewards(rewardsState, totalDays);
+      rewardsState = normalizedRewards;
       const startAt = elements.startAt.value ? new Date(elements.startAt.value).toISOString() : null;
       const endAt = elements.endAt.value ? new Date(elements.endAt.value).toISOString() : null;
 
@@ -538,9 +569,11 @@
         description: elements.description.value.trim(),
         active: elements.isActive.value === "true",
         resetCycleDays: resetCycle,
+        totalDays,
         startAt,
         endAt,
-        rewards: normalizeRewards(rewardsState),
+        rewards: normalizedRewards,
+        rewardDays: normalizedRewards.length,
       };
     }
 
@@ -556,9 +589,11 @@
         description: formState.description || "",
         active: Boolean(formState.active),
         resetCycleDays: clampNumber(formState.resetCycleDays, 1),
+        totalDays: clampNumber(formState.totalDays ?? totalDays, 1, 60),
         startAt: formState.startAt,
         endAt: formState.endAt,
-        rewards: normalizeRewards(formState.rewards),
+        rewards: normalizeRewards(formState.rewards, clampNumber(formState.totalDays ?? totalDays, 1, 60)),
+        rewardDays: clampNumber(formState.totalDays ?? totalDays, 1, 60),
         updatedAt: new Date().toISOString(),
         version: 1,
       };
@@ -570,9 +605,12 @@
       elements.description.value = data.description ?? "";
       elements.isActive.value = String(Boolean(data.active));
       elements.resetCycle.value = data.resetCycleDays ?? 7;
+      totalDays = inferTotalDaysFromData(data);
+      elements.totalDays.value = totalDays;
       elements.startAt.value = data.startAt ? toLocalDateTime(data.startAt) : "";
       elements.endAt.value = data.endAt ? toLocalDateTime(data.endAt) : "";
-      rewardsState = normalizeRewards(data.rewards);
+      rewardsState = normalizeRewards(data.rewards, totalDays);
+      renderRewards();
       updateRewardInputs();
       updatePreview();
     }
@@ -671,30 +709,99 @@
       elements.description.value = "";
       elements.isActive.value = "true";
       elements.resetCycle.value = "7";
+      elements.totalDays.value = "7";
+      totalDays = 7;
       elements.startAt.value = "";
       elements.endAt.value = "";
-      rewardsState = Array.from({ length: 7 }, (_, idx) => createDefaultReward(idx + 1));
-      updateRewardInputs();
+      rewardsState = Array.from({ length: totalDays }, (_, idx) => createDefaultReward(idx + 1));
+      renderRewards();
       updatePreview();
       setStatus("폼을 초기화했습니다.");
     }
 
-    function fillPreset() {
-      const preset = [
-        { rewardType: "currency", rewardKey: "gold", name: "골드", amount: 500 },
-        { rewardType: "currency", rewardKey: "gem", name: "젬", amount: 50 },
-        { rewardType: "item", rewardKey: "potion_hp_small", name: "소형 회복 물약", amount: 5 },
-        { rewardType: "item", rewardKey: "potion_mp_small", name: "소형 마나 물약", amount: 5 },
-        { rewardType: "lootBox", rewardKey: "rare_box", name: "희귀 상자", amount: 1 },
-        { rewardType: "cosmetic", rewardKey: "avatar_frame_blue", name: "아바타 프레임", amount: 1 },
-        { rewardType: "item", rewardKey: "buff_ticket_3d", name: "3일 접속 버프 티켓", amount: 1 },
-      ];
+    const rewardPresets = [
+      {
+        key: "default-7d",
+        label: "기본 7일 (골드/젬/회복/상자/코스튬)",
+        totalDays: 7,
+        rewards: [
+          { rewardType: "currency", rewardKey: "gold", name: "골드", amount: 500 },
+          { rewardType: "currency", rewardKey: "gem", name: "젬", amount: 50 },
+          { rewardType: "item", rewardKey: "potion_hp_small", name: "소형 회복 물약", amount: 5 },
+          { rewardType: "item", rewardKey: "potion_mp_small", name: "소형 마나 물약", amount: 5 },
+          { rewardType: "lootBox", rewardKey: "rare_box", name: "희귀 상자", amount: 1 },
+          { rewardType: "cosmetic", rewardKey: "avatar_frame_blue", name: "아바타 프레임", amount: 1 },
+          { rewardType: "item", rewardKey: "buff_ticket_3d", name: "3일 접속 버프 티켓", amount: 1 },
+        ],
+      },
+      {
+        key: "extended-14d",
+        label: "확장 14일 (주간 + 보너스)",
+        totalDays: 14,
+        rewards: [
+          { rewardType: "currency", rewardKey: "gold", name: "골드", amount: 800 },
+          { rewardType: "currency", rewardKey: "gem", name: "젬", amount: 80 },
+          { rewardType: "item", rewardKey: "potion_hp_large", name: "대형 회복 물약", amount: 5 },
+          { rewardType: "item", rewardKey: "potion_mp_large", name: "대형 마나 물약", amount: 5 },
+          { rewardType: "lootBox", rewardKey: "epic_box", name: "에픽 상자", amount: 1 },
+          { rewardType: "item", rewardKey: "buff_ticket_7d", name: "7일 접속 버프 티켓", amount: 1 },
+          { rewardType: "currency", rewardKey: "gold", name: "골드", amount: 1200 },
+          { rewardType: "currency", rewardKey: "gem", name: "젬", amount: 120 },
+          { rewardType: "item", rewardKey: "enhance_stone", name: "강화석", amount: 10 },
+          { rewardType: "lootBox", rewardKey: "epic_box", name: "에픽 상자", amount: 1 },
+          { rewardType: "cosmetic", rewardKey: "avatar_frame_gold", name: "골드 아바타 프레임", amount: 1 },
+          { rewardType: "other", rewardKey: "title_hero", name: "칭호: 영웅", amount: 1 },
+          { rewardType: "lootBox", rewardKey: "legendary_box", name: "전설 상자", amount: 1 },
+          { rewardType: "currency", rewardKey: "gem", name: "젬", amount: 200 },
+        ],
+      },
+      {
+        key: "short-5d",
+        label: "단기 5일 (이벤트용)",
+        totalDays: 5,
+        rewards: [
+          { rewardType: "currency", rewardKey: "gold", name: "골드", amount: 300 },
+          { rewardType: "currency", rewardKey: "gem", name: "젬", amount: 30 },
+          { rewardType: "item", rewardKey: "potion_hp_small", name: "소형 회복 물약", amount: 3 },
+          { rewardType: "lootBox", rewardKey: "rare_box", name: "희귀 상자", amount: 1 },
+          { rewardType: "item", rewardKey: "buff_ticket_1d", name: "1일 접속 버프 티켓", amount: 1 },
+        ],
+      },
+    ];
+
+    function populatePresetSelect() {
+      rewardPresets.forEach((preset) => {
+        const option = document.createElement("option");
+        option.value = preset.key;
+        option.textContent = `${preset.label} (${preset.totalDays}일)`;
+        elements.presetSelect.appendChild(option);
+      });
+    }
+
+    function applyPreset() {
+      const selectedKey = elements.presetSelect.value;
+      const preset = rewardPresets.find((p) => p.key === selectedKey);
+      if (!preset) {
+        setStatus("적용할 프리셋을 선택하세요.", "warning");
+        return;
+      }
+      totalDays = clampNumber(preset.totalDays, 1, 60);
+      elements.totalDays.value = totalDays;
       rewardsState = normalizeRewards(
-        preset.map((entry, idx) => ({ ...entry, day: idx + 1 }))
+        preset.rewards.map((entry, idx) => ({ ...entry, day: idx + 1 })),
+        totalDays
       );
-      updateRewardInputs();
+      renderRewards();
       updatePreview();
-      setStatus("예시 보상으로 채웠습니다.");
+      setStatus(`프리셋 적용 완료: ${preset.label}`, "success");
+    }
+
+    function fillPreset() {
+      elements.presetSelect.value = "default-7d";
+      applyPreset();
+      if (elements.presetSelect.value !== "default-7d") {
+        setStatus("기본 프리셋을 적용하지 못했습니다. 직접 선택하세요.", "warning");
+      }
     }
 
     function wireEvents() {
@@ -702,6 +809,7 @@
       elements.loadBtn.addEventListener("click", () => loadDocument(elements.docId.value.trim()));
       elements.deleteBtn.addEventListener("click", deleteDocument);
       elements.fillPreset.addEventListener("click", fillPreset);
+      elements.applyPresetBtn.addEventListener("click", applyPreset);
       elements.resetForm.addEventListener("click", resetForm);
       elements.refreshListBtn.addEventListener("click", refreshList);
       elements.loadSelectedBtn.addEventListener("click", () => {
@@ -713,12 +821,19 @@
         }
       });
       elements.newEmptyBtn.addEventListener("click", resetForm);
-      ["docId", "title", "description", "isActive", "resetCycle", "startAt", "endAt"].forEach((key) => {
+      ["docId", "title", "description", "isActive", "resetCycle", "startAt", "endAt", "totalDays"].forEach((key) => {
         const el = elements[key];
         if (el) {
           el.addEventListener("input", updatePreview);
           el.addEventListener("change", updatePreview);
         }
+      });
+      elements.totalDays.addEventListener("change", () => {
+        totalDays = clampNumber(elements.totalDays.value || totalDays, 1, 60);
+        rewardsState = normalizeRewards(rewardsState, totalDays);
+        renderRewards();
+        updatePreview();
+        setStatus(`보상 기간을 ${totalDays}일로 설정했습니다.`);
       });
     }
 
@@ -730,6 +845,7 @@
 
     renderRewards();
     attachRewardListeners();
+    populatePresetSelect();
     wireEvents();
     setInitialDocId();
     updatePreview();
