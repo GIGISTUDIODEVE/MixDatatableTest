@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Firebase Auth - Google 로그인</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0 0 0.35rem;
+    }
+
+    p {
+      margin: 0.35rem 0 0;
+      color: #cbd5e1;
+    }
+
+    .page {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin: 0 0 0.45rem;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-top: 0.75rem;
+    }
+
+    .button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.65rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    .button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      border-radius: 999px;
+      padding: 0.35rem 0.8rem;
+      font-weight: 700;
+      margin-top: 0.5rem;
+    }
+
+    .status {
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      margin-top: 0.75rem;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+
+    .status strong {
+      color: #a5b4fc;
+    }
+
+    .profile {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #334155, #0ea5e9);
+      display: grid;
+      place-items: center;
+      color: #e2e8f0;
+      font-weight: 800;
+      font-size: 1.35rem;
+      overflow: hidden;
+      border: 1px solid #1f2937;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: minmax(120px, 180px) 1fr;
+      gap: 0.35rem 0.65rem;
+      align-items: baseline;
+    }
+
+    dt {
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    dd {
+      margin: 0;
+      color: #e2e8f0;
+      word-break: break-all;
+    }
+
+    code {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: #0b1220;
+      padding: 0.2rem 0.35rem;
+      border-radius: 8px;
+      border: 1px solid #1f2937;
+    }
+  </style>
+</head>
+<body>
+  <header class="top-nav">
+    <div class="nav-brand">Firebase Auth · Google 로그인</div>
+    <div class="nav-actions">
+      <span>파이어베이스 설정은 쿠키에 저장됩니다.</span>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <h1>Google 로그인을 빠르게 붙이는 샘플 페이지</h1>
+      <p class="muted">Firebase Auth와 Google Provider를 사용한 안전한 로그인 흐름입니다. 팝업 차단 시 자동으로 리디렉션 방식을 사용하며, 새로고침 후에도 세션이 유지되도록 로컬 퍼시스턴스를 설정했습니다.</p>
+      <div class="pill" id="config-pill">구성 상태: 설정을 불러오는 중...</div>
+    </section>
+
+    <section class="card-grid">
+      <article class="card">
+        <h2>로그인 제어</h2>
+        <p class="muted">Google 계정으로 로그인하거나 기존 세션을 종료합니다. Firebase 설정이 비어 있으면 먼저 값을 입력하세요.</p>
+        <div class="button-row">
+          <button class="button" id="login-btn" type="button">Google로 로그인</button>
+          <button class="button secondary" id="logout-btn" type="button" disabled>로그아웃</button>
+        </div>
+        <div class="status" id="status" aria-live="polite">Firebase 구성을 준비하는 중입니다...</div>
+      </article>
+
+      <article class="card">
+        <h2>사용자 프로필</h2>
+        <div class="profile">
+          <div class="profile-header">
+            <div class="avatar" id="avatar">?</div>
+            <div>
+              <div id="display-name" style="font-weight: 800; font-size: 1.05rem;">로그인 필요</div>
+              <div id="email" class="muted">-</div>
+            </div>
+          </div>
+          <dl>
+            <dt>UID</dt>
+            <dd id="uid">-</dd>
+            <dt>공급자</dt>
+            <dd id="provider">-</dd>
+            <dt>이메일 인증</dt>
+            <dd id="verified">-</dd>
+            <dt>최근 로그인</dt>
+            <dd id="last-login">-</dd>
+            <dt>계정 생성</dt>
+            <dd id="creation-time">-</dd>
+          </dl>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>세션 정보</h2>
+        <p class="muted">현재 인증 상태와 로그인 흐름을 추적합니다.</p>
+        <dl>
+          <dt>인증 상태</dt>
+          <dd id="auth-state">초기화 중</dd>
+          <dt>로그인 흐름</dt>
+          <dd id="flow-state">-</dd>
+          <dt>리디렉션 결과</dt>
+          <dd id="redirect-result">-</dd>
+          <dt>상태 메시지</dt>
+          <dd><code id="last-message">-</code></dd>
+        </dl>
+      </article>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signInWithRedirect,
+      getRedirectResult,
+      onAuthStateChanged,
+      setPersistence,
+      browserLocalPersistence,
+      signOut,
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const elements = {
+      loginBtn: document.getElementById("login-btn"),
+      logoutBtn: document.getElementById("logout-btn"),
+      status: document.getElementById("status"),
+      configPill: document.getElementById("config-pill"),
+      authState: document.getElementById("auth-state"),
+      flowState: document.getElementById("flow-state"),
+      redirectResult: document.getElementById("redirect-result"),
+      lastMessage: document.getElementById("last-message"),
+      avatar: document.getElementById("avatar"),
+      displayName: document.getElementById("display-name"),
+      email: document.getElementById("email"),
+      uid: document.getElementById("uid"),
+      provider: document.getElementById("provider"),
+      verified: document.getElementById("verified"),
+      lastLogin: document.getElementById("last-login"),
+      creationTime: document.getElementById("creation-time"),
+    };
+
+    let auth;
+
+    const formatDate = (value) => {
+      if (!value) return "-";
+      try {
+        return new Intl.DateTimeFormat("ko-KR", {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(value));
+      } catch (error) {
+        console.error("날짜 포맷 실패", error);
+        return value;
+      }
+    };
+
+    const setStatus = (message) => {
+      elements.status.textContent = message;
+      elements.lastMessage.textContent = message;
+    };
+
+    const setFlowState = (message) => {
+      elements.flowState.textContent = message;
+    };
+
+    const setRedirectResultMessage = (message) => {
+      elements.redirectResult.textContent = message;
+    };
+
+    const setLoadingState = (isLoading) => {
+      elements.loginBtn.disabled = isLoading;
+      elements.logoutBtn.disabled = isLoading || !auth?.currentUser;
+    };
+
+    const updateProfile = (user) => {
+      if (!user) {
+        elements.avatar.textContent = "?";
+        elements.avatar.style.background = "linear-gradient(135deg, #334155, #0ea5e9)";
+        elements.displayName.textContent = "로그인 필요";
+        elements.email.textContent = "-";
+        elements.uid.textContent = "-";
+        elements.provider.textContent = "-";
+        elements.verified.textContent = "-";
+        elements.lastLogin.textContent = "-";
+        elements.creationTime.textContent = "-";
+        elements.authState.textContent = "로그아웃됨";
+        return;
+      }
+
+      const photoUrl = user.photoURL ?? "";
+      if (photoUrl) {
+        elements.avatar.innerHTML = `<img src="${photoUrl}" alt="${user.displayName ?? "사용자"} 사진" loading="lazy" />`;
+      } else {
+        const initial = (user.displayName ?? user.email ?? "?").slice(0, 1).toUpperCase();
+        elements.avatar.textContent = initial;
+        elements.avatar.style.background = "linear-gradient(135deg, #1d4ed8, #10b981)";
+      }
+
+      elements.displayName.textContent = user.displayName ?? "이름 없음";
+      elements.email.textContent = user.email ?? "-";
+      elements.uid.textContent = user.uid;
+      const providerIds = user.providerData.map((p) => p.providerId).join(", ") || "-";
+      elements.provider.textContent = providerIds;
+      elements.verified.textContent = user.emailVerified ? "예" : "아니요";
+      elements.lastLogin.textContent = formatDate(user.metadata?.lastSignInTime);
+      elements.creationTime.textContent = formatDate(user.metadata?.creationTime);
+      elements.authState.textContent = "로그인됨";
+      elements.logoutBtn.disabled = false;
+    };
+
+    const initAuth = async () => {
+      setStatus("Firebase 구성을 불러오고 있습니다...");
+      try {
+        const firebaseConfig = await getFirebaseConfig();
+        initializeApp(firebaseConfig);
+        auth = getAuth();
+        await setPersistence(auth, browserLocalPersistence);
+        elements.configPill.textContent = "구성 상태: 로드 완료 (쿠키에 저장됨)";
+        setStatus("구성 완료. 로그인 또는 세션 복원 중...");
+        elements.loginBtn.disabled = false;
+        registerListeners();
+        await handleRedirectResult();
+      } catch (error) {
+        console.error("Firebase 초기화 실패", error);
+        elements.configPill.textContent = "구성 상태: 실패 - firebase-config.js 설정을 확인하세요";
+        setStatus(`초기화 오류: ${error.message ?? error}`);
+        elements.loginBtn.disabled = true;
+        elements.logoutBtn.disabled = true;
+      }
+    };
+
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          setRedirectResultMessage(`${result.user.displayName ?? "사용자"}님 로그인 완료 (redirect)`);
+        } else {
+          setRedirectResultMessage("리디렉션 결과 없음");
+        }
+      } catch (error) {
+        console.error("리디렉션 처리 실패", error);
+        setRedirectResultMessage(`리디렉션 오류: ${error.message ?? error}`);
+      }
+    };
+
+    const loginWithGoogle = async () => {
+      if (!auth) return;
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      setLoadingState(true);
+      setFlowState("Google 로그인 진행 중");
+      setStatus("Google 인증 팝업을 여는 중입니다...");
+
+      try {
+        await signInWithPopup(auth, provider);
+        setStatus("로그인 성공. 세션이 시작되었습니다.");
+      } catch (error) {
+        console.error("팝업 로그인 실패", error);
+        if (error?.code === "auth/popup-blocked" || error?.code === "auth/popup-closed-by-user") {
+          setStatus("팝업이 차단되었거나 닫혔습니다. 리디렉션 로그인으로 전환합니다.");
+          setFlowState("리디렉션 모드로 재시도");
+          await signInWithRedirect(auth, provider);
+          return;
+        }
+        setStatus(`로그인 실패: ${error.message ?? error}`);
+      } finally {
+        setLoadingState(false);
+      }
+    };
+
+    const logout = async () => {
+      if (!auth?.currentUser) return;
+      setLoadingState(true);
+      setFlowState("로그아웃 진행 중");
+      setStatus("세션을 종료하는 중...");
+      try {
+        await signOut(auth);
+        setStatus("로그아웃 완료");
+      } catch (error) {
+        console.error("로그아웃 실패", error);
+        setStatus(`로그아웃 실패: ${error.message ?? error}`);
+      } finally {
+        setLoadingState(false);
+      }
+    };
+
+    const registerListeners = () => {
+      onAuthStateChanged(
+        auth,
+        (user) => {
+          updateProfile(user);
+          if (user) {
+            setStatus("인증된 세션이 활성화되었습니다.");
+            elements.flowState.textContent = "세션 유지";
+            elements.logoutBtn.disabled = false;
+          } else {
+            setStatus("로그인이 필요합니다.");
+            elements.flowState.textContent = "대기";
+            elements.logoutBtn.disabled = true;
+          }
+        },
+        (error) => {
+          console.error("Auth 상태 감시 실패", error);
+          setStatus(`상태 모니터링 오류: ${error.message ?? error}`);
+        }
+      );
+    };
+
+    elements.loginBtn.addEventListener("click", () => loginWithGoogle());
+    elements.logoutBtn.addEventListener("click", () => logout());
+
+    initAuth();
+  </script>
+</body>
+</html>
