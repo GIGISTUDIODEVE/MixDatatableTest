@@ -109,6 +109,7 @@
     select,
     textarea {
       width: 100%;
+      box-sizing: border-box;
       padding: 0.55rem 0.65rem;
       border-radius: 10px;
       border: 1px solid #334155;
@@ -266,9 +267,10 @@
 
     .inline-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 0.5rem;
       align-items: end;
+      width: 100%;
     }
 
     .builder {
@@ -277,7 +279,8 @@
     }
 
     .builder-list {
-      display: grid;
+      display: flex;
+      flex-wrap: wrap;
       gap: 0.4rem;
     }
 
@@ -327,13 +330,14 @@
     </div>
   </nav>
 
-  <div class="container">
-    <header class="card">
-      <h1>퀘스트/퀘스트 묶음 관리 (Firestore)</h1>
-      <p class="muted">일반적인 RPG 퀘스트 스키마(타깃 ID · 수행 조건 · 목표 · 보상)를 기반으로 Firestore 컬렉션 <code>quests</code>와 <code>questGroups</code>를 CRUD 합니다. 레벨/선행 퀘스트/반복 규칙 등은 JSON 블록을 통해 확장 가능합니다.</p>
-      <div class="pill">quests: id · title · category · questTargetId · requirements · objectives · rewards · repeatability</div>
-      <div class="pill" style="margin-top: 0.4rem;">questGroups: groupId · title · orderType · quests[] · rules · rewardsOnComplete</div>
-    </header>
+    <div class="container">
+      <header class="card">
+        <h1>퀘스트/퀘스트 묶음 관리 (Firestore)</h1>
+        <p class="muted">일반적인 RPG 퀘스트 스키마(타깃 ID · 수행 조건 · 목표 · 보상)를 기반으로 Firestore 컬렉션 <code>quests</code>와 <code>questGroups</code>를 CRUD 합니다. 레벨/선행 퀘스트/반복 규칙 등은 JSON 블록을 통해 확장 가능합니다.</p>
+        <div class="pill">quests: id · title · category · questTargetId · requirements · objectives · rewards · repeatability</div>
+        <div class="pill" style="margin-top: 0.4rem;">questGroups: groupId · title · orderType · quests[] · rules · rewardsOnComplete</div>
+        <p class="muted" style="margin-top: 0.5rem;">* 퀘스트 묶음/라인 관리 섹션은 단일 퀘스트들을 순차/병렬/버킷 형태로 묶어 “스토리 라인”이나 “데일리 세트”를 구성하고, 그룹 전체 완료 시 보상을 지급하기 위한 컬렉션입니다.</p>
+      </header>
 
     <div class="split-section">
       <details class="card collapsible" open>
@@ -581,7 +585,7 @@
                 <div class="inline-grid">
                   <input id="group-quest-id" type="text" placeholder="quest id" />
                   <input id="group-quest-unlocks" type="text" placeholder="unlocksAfter (콤마)" />
-                  <label><input id="group-quest-required" type="checkbox" checked /> required</label>
+                  <label style="display:flex;align-items:center;gap:0.35rem;"><input id="group-quest-required" type="checkbox" checked /> required</label>
                   <button class="secondary" id="group-quest-add">추가</button>
                 </div>
                 <div class="builder-list" id="group-quest-list"></div>
