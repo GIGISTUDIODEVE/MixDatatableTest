@@ -432,17 +432,22 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>일자별 보상 편집</h2>
-      <p class="muted">각 일자(day)별 label · isFinal · rewards 배열(예: <code>[{"kind":"currency","id":"gold","amount":5000}]</code>)을 수정하고 JSON에 반영하세요.</p>
-      <div class="actions">
-        <button class="secondary" id="btn-sync-rewards-from-json">JSON → 보상 행 채우기</button>
-        <button class="secondary" id="btn-add-reward-row">보상 행 추가</button>
-        <button class="primary" id="btn-sync-rewards-to-json">보상 행 → JSON 반영</button>
+    <details class="card collapsible" open>
+      <summary>
+        <span>일자별 보상 편집 (접기/펼치기)</span>
+        <span class="muted" style="font-weight:400;">데일리/복귀/이벤트 보상 행을 빠르게 수정</span>
+      </summary>
+      <div class="content">
+        <p class="muted">각 일자(day)별 label · isFinal · rewards 배열(예: <code>[{"kind":"currency","id":"gold","amount":5000}]</code>)을 수정하고 JSON에 반영하세요.</p>
+        <div class="actions">
+          <button class="secondary" id="btn-sync-rewards-from-json">JSON → 보상 행 채우기</button>
+          <button class="secondary" id="btn-add-reward-row">보상 행 추가</button>
+          <button class="primary" id="btn-sync-rewards-to-json">보상 행 → JSON 반영</button>
+        </div>
+        <div id="reward-rows" class="container" style="gap: 0.75rem;"></div>
+        <p class="muted">보상 행을 비우면 기존 JSON의 rewards를 유지합니다. 각 행의 rewards는 JSON 배열 형태만 허용합니다. day를 비우면 해당 행은 무시됩니다.</p>
       </div>
-      <div id="reward-rows" class="container" style="gap: 0.75rem;"></div>
-      <p class="muted">보상 행을 비우면 기존 JSON의 rewards를 유지합니다. 각 행의 rewards는 JSON 배열 형태만 허용합니다.</p>
-    </div>
+    </details>
 
     <details class="card collapsible" open>
       <summary>스키마 가이드 · 일자별/마지막 보상 설계 팁</summary>
