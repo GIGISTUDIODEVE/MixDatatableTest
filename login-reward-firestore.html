@@ -279,6 +279,26 @@
       gap: 0.5rem;
       align-items: center;
     }
+
+    .reward-items {
+      display: grid;
+      gap: 0.4rem;
+    }
+
+    .reward-item {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.4rem;
+      align-items: center;
+      padding: 0.45rem;
+      border: 1px dashed #1f2937;
+      border-radius: 8px;
+      background: #0f182a;
+    }
+
+    .reward-item .inline {
+      justify-content: flex-start;
+    }
   </style>
 </head>
 <body>
@@ -435,10 +455,10 @@
     <details class="card collapsible" open>
       <summary>
         <span>일자별 보상 편집 (접기/펼치기)</span>
-        <span class="muted" style="font-weight:400;">데일리/복귀/이벤트 보상 행을 빠르게 수정</span>
+        <span class="muted" style="font-weight:400;">데일리/복귀/이벤트 보상 행을 빠르게 수정 (JSON 없이 입력)</span>
       </summary>
       <div class="content">
-        <p class="muted">각 일자(day)별 label · isFinal · rewards 배열(예: <code>[{"kind":"currency","id":"gold","amount":5000}]</code>)을 수정하고 JSON에 반영하세요.</p>
+        <p class="muted">각 일자(day)별 label · isFinal · rewards 배열을 UI로 작성하세요. kind/id/amount를 입력하면 JSON으로 자동 반영됩니다.</p>
         <div class="actions">
           <button class="secondary" id="btn-sync-rewards-from-json">JSON → 보상 행 채우기</button>
           <button class="secondary" id="btn-add-reward-row">보상 행 추가</button>
@@ -965,9 +985,26 @@
         finalText.textContent = "isFinal";
         finalWrapper.append(finalCheckbox, finalText);
 
-        const rewardsInput = document.createElement("textarea");
-        rewardsInput.placeholder = '[{"kind":"currency","id":"gold","amount":5000}]';
-        rewardsInput.value = Array.isArray(data.rewards) ? JSON.stringify(data.rewards, null, 2) : "";
+        const rewardsWrapper = document.createElement("div");
+        rewardsWrapper.className = "reward-items";
+        const rewardsLabel = document.createElement("div");
+        rewardsLabel.className = "muted";
+        rewardsLabel.textContent = "rewards (kind / id / amount)";
+        rewardsWrapper.appendChild(rewardsLabel);
+
+        const rewardsContainer = document.createElement("div");
+        rewardsContainer.className = "reward-items";
+        rewardsWrapper.appendChild(rewardsContainer);
+
+        const addItemBtn = document.createElement("button");
+        addItemBtn.type = "button";
+        addItemBtn.className = "secondary";
+        addItemBtn.textContent = "보상 추가";
+        addItemBtn.addEventListener("click", () => this.addRewardItemRow(rewardsContainer));
+        rewardsWrapper.appendChild(addItemBtn);
+
+        const rewardsData = Array.isArray(data.rewards) && data.rewards.length ? data.rewards : [{}];
+        rewardsData.forEach((entry) => this.addRewardItemRow(rewardsContainer, entry));
 
         const actions = document.createElement("div");
         actions.className = "row-actions";
@@ -984,7 +1021,7 @@
           this.wrapWithLabel("day", dayInput),
           this.wrapWithLabel("label", labelInput),
           this.wrapWithLabel("isFinal", finalWrapper),
-          this.wrapWithLabel("rewards (JSON 배열)", rewardsInput),
+          this.wrapWithLabel("rewards", rewardsWrapper),
           actions,
         );
 
@@ -997,6 +1034,45 @@
         label.textContent = text;
         container.append(label, element);
         return container;
+      }
+
+      addRewardItemRow(container, data = {}) {
+        const item = document.createElement("div");
+        item.className = "reward-item";
+
+        const kind = document.createElement("input");
+        kind.type = "text";
+        kind.placeholder = "kind (예: currency/item/ticket)";
+        kind.value = data.kind ?? "";
+        kind.dataset.field = "kind";
+
+        const rid = document.createElement("input");
+        rid.type = "text";
+        rid.placeholder = "id (예: gold)";
+        rid.value = data.id ?? "";
+        rid.dataset.field = "id";
+
+        const amount = document.createElement("input");
+        amount.type = "number";
+        amount.min = "0";
+        amount.placeholder = "amount";
+        amount.value = data.amount ?? "";
+        amount.dataset.field = "amount";
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "danger";
+        remove.textContent = "X";
+        remove.addEventListener("click", () => container.removeChild(item));
+
+        item.append(
+          this.wrapWithLabel("kind", kind),
+          this.wrapWithLabel("id", rid),
+          this.wrapWithLabel("amount", amount),
+          this.wrapWithLabel("삭제", remove),
+        );
+
+        container.appendChild(item);
       }
 
       syncRewardRowsFromJson() {
@@ -1016,25 +1092,38 @@
         const rows = Array.from(this.rewardRows.querySelectorAll(".reward-row"));
         const result = [];
         for (const row of rows) {
-          const inputs = row.querySelectorAll("input, textarea");
+          const inputs = row.querySelectorAll("input");
           const day = Number(inputs[0].value);
           if (Number.isNaN(day) || day <= 0) continue;
           const label = inputs[1].value.trim();
           const isFinal = inputs[2].checked;
-          const rewardsJson = inputs[3].value.trim();
 
-          if (!rewardsJson) continue;
-          const parsedRewards = safeJsonParse(rewardsJson);
-          if (!Array.isArray(parsedRewards)) {
-            this.setStatus(`D${day} rewards가 배열 JSON이 아닙니다.`);
-            return null;
+          const itemRows = Array.from(row.querySelectorAll(".reward-item"));
+          const rewardItems = [];
+          for (const item of itemRows) {
+            const kind = item.querySelector('[data-field="kind"]')?.value.trim();
+            const id = item.querySelector('[data-field="id"]')?.value.trim();
+            const amountRaw = item.querySelector('[data-field="amount"]')?.value.trim();
+            if (!kind && !id && !amountRaw) continue;
+            if (!kind || !id) {
+              this.setStatus(`D${day} 보상에 kind/id가 누락되었습니다.`);
+              return null;
+            }
+            const amount = Number(amountRaw);
+            if (Number.isNaN(amount) || amount < 0) {
+              this.setStatus(`D${day} 보상 '${id}'의 amount가 유효하지 않습니다.`);
+              return null;
+            }
+            rewardItems.push({ kind, id, amount });
           }
+
+          if (rewardItems.length === 0) continue;
 
           result.push({
             day,
             label: label || undefined,
             isFinal: isFinal || undefined,
-            rewards: parsedRewards,
+            rewards: rewardItems,
           });
         }
         return result;
