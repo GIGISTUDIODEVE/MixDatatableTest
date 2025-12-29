@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>퀘스트 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      border: 1px solid #334155;
+    }
+
+    .preview-card {
+      margin-top: 0.75rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .preview-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .preview-card .label {
+      color: #cbd5e1;
+    }
+
+    .preview-card .value {
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    details.collapsible summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+    }
+
+    details.collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.collapsible .content {
+      padding: 1rem 1.25rem;
+    }
+
+    .split-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+
+    .inline-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.5rem;
+      align-items: end;
+    }
+
+    .builder {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .builder-list {
+      display: grid;
+      gap: 0.4rem;
+    }
+
+    .pill.small {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #0b1220;
+      border: 1px solid #334155;
+      font-size: 0.85rem;
+    }
+
+    .chip button {
+      background: transparent;
+      color: #e2e8f0;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .readonly {
+      background: #0b1220;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Firebase Quest 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link" href="effect-system-firestore.html">EffectSpec 관리</a>
+      <a class="nav-link" href="monster-firestore.html">몬스터 관리</a>
+      <a class="nav-link" href="economy-firestore.html">재화/티어 관리</a>
+      <a class="nav-link" href="item-firestore.html">아이템 관리</a>
+      <a class="nav-link active" href="quest-firestore.html">퀘스트 관리</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="card">
+      <h1>퀘스트/퀘스트 묶음 관리 (Firestore)</h1>
+      <p class="muted">일반적인 RPG 퀘스트 스키마(타깃 ID · 수행 조건 · 목표 · 보상)를 기반으로 Firestore 컬렉션 <code>quests</code>와 <code>questGroups</code>를 CRUD 합니다. 레벨/선행 퀘스트/반복 규칙 등은 JSON 블록을 통해 확장 가능합니다.</p>
+      <div class="pill">quests: id · title · category · questTargetId · requirements · objectives · rewards · repeatability</div>
+      <div class="pill" style="margin-top: 0.4rem;">questGroups: groupId · title · orderType · quests[] · rules · rewardsOnComplete</div>
+    </header>
+
+    <div class="split-section">
+      <details class="card collapsible" open>
+        <summary>
+          <span>퀘스트 관리</span>
+          <span class="pill">collection = quests</span>
+        </summary>
+        <div class="content">
+          <div class="grid">
+            <div>
+              <label for="quest-id">questId (문서 ID)</label>
+              <input id="quest-id" type="text" placeholder="q_main_01" />
+            </div>
+            <div>
+              <label for="quest-title">title</label>
+              <input id="quest-title" type="text" placeholder="마을을 지키는 자" />
+            </div>
+            <div>
+              <label for="quest-category">category</label>
+              <select id="quest-category">
+                <option value="main">main</option>
+                <option value="side">side</option>
+                <option value="daily">daily</option>
+                <option value="weekly">weekly</option>
+                <option value="repeatable">repeatable</option>
+                <option value="bounty">bounty</option>
+              </select>
+            </div>
+            <div>
+              <label for="quest-target">questTargetId (스테이지/보스/지역 등)</label>
+              <input id="quest-target" type="text" placeholder="stage_forest_1" />
+            </div>
+            <div>
+              <label for="quest-summary">summary (한줄 설명)</label>
+              <input id="quest-summary" type="text" placeholder="숲 입구 방어전" />
+            </div>
+            <div>
+              <label for="quest-level-min">requirements.levelMin</label>
+              <input id="quest-level-min" type="number" min="0" placeholder="5" />
+            </div>
+            <div>
+              <label for="quest-recommended-level">recommendedLevel</label>
+              <input id="quest-recommended-level" type="number" min="0" placeholder="7" />
+            </div>
+            <div>
+              <label for="quest-repeat-type">repeatability.type</label>
+              <select id="quest-repeat-type">
+                <option value="once">once</option>
+                <option value="daily">daily</option>
+                <option value="weekly">weekly</option>
+                <option value="repeatable">repeatable</option>
+              </select>
+            </div>
+            <div>
+              <label for="quest-tags">metadata.tags (콤마)</label>
+              <input id="quest-tags" type="text" placeholder="chapter1, forest" />
+            </div>
+          </div>
+
+          <div class="grid">
+            <div>
+              <label>Requirements (간편 입력)</label>
+              <div class="builder">
+                <div class="inline-grid">
+                  <div>
+                    <label for="quest-required-quests" style="font-weight:600;">선행 퀘스트 IDs (콤마)</label>
+                    <input id="quest-required-quests" type="text" placeholder="q_tutorial_end, q_intro" />
+                  </div>
+                  <div>
+                    <label for="quest-required-combat" style="font-weight:600;">combatPowerMin</label>
+                    <input id="quest-required-combat" type="number" min="0" placeholder="1200" />
+                  </div>
+                </div>
+                <div>
+                  <label style="font-weight:600;">필수 아이템</label>
+                  <div class="inline-grid">
+                    <input id="quest-req-item-id" type="text" placeholder="item id" />
+                    <input id="quest-req-item-count" type="number" min="1" placeholder="1" />
+                    <button class="secondary" id="quest-req-item-add">추가</button>
+                  </div>
+                  <div class="builder-list" id="quest-req-item-list"></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label>Objectives (간편 입력)</label>
+              <div class="builder">
+                <div class="inline-grid">
+                  <select id="quest-obj-type">
+                    <option value="visit">visit</option>
+                    <option value="clear_stage">clear_stage</option>
+                    <option value="collect">collect</option>
+                    <option value="kill">kill</option>
+                    <option value="interact">interact</option>
+                  </select>
+                  <input id="quest-obj-target" type="text" placeholder="targetId" />
+                  <input id="quest-obj-count" type="number" min="1" placeholder="1" />
+                  <input id="quest-obj-desc" type="text" placeholder="설명(선택)" />
+                  <button class="secondary" id="quest-obj-add">추가</button>
+                </div>
+                <div class="builder-list" id="quest-obj-list"></div>
+              </div>
+            </div>
+            <div>
+              <label>Rewards (간편 입력)</label>
+              <div class="builder">
+                <div class="inline-grid">
+                  <input id="quest-reward-exp" type="number" min="0" placeholder="EXP" />
+                  <input id="quest-reward-unlocks" type="text" placeholder="unlocks (콤마)" />
+                </div>
+                <div>
+                  <label style="font-weight:600;">통화</label>
+                  <div class="inline-grid">
+                    <input id="quest-reward-currency-key" type="text" placeholder="gold" />
+                    <input id="quest-reward-currency-amount" type="number" min="0" placeholder="250" />
+                    <button class="secondary" id="quest-reward-currency-add">추가</button>
+                  </div>
+                  <div class="builder-list" id="quest-reward-currency-list"></div>
+                </div>
+                <div>
+                  <label style="font-weight:600;">아이템</label>
+                  <div class="inline-grid">
+                    <input id="quest-reward-item-id" type="text" placeholder="item id" />
+                    <input id="quest-reward-item-count" type="number" min="1" placeholder="1" />
+                    <button class="secondary" id="quest-reward-item-add">추가</button>
+                  </div>
+                  <div class="builder-list" id="quest-reward-item-list"></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label>Tracking</label>
+              <div class="grid">
+                <label><input id="quest-track-auto-accept" type="checkbox" /> autoAccept</label>
+                <label><input id="quest-track-auto-complete" type="checkbox" /> autoComplete</label>
+                <label><input id="quest-track-fail-timeout" type="checkbox" /> failOnTimeout</label>
+                <div>
+                  <label for="quest-track-time-limit">timeLimitSeconds</label>
+                  <input id="quest-track-time-limit" type="number" min="0" placeholder="0" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label>Metadata</label>
+              <textarea id="quest-meta-notes" spellcheck="false" placeholder="비고/로어 등 (선택)"></textarea>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="secondary" id="quest-apply-fields">필드값을 JSON에 반영</button>
+          </div>
+
+          <div>
+            <label for="quest-json">퀘스트 JSON (자동 생성, 필요 시 편집)</label>
+            <textarea id="quest-json" spellcheck="false"></textarea>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="quest-save">저장/업데이트</button>
+            <button class="secondary" id="quest-sample">샘플 불러오기</button>
+            <button class="secondary" id="quest-reset">새로 작성</button>
+            <button class="secondary" id="quest-refresh">목록 새로고침</button>
+          </div>
+
+          <div class="status" id="quest-status"></div>
+
+          <div class="split-grid">
+            <div>
+              <div class="preview-card" id="quest-preview">
+                <h3>퀘스트 프리뷰</h3>
+                <div class="label">핵심 정보</div>
+                <div class="value" id="quest-preview-text">-</div>
+                <div class="label" style="margin-top: 0.5rem;">요구/반복 규칙</div>
+                <div class="value" id="quest-preview-meta">-</div>
+              </div>
+            </div>
+            <div>
+              <div class="preview-card" id="quest-objectives-preview">
+                <h3>목표/보상</h3>
+                <div class="label">objectives</div>
+                <div class="value" id="quest-preview-objectives">-</div>
+                <div class="label" style="margin-top: 0.5rem;">rewards</div>
+                <div class="value" id="quest-preview-rewards">-</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p class="muted">저장된 Quest 문서 목록</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>questId</th>
+                  <th>title</th>
+                  <th>category</th>
+                  <th>target</th>
+                  <th>levelMin</th>
+                  <th>tags</th>
+                  <th>작업</th>
+                </tr>
+              </thead>
+              <tbody id="quest-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+
+      <details class="card collapsible">
+        <summary>
+          <span>퀘스트 묶음/라인 관리</span>
+          <span class="pill">collection = questGroups</span>
+        </summary>
+        <div class="content">
+          <div class="grid">
+            <div>
+              <label for="group-id">groupId (문서 ID)</label>
+              <input id="group-id" type="text" placeholder="qg_main_ch1" />
+            </div>
+            <div>
+              <label for="group-title">title</label>
+              <input id="group-title" type="text" placeholder="메인 챕터 1" />
+            </div>
+            <div>
+              <label for="group-order-type">orderType</label>
+              <select id="group-order-type">
+                <option value="sequential">sequential</option>
+                <option value="parallel">parallel</option>
+                <option value="bucket">bucket</option>
+              </select>
+            </div>
+            <div>
+              <label for="group-max-concurrent">rules.maxConcurrent</label>
+              <input id="group-max-concurrent" type="number" min="0" placeholder="2" />
+            </div>
+            <div>
+              <label for="group-tags">metadata.tags (콤마)</label>
+              <input id="group-tags" type="text" placeholder="story, chapter1" />
+            </div>
+          </div>
+
+          <div class="grid">
+            <div>
+              <label>Quests (간편 입력)</label>
+              <div class="builder">
+                <div class="inline-grid">
+                  <input id="group-quest-id" type="text" placeholder="quest id" />
+                  <input id="group-quest-unlocks" type="text" placeholder="unlocksAfter (콤마)" />
+                  <label><input id="group-quest-required" type="checkbox" checked /> required</label>
+                  <button class="secondary" id="group-quest-add">추가</button>
+                </div>
+                <div class="builder-list" id="group-quest-list"></div>
+              </div>
+            </div>
+            <div>
+              <label>Rules</label>
+              <div class="grid">
+                <div>
+                  <label for="group-max-concurrent">rules.maxConcurrent</label>
+                  <input id="group-max-concurrent" type="number" min="0" placeholder="2" />
+                </div>
+                <label><input id="group-rule-repeatable" type="checkbox" /> repeatable</label>
+                <label><input id="group-rule-daily" type="checkbox" /> dailyReset</label>
+                <label><input id="group-rule-weekly" type="checkbox" /> weeklyReset</label>
+              </div>
+            </div>
+            <div>
+              <label>RewardsOnComplete</label>
+              <div class="builder">
+                <div class="inline-grid">
+                  <input id="group-reward-exp" type="number" min="0" placeholder="EXP" />
+                </div>
+                <div>
+                  <label style="font-weight:600;">통화</label>
+                  <div class="inline-grid">
+                    <input id="group-reward-currency-key" type="text" placeholder="gem" />
+                    <input id="group-reward-currency-amount" type="number" min="0" placeholder="5" />
+                    <button class="secondary" id="group-reward-currency-add">추가</button>
+                  </div>
+                  <div class="builder-list" id="group-reward-currency-list"></div>
+                </div>
+                <div>
+                  <label style="font-weight:600;">아이템</label>
+                  <div class="inline-grid">
+                    <input id="group-reward-item-id" type="text" placeholder="item id" />
+                    <input id="group-reward-item-count" type="number" min="1" placeholder="1" />
+                    <button class="secondary" id="group-reward-item-add">추가</button>
+                  </div>
+                  <div class="builder-list" id="group-reward-item-list"></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label for="group-metadata">metadata.tags (콤마)</label>
+              <input id="group-metadata" type="text" placeholder="main, chapter1" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="secondary" id="group-apply-fields">필드값을 JSON에 반영</button>
+          </div>
+
+          <div>
+            <label for="group-json">퀘스트 그룹 JSON (자동 생성, 필요 시 편집)</label>
+            <textarea id="group-json" spellcheck="false"></textarea>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="group-save">저장/업데이트</button>
+            <button class="secondary" id="group-sample">샘플 불러오기</button>
+            <button class="secondary" id="group-reset">새로 작성</button>
+            <button class="secondary" id="group-refresh">목록 새로고침</button>
+          </div>
+
+          <div class="status" id="group-status"></div>
+
+          <div class="split-grid">
+            <div>
+              <div class="preview-card">
+                <h3>그룹 프리뷰</h3>
+                <div class="label">핵심 정보</div>
+                <div class="value" id="group-preview-text">-</div>
+                <div class="label" style="margin-top: 0.5rem;">규칙</div>
+                <div class="value" id="group-preview-rules">-</div>
+              </div>
+            </div>
+            <div>
+              <div class="preview-card">
+                <h3>퀘스트 목록</h3>
+                <div class="value" id="group-preview-quests">-</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p class="muted">저장된 QuestGroup 문서 목록</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>groupId</th>
+                  <th>title</th>
+                  <th>orderType</th>
+                  <th>quest 수</th>
+                  <th>maxConcurrent</th>
+                  <th>tags</th>
+                  <th>작업</th>
+                </tr>
+              </thead>
+              <tbody id="group-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const SAMPLE_QUEST = {
+      id: "q_main_01",
+      title: "마을을 지키는 자",
+      category: "main",
+      questTargetId: "stage_forest_1",
+      summary: "숲 입구에서 몰려오는 적을 막아낸다.",
+      recommendedLevel: 7,
+      repeatability: { type: "once", cooldownMinutes: null },
+      requirements: {
+        levelMin: 5,
+        requiredQuestIds: ["q_tutorial_end"],
+        requiredItems: [{ itemId: "quest_guild_letter", quantity: 1 }],
+        requiredStats: { combatPowerMin: 1200 },
+      },
+      objectives: [
+        { type: "visit", targetId: "npc_guildmaster", count: 1, description: "길드장과 대화" },
+        { type: "clear_stage", targetId: "stage_forest_1", count: 1, description: "숲 입구 스테이지 클리어" },
+        { type: "collect", targetId: "item_wolf_pelt", count: 5, description: "늑대 가죽 수집" },
+      ],
+      rewards: {
+        experience: 600,
+        currencies: { gold: 250 },
+        items: [
+          { itemId: "potion_small", quantity: 3 },
+          { itemId: "quest_token_bandit", quantity: 1 },
+        ],
+        unlocks: ["waypoint_forest", "vendor_hunter"],
+      },
+      tracking: {
+        autoAccept: false,
+        autoComplete: false,
+        timeLimitSeconds: 0,
+        failOnTimeout: false,
+      },
+      metadata: {
+        tags: ["chapter1", "forest"],
+        updatedBy: "admin",
+      },
+    };
+
+    const SAMPLE_GROUP = {
+      groupId: "qg_main_ch1",
+      title: "메인 챕터 1 - 숲 입구",
+      orderType: "sequential",
+      quests: [
+        { questId: "q_main_01", required: true },
+        { questId: "q_main_02", required: true, unlocksAfter: ["q_main_01"] },
+        { questId: "q_side_hunter", required: false, unlocksAfter: ["q_main_01"] },
+      ],
+      rules: {
+        maxConcurrent: 2,
+        repeatable: false,
+        dailyReset: false,
+        weeklyReset: false,
+      },
+      rewardsOnComplete: {
+        experience: 200,
+        currencies: { gem: 10 },
+        items: [{ itemId: "potion_small", quantity: 1 }],
+      },
+      metadata: {
+        tags: ["main", "chapter1"],
+        displayOrder: 1,
+        updatedBy: "admin",
+      },
+    };
+
+    function toStringArray(value) {
+      return value
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    }
+
+    function safeParseJson(value, fallback = {}) {
+      if (!value || !value.trim()) return fallback;
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+
+    const questState = {
+      requiredItems: [],
+      objectives: [],
+      rewardCurrencies: [],
+      rewardItems: [],
+    };
+
+    const groupState = {
+      quests: [],
+      rewardCurrencies: [],
+      rewardItems: [],
+    };
+
+    class SpecManager {
+      constructor({ entityName, collectionName, idInputId, jsonInputId, statusId, tableBodyId, saveBtnId, resetBtnId, sampleBtnId, refreshBtnId, sampleData, extraFill, summaryExtractor, transformBeforeSave, sortComparator }) {
+        this.entityName = entityName;
+        this.collectionName = collectionName;
+        this.idInput = document.getElementById(idInputId);
+        this.jsonInput = document.getElementById(jsonInputId);
+        this.statusEl = document.getElementById(statusId);
+        this.tableBody = document.getElementById(tableBodyId);
+        this.sampleData = sampleData;
+        this.extraFill = extraFill;
+        this.summaryExtractor = summaryExtractor;
+        this.transformBeforeSave = transformBeforeSave;
+        this.sortComparator = sortComparator;
+
+        this.saveBtn = document.getElementById(saveBtnId);
+        this.resetBtn = document.getElementById(resetBtnId);
+        this.sampleBtn = document.getElementById(sampleBtnId);
+        this.refreshBtn = document.getElementById(refreshBtnId);
+
+        this.registerHandlers();
+      }
+
+      attachDb(db) {
+        this.db = db;
+        this.collectionRef = collection(db, this.collectionName);
+      }
+
+      registerHandlers() {
+        this.saveBtn?.addEventListener("click", () => this.handleSave());
+        this.resetBtn?.addEventListener("click", () => this.resetForm());
+        this.sampleBtn?.addEventListener("click", () => this.loadSample());
+        this.refreshBtn?.addEventListener("click", () => this.loadTable());
+      }
+
+      setStatus(message, { persist = false } = {}) {
+        this.statusEl.textContent = message;
+        if (!persist) {
+          clearTimeout(this._statusTimer);
+          this._statusTimer = setTimeout(() => {
+            this.statusEl.textContent = "";
+          }, 4500);
+        }
+      }
+
+      sanitizeId(rawId) {
+        return rawId.trim().replace(/[^A-Za-z0-9_.-]+/g, "_");
+      }
+
+      getDocIdOrWarn() {
+        const raw = this.idInput.value.trim();
+        if (!raw) {
+          this.setStatus(`${this.entityName} ID를 입력하세요.`);
+          return null;
+        }
+        const sanitized = this.sanitizeId(raw);
+        if (!sanitized) {
+          this.setStatus("유효한 ID를 입력하세요 (영문/숫자/._- 조합).");
+          return null;
+        }
+        if (sanitized !== raw) this.idInput.value = sanitized;
+        return sanitized;
+      }
+
+      parseJsonOrWarn() {
+        const raw = this.jsonInput.value.trim();
+        if (!raw) return {};
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("JSON 파싱에 실패했습니다. 포맷을 확인하세요.");
+          return null;
+        }
+      }
+
+      fillForm(id, data) {
+        this.idInput.value = id;
+        if (this.extraFill) this.extraFill({ data, manager: this });
+        this.jsonInput.value = JSON.stringify(data, null, 2);
+        this.setStatus(`'${id}' ${this.entityName}를 불러왔습니다.`);
+        updatePreviews();
+      }
+
+      resetForm() {
+        this.idInput.value = "";
+        if (this.extraFill) this.extraFill({ data: this.sampleData, manager: this });
+        this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
+        this.setStatus("새 문서를 작성하세요.");
+        updatePreviews();
+      }
+
+      loadSample() {
+        const key = this.sampleData?.id || this.sampleData?.questId || this.sampleData?.groupId || "";
+        this.fillForm(key, this.sampleData);
+        this.setStatus("샘플 데이터를 불러왔습니다.");
+      }
+
+      async handleSave() {
+        if (!this.db) return;
+        const docId = this.getDocIdOrWarn();
+        if (!docId) return;
+        const data = this.parseJsonOrWarn();
+        if (!data) return;
+        const transformed = this.transformBeforeSave ? this.transformBeforeSave({ data, manager: this, docId }) : data;
+        if (!transformed || typeof transformed !== "object") {
+          this.setStatus("저장할 데이터가 없습니다. 입력을 확인하세요.", { persist: true });
+          return;
+        }
+
+        this.toggleButtons(true);
+        try {
+          await setDoc(doc(this.collectionRef, docId), transformed, { merge: true });
+          this.setStatus(`'${docId}' ${this.entityName}를 저장했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("저장 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async handleDelete(docId, label) {
+        if (!this.db) return;
+        if (!confirm(`'${label}' ${this.entityName}를 삭제할까요?`)) return;
+        this.toggleButtons(true);
+        try {
+          await deleteDoc(doc(this.collectionRef, docId));
+          this.setStatus(`'${label}' ${this.entityName}를 삭제했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("삭제 중 오류가 발생했습니다. 네트워크/권한을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async loadTable() {
+        if (!this.db) return;
+        this.setStatus("목록을 불러오는 중...", { persist: true });
+        try {
+          const snapshot = await getDocs(this.collectionRef);
+          const rows = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            rows.push({ id: docSnap.id, data });
+          });
+          rows.sort(this.sortComparator || ((a, b) => a.id.localeCompare(b.id)));
+          this.renderTable(rows);
+          this.setStatus(`총 ${rows.length}개 ${this.entityName}를 불러왔습니다.`);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("목록을 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        }
+      }
+
+      renderTable(rows) {
+        this.tableBody.innerHTML = "";
+        if (!rows.length) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 7;
+          td.textContent = "저장된 문서가 없습니다.";
+          tr.appendChild(td);
+          this.tableBody.appendChild(tr);
+          return;
+        }
+
+        rows.forEach(({ id, data }) => {
+          const tr = document.createElement("tr");
+          const summary = this.summaryExtractor ? this.summaryExtractor(data) : {};
+          const cells = summary.cells ?? [];
+          [id, ...cells].forEach((value) => {
+            const td = document.createElement("td");
+            td.textContent = value ?? "-";
+            tr.appendChild(td);
+          });
+
+          const actionsTd = document.createElement("td");
+          const loadBtn = document.createElement("button");
+          loadBtn.className = "secondary";
+          loadBtn.textContent = "불러오기";
+          loadBtn.addEventListener("click", () => this.fillForm(id, data));
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "danger";
+          deleteBtn.textContent = "삭제";
+          deleteBtn.addEventListener("click", () => this.handleDelete(id, summary.label ?? id));
+
+          actionsTd.append(loadBtn, deleteBtn);
+          tr.appendChild(actionsTd);
+          this.tableBody.appendChild(tr);
+        });
+      }
+
+      toggleButtons(disabled) {
+        [this.saveBtn, this.resetBtn, this.sampleBtn, this.refreshBtn].forEach((btn) => {
+          if (btn) btn.disabled = disabled;
+        });
+      }
+    }
+
+    function fillQuestQuickFields(data) {
+      document.getElementById("quest-id").value = data.id ?? data.questId ?? "";
+      document.getElementById("quest-title").value = data.title ?? "";
+      document.getElementById("quest-category").value = data.category ?? "main";
+      document.getElementById("quest-target").value = data.questTargetId ?? "";
+      document.getElementById("quest-summary").value = data.summary ?? "";
+      document.getElementById("quest-level-min").value = data.requirements?.levelMin ?? "";
+      document.getElementById("quest-recommended-level").value = data.recommendedLevel ?? "";
+      document.getElementById("quest-repeat-type").value = data.repeatability?.type ?? "once";
+      document.getElementById("quest-tags").value = Array.isArray(data.metadata?.tags) ? data.metadata.tags.join(", ") : "";
+      questState.requiredItems = Array.isArray(data.requirements?.requiredItems) ? data.requirements.requiredItems : [];
+      questState.objectives = Array.isArray(data.objectives) ? data.objectives : [];
+      questState.rewardCurrencies = data.rewards?.currencies
+        ? Object.entries(data.rewards.currencies).map(([currencyKey, amount]) => ({ currencyKey, amount }))
+        : [];
+      questState.rewardItems = Array.isArray(data.rewards?.items) ? data.rewards.items : [];
+
+      document.getElementById("quest-required-quests").value = Array.isArray(data.requirements?.requiredQuestIds)
+        ? data.requirements.requiredQuestIds.join(", ")
+        : "";
+      document.getElementById("quest-required-combat").value = data.requirements?.requiredStats?.combatPowerMin ?? "";
+      document.getElementById("quest-meta-notes").value = data.metadata?.notes ?? "";
+
+      const unlocks = Array.isArray(data.rewards?.unlocks) ? data.rewards.unlocks.join(", ") : "";
+      document.getElementById("quest-reward-unlocks").value = unlocks;
+      document.getElementById("quest-reward-exp").value = data.rewards?.experience ?? "";
+
+      document.getElementById("quest-track-auto-accept").checked = Boolean(data.tracking?.autoAccept);
+      document.getElementById("quest-track-auto-complete").checked = Boolean(data.tracking?.autoComplete);
+      document.getElementById("quest-track-fail-timeout").checked = Boolean(data.tracking?.failOnTimeout);
+      document.getElementById("quest-track-time-limit").value = data.tracking?.timeLimitSeconds ?? "";
+
+      renderQuestBuilders();
+    }
+
+    function applyQuestFields(manager) {
+      const merged = mergeQuestInputs({ withStatus: manager });
+      if (!merged) return;
+      manager.jsonInput.value = JSON.stringify(merged, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillQuestQuickFields(merged);
+      updatePreviews();
+    }
+
+    function mergeQuestInputs({ withStatus } = {}) {
+      const base = safeParseJson(document.getElementById("quest-json").value, {});
+      if (base === null) {
+        withStatus?.setStatus("퀘스트 JSON 파싱에 실패했습니다.");
+        return null;
+      }
+      const merged = { ...(base || {}) };
+
+      const id = document.getElementById("quest-id").value.trim();
+      if (id) {
+        merged.id = id;
+        merged.questId = merged.questId ?? id;
+      }
+      const title = document.getElementById("quest-title").value.trim();
+      if (title) merged.title = title;
+      const category = document.getElementById("quest-category").value;
+      if (category) merged.category = category;
+      const questTargetId = document.getElementById("quest-target").value.trim();
+      if (questTargetId) merged.questTargetId = questTargetId;
+      const summary = document.getElementById("quest-summary").value.trim();
+      if (summary) merged.summary = summary;
+
+      const levelMinRaw = document.getElementById("quest-level-min").value.trim();
+      const requirements = {};
+      if (levelMinRaw !== "") {
+        const parsed = Number(levelMinRaw);
+        if (!Number.isNaN(parsed)) requirements.levelMin = parsed;
+      }
+      const prereq = toStringArray(document.getElementById("quest-required-quests").value);
+      if (prereq.length) requirements.requiredQuestIds = prereq;
+      if (questState.requiredItems.length) requirements.requiredItems = questState.requiredItems;
+      const combat = document.getElementById("quest-required-combat").value.trim();
+      if (combat !== "") {
+        const parsed = Number(combat);
+        if (!Number.isNaN(parsed)) requirements.requiredStats = { combatPowerMin: parsed };
+      }
+      if (Object.keys(requirements).length) merged.requirements = requirements;
+
+      const recommendedRaw = document.getElementById("quest-recommended-level").value.trim();
+      if (recommendedRaw !== "") {
+        const parsed = Number(recommendedRaw);
+        if (!Number.isNaN(parsed)) merged.recommendedLevel = parsed;
+      }
+
+      merged.repeatability = { ...(merged.repeatability || {}), type: document.getElementById("quest-repeat-type").value || merged.repeatability?.type || "once" };
+
+      merged.objectives = Array.isArray(questState.objectives) ? questState.objectives : [];
+
+      const rewards = {};
+      const exp = document.getElementById("quest-reward-exp").value.trim();
+      if (exp !== "") {
+        const parsed = Number(exp);
+        if (!Number.isNaN(parsed)) rewards.experience = parsed;
+      }
+      if (questState.rewardCurrencies.length) {
+        rewards.currencies = questState.rewardCurrencies.reduce((acc, { currencyKey, amount }) => {
+          acc[currencyKey] = amount;
+          return acc;
+        }, {});
+      }
+      if (questState.rewardItems.length) rewards.items = questState.rewardItems;
+      const unlocks = toStringArray(document.getElementById("quest-reward-unlocks").value);
+      if (unlocks.length) rewards.unlocks = unlocks;
+      merged.rewards = rewards;
+
+      const tracking = {};
+      tracking.autoAccept = document.getElementById("quest-track-auto-accept").checked;
+      tracking.autoComplete = document.getElementById("quest-track-auto-complete").checked;
+      tracking.failOnTimeout = document.getElementById("quest-track-fail-timeout").checked;
+      const timeLimit = document.getElementById("quest-track-time-limit").value.trim();
+      if (timeLimit !== "") {
+        const parsed = Number(timeLimit);
+        if (!Number.isNaN(parsed)) tracking.timeLimitSeconds = parsed;
+      }
+      merged.tracking = tracking;
+
+      const tags = toStringArray(document.getElementById("quest-tags").value);
+      const nextMetadata = {};
+      if (tags.length) {
+        nextMetadata.tags = tags;
+      }
+      const notes = document.getElementById("quest-meta-notes").value.trim();
+      if (notes) nextMetadata.notes = notes;
+      merged.metadata = nextMetadata;
+
+      return merged;
+    }
+
+    function buildQuestPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 필드를 채워주세요.";
+      const id = data.id ?? data.questId ?? "-";
+      const title = data.title ?? "제목 미정";
+      const category = data.category ?? "category?";
+      const target = data.questTargetId ?? "-";
+      const repeat = data.repeatability?.type ?? "once";
+      const levelMin = data.requirements?.levelMin;
+      const levelText = levelMin !== undefined ? `LV ≥ ${levelMin}` : "레벨 제한 없음";
+      const recommended = data.recommendedLevel ? ` / 권장 LV ${data.recommendedLevel}` : "";
+      return `[${id}] ${title} · ${category} · target=${target}\n${levelText}${recommended} · 반복=${repeat}`;
+    }
+
+    function buildQuestMetaPreview(data) {
+      if (!data) return "-";
+      const prereq = Array.isArray(data.requirements?.requiredQuestIds) && data.requirements.requiredQuestIds.length
+        ? `선행: ${data.requirements.requiredQuestIds.join(", ")}`
+        : "선행 없음";
+      const items = Array.isArray(data.requirements?.requiredItems) && data.requirements.requiredItems.length
+        ? `아이템: ${data.requirements.requiredItems.map((v) => `${v.itemId}x${v.quantity ?? 1}`).join(", ")}`
+        : "아이템 요구 없음";
+      const tags = Array.isArray(data.metadata?.tags) && data.metadata.tags.length ? `태그: ${data.metadata.tags.join(", ")}` : "태그 없음";
+      return `${prereq} | ${items} | ${tags}`;
+    }
+
+    function buildQuestObjectivesPreview(data) {
+      if (!data) return "-";
+      if (!Array.isArray(data.objectives) || data.objectives.length === 0) return "목표가 비어 있습니다.";
+      return data.objectives
+        .map((obj, idx) => {
+          const count = obj.count ?? 1;
+          const detail = obj.description ? ` (${obj.description})` : "";
+          return `${idx + 1}. ${obj.type ?? "unknown"} → ${obj.targetId ?? "-"} x${count}${detail}`;
+        })
+        .join(" / ");
+    }
+
+    function buildQuestRewardsPreview(data) {
+      if (!data) return "-";
+      const rewards = data.rewards || {};
+      const parts = [];
+      if (rewards.experience) parts.push(`EXP ${rewards.experience}`);
+      if (rewards.currencies) parts.push(`통화: ${Object.entries(rewards.currencies).map(([k, v]) => `${k}:${v}`).join(", ")}`);
+      if (Array.isArray(rewards.items) && rewards.items.length) parts.push(`아이템: ${rewards.items.map((i) => `${i.itemId}x${i.quantity ?? 1}`).join(", ")}`);
+      if (Array.isArray(rewards.unlocks) && rewards.unlocks.length) parts.push(`언락: ${rewards.unlocks.join(", ")}`);
+      return parts.length ? parts.join(" | ") : "보상이 비어 있습니다.";
+    }
+
+    function fillGroupQuickFields(data) {
+      document.getElementById("group-id").value = data.groupId ?? "";
+      document.getElementById("group-title").value = data.title ?? "";
+      document.getElementById("group-order-type").value = data.orderType ?? "sequential";
+      document.getElementById("group-max-concurrent").value = data.rules?.maxConcurrent ?? "";
+      document.getElementById("group-tags").value = Array.isArray(data.metadata?.tags) ? data.metadata.tags.join(", ") : "";
+      document.getElementById("group-quests").value = JSON.stringify(data.quests ?? [], null, 2);
+      document.getElementById("group-rules").value = JSON.stringify(data.rules ?? {}, null, 2);
+      document.getElementById("group-rewards").value = JSON.stringify(data.rewardsOnComplete ?? {}, null, 2);
+      document.getElementById("group-metadata").value = JSON.stringify(data.metadata ?? {}, null, 2);
+    }
+
+    function applyGroupFields(manager) {
+      const merged = mergeGroupInputs({ withStatus: manager });
+      if (!merged) return;
+      manager.jsonInput.value = JSON.stringify(merged, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillGroupQuickFields(merged);
+      updatePreviews();
+    }
+
+    function mergeGroupInputs({ withStatus } = {}) {
+      const base = safeParseJson(document.getElementById("group-json").value, {});
+      if (base === null) {
+        withStatus?.setStatus("그룹 JSON 파싱에 실패했습니다.");
+        return null;
+      }
+      const merged = { ...(base || {}) };
+
+      const id = document.getElementById("group-id").value.trim();
+      if (id) {
+        merged.groupId = id;
+      }
+      const title = document.getElementById("group-title").value.trim();
+      if (title) merged.title = title;
+      const orderType = document.getElementById("group-order-type").value;
+      if (orderType) merged.orderType = orderType;
+
+      const maxConcurrent = document.getElementById("group-max-concurrent").value.trim();
+      const rules = {};
+      if (maxConcurrent !== "") {
+        const parsed = Number(maxConcurrent);
+        if (!Number.isNaN(parsed)) rules.maxConcurrent = parsed;
+      }
+      rules.repeatable = document.getElementById("group-rule-repeatable").checked;
+      rules.dailyReset = document.getElementById("group-rule-daily").checked;
+      rules.weeklyReset = document.getElementById("group-rule-weekly").checked;
+      merged.rules = rules;
+
+      merged.quests = Array.isArray(groupState.quests) ? groupState.quests : [];
+
+      const rewards = {};
+      const exp = document.getElementById("group-reward-exp").value.trim();
+      if (exp !== "") {
+        const parsed = Number(exp);
+        if (!Number.isNaN(parsed)) rewards.experience = parsed;
+      }
+      if (groupState.rewardCurrencies.length) {
+        rewards.currencies = groupState.rewardCurrencies.reduce((acc, { currencyKey, amount }) => {
+          acc[currencyKey] = amount;
+          return acc;
+        }, {});
+      }
+      if (groupState.rewardItems.length) rewards.items = groupState.rewardItems;
+      merged.rewardsOnComplete = rewards;
+
+      const tags = toStringArray(document.getElementById("group-tags").value);
+      const metaInput = document.getElementById("group-metadata").value;
+      const nextMetadata = {};
+      if (tags.length) nextMetadata.tags = tags;
+      const metaFromInput = toStringArray(metaInput);
+      if (!nextMetadata.tags && metaFromInput.length) nextMetadata.tags = metaFromInput;
+      merged.metadata = nextMetadata;
+
+      return merged;
+    }
+
+    function buildGroupPreview(data) {
+      if (!data) return "유효한 JSON을 입력하거나 필드를 채워주세요.";
+      const id = data.groupId ?? "-";
+      const title = data.title ?? "제목 미정";
+      const order = data.orderType ?? "sequential";
+      const questCount = Array.isArray(data.quests) ? data.quests.length : 0;
+      const tags = Array.isArray(data.metadata?.tags) && data.metadata.tags.length ? `태그: ${data.metadata.tags.join(", ")}` : "태그 없음";
+      return `[${id}] ${title} · ${order} · quests=${questCount} | ${tags}`;
+    }
+
+    function buildGroupRulesPreview(data) {
+      if (!data) return "-";
+      const rules = data.rules || {};
+      const repeatable = rules.repeatable ? "반복 가능" : "단일";
+      const reset = rules.dailyReset ? "일일 초기화" : rules.weeklyReset ? "주간 초기화" : "초기화 없음";
+      const maxConcurrent = rules.maxConcurrent !== undefined ? `동시 진행 ${rules.maxConcurrent}` : "동시 진행 제한 없음";
+      return `${repeatable} | ${reset} | ${maxConcurrent}`;
+    }
+
+    function buildGroupQuestPreview(data) {
+      if (!data || !Array.isArray(data.quests) || data.quests.length === 0) return "퀘스트 목록이 비어 있습니다.";
+      return data.quests
+        .map((q, idx) => {
+          const required = q.required === false ? "(선택)" : "(필수)";
+          const unlock = Array.isArray(q.unlocksAfter) && q.unlocksAfter.length ? ` → unlocksAfter: ${q.unlocksAfter.join(", ")}` : "";
+          return `${idx + 1}. ${q.questId ?? "-"} ${required}${unlock}`;
+        })
+        .join(" / ");
+    }
+
+    function renderQuestBuilders() {
+      const reqList = document.getElementById("quest-req-item-list");
+      reqList.innerHTML = "";
+      if (questState.requiredItems.length === 0) {
+        reqList.textContent = "필수 아이템 없음";
+      } else {
+        questState.requiredItems.forEach((item, index) => {
+          const div = document.createElement("div");
+          div.className = "chip";
+          div.textContent = `${item.itemId} x${item.quantity ?? 1}`;
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.addEventListener("click", () => {
+            questState.requiredItems.splice(index, 1);
+            renderQuestBuilders();
+            updatePreviews();
+          });
+          div.appendChild(removeBtn);
+          reqList.appendChild(div);
+        });
+      }
+
+      const objList = document.getElementById("quest-obj-list");
+      objList.innerHTML = "";
+      if (questState.objectives.length === 0) {
+        objList.textContent = "목표가 없습니다.";
+      } else {
+        questState.objectives.forEach((obj, index) => {
+          const div = document.createElement("div");
+          div.className = "chip";
+          const desc = obj.description ? ` (${obj.description})` : "";
+          div.textContent = `${obj.type} → ${obj.targetId ?? "-"} x${obj.count ?? 1}${desc}`;
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.addEventListener("click", () => {
+            questState.objectives.splice(index, 1);
+            renderQuestBuilders();
+            updatePreviews();
+          });
+          div.appendChild(removeBtn);
+          objList.appendChild(div);
+        });
+      }
+
+      const rewardCurrencyList = document.getElementById("quest-reward-currency-list");
+      rewardCurrencyList.innerHTML = "";
+      if (questState.rewardCurrencies.length === 0) {
+        rewardCurrencyList.textContent = "통화 보상 없음";
+      } else {
+        questState.rewardCurrencies.forEach(({ currencyKey, amount }, index) => {
+          const div = document.createElement("div");
+          div.className = "chip";
+          div.textContent = `${currencyKey}: ${amount}`;
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.addEventListener("click", () => {
+            questState.rewardCurrencies.splice(index, 1);
+            renderQuestBuilders();
+            updatePreviews();
+          });
+          div.appendChild(removeBtn);
+          rewardCurrencyList.appendChild(div);
+        });
+      }
+
+      const rewardItemList = document.getElementById("quest-reward-item-list");
+      rewardItemList.innerHTML = "";
+      if (questState.rewardItems.length === 0) {
+        rewardItemList.textContent = "아이템 보상 없음";
+      } else {
+        questState.rewardItems.forEach((item, index) => {
+          const div = document.createElement("div");
+          div.className = "chip";
+          div.textContent = `${item.itemId} x${item.quantity ?? 1}`;
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.addEventListener("click", () => {
+            questState.rewardItems.splice(index, 1);
+            renderQuestBuilders();
+            updatePreviews();
+          });
+          div.appendChild(removeBtn);
+          rewardItemList.appendChild(div);
+        });
+      }
+    }
+
+    function renderGroupBuilders() {
+      const questList = document.getElementById("group-quest-list");
+      questList.innerHTML = "";
+      if (groupState.quests.length === 0) {
+        questList.textContent = "퀘스트가 없습니다.";
+      } else {
+        groupState.quests.forEach((q, index) => {
+          const div = document.createElement("div");
+          div.className = "chip";
+          const required = q.required === false ? "선택" : "필수";
+          const unlock = Array.isArray(q.unlocksAfter) && q.unlocksAfter.length ? ` → ${q.unlocksAfter.join(",")}` : "";
+          div.textContent = `${q.questId ?? "-"} (${required})${unlock}`;
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.addEventListener("click", () => {
+            groupState.quests.splice(index, 1);
+            renderGroupBuilders();
+            updatePreviews();
+          });
+          div.appendChild(removeBtn);
+          questList.appendChild(div);
+        });
+      }
+
+      const rewardCurrencyList = document.getElementById("group-reward-currency-list");
+      rewardCurrencyList.innerHTML = "";
+      if (groupState.rewardCurrencies.length === 0) {
+        rewardCurrencyList.textContent = "통화 보상 없음";
+      } else {
+        groupState.rewardCurrencies.forEach(({ currencyKey, amount }, index) => {
+          const div = document.createElement("div");
+          div.className = "chip";
+          div.textContent = `${currencyKey}: ${amount}`;
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.addEventListener("click", () => {
+            groupState.rewardCurrencies.splice(index, 1);
+            renderGroupBuilders();
+            updatePreviews();
+          });
+          div.appendChild(removeBtn);
+          rewardCurrencyList.appendChild(div);
+        });
+      }
+
+      const rewardItemList = document.getElementById("group-reward-item-list");
+      rewardItemList.innerHTML = "";
+      if (groupState.rewardItems.length === 0) {
+        rewardItemList.textContent = "아이템 보상 없음";
+      } else {
+        groupState.rewardItems.forEach((item, index) => {
+          const div = document.createElement("div");
+          div.className = "chip";
+          div.textContent = `${item.itemId} x${item.quantity ?? 1}`;
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.addEventListener("click", () => {
+            groupState.rewardItems.splice(index, 1);
+            renderGroupBuilders();
+            updatePreviews();
+          });
+          div.appendChild(removeBtn);
+          rewardItemList.appendChild(div);
+        });
+      }
+    }
+
+    function updatePreviews() {
+      const questData = mergeQuestInputs();
+      const groupData = mergeGroupInputs();
+
+      document.getElementById("quest-preview-text").textContent = questData
+        ? buildQuestPreview(questData)
+        : "JSON 파싱 오류: Quest";
+      document.getElementById("quest-preview-meta").textContent = questData
+        ? buildQuestMetaPreview(questData)
+        : "-";
+      document.getElementById("quest-preview-objectives").textContent = questData
+        ? buildQuestObjectivesPreview(questData)
+        : "-";
+      document.getElementById("quest-preview-rewards").textContent = questData
+        ? buildQuestRewardsPreview(questData)
+        : "-";
+
+      document.getElementById("group-preview-text").textContent = groupData
+        ? buildGroupPreview(groupData)
+        : "JSON 파싱 오류: Group";
+      document.getElementById("group-preview-rules").textContent = groupData
+        ? buildGroupRulesPreview(groupData)
+        : "-";
+      document.getElementById("group-preview-quests").textContent = groupData
+        ? buildGroupQuestPreview(groupData)
+        : "-";
+
+      // 최신 JSON을 자동 반영해 고급 사용자가 볼 수 있도록 합니다.
+      if (questData) {
+        document.getElementById("quest-json").value = JSON.stringify(questData, null, 2);
+      }
+      if (groupData) {
+        document.getElementById("group-json").value = JSON.stringify(groupData, null, 2);
+      }
+    }
+
+    function createManagers() {
+      const questManager = new SpecManager({
+        entityName: "퀘스트",
+        collectionName: "quests",
+        idInputId: "quest-id",
+        jsonInputId: "quest-json",
+        statusId: "quest-status",
+        tableBodyId: "quest-table",
+        saveBtnId: "quest-save",
+        resetBtnId: "quest-reset",
+        sampleBtnId: "quest-sample",
+        refreshBtnId: "quest-refresh",
+        sampleData: SAMPLE_QUEST,
+        extraFill: ({ data }) => fillQuestQuickFields(data),
+        summaryExtractor: (data) => ({
+          label: data.title ?? data.id ?? data.questId ?? "Quest",
+          cells: [
+            data.title ?? "-",
+            data.category ?? "-",
+            data.questTargetId ?? "-",
+            data.requirements?.levelMin ?? "-",
+            Array.isArray(data.metadata?.tags) ? data.metadata.tags.join(", ") : "-",
+          ],
+        }),
+        transformBeforeSave: ({ data, manager, docId }) => {
+          const merged = mergeQuestInputs({ withStatus: manager }) ?? data;
+          if (!merged) return null;
+          merged.id = merged.id ?? docId;
+          merged.questId = merged.questId ?? docId;
+          merged.repeatability = merged.repeatability ?? { type: "once" };
+          return merged;
+        },
+      });
+
+      const groupManager = new SpecManager({
+        entityName: "퀘스트 그룹",
+        collectionName: "questGroups",
+        idInputId: "group-id",
+        jsonInputId: "group-json",
+        statusId: "group-status",
+        tableBodyId: "group-table",
+        saveBtnId: "group-save",
+        resetBtnId: "group-reset",
+        sampleBtnId: "group-sample",
+        refreshBtnId: "group-refresh",
+        sampleData: SAMPLE_GROUP,
+        extraFill: ({ data }) => fillGroupQuickFields(data),
+        summaryExtractor: (data) => ({
+          label: data.title ?? data.groupId ?? "Group",
+          cells: [
+            data.title ?? "-",
+            data.orderType ?? "-",
+            Array.isArray(data.quests) ? data.quests.length : 0,
+            data.rules?.maxConcurrent ?? "-",
+            Array.isArray(data.metadata?.tags) ? data.metadata.tags.join(", ") : "-",
+          ],
+        }),
+        transformBeforeSave: ({ data, manager, docId }) => {
+          const merged = mergeGroupInputs({ withStatus: manager }) ?? data;
+          if (!merged) return null;
+          merged.groupId = merged.groupId ?? docId;
+          merged.orderType = merged.orderType ?? "sequential";
+          return merged;
+        },
+      });
+
+      return [questManager, groupManager];
+    }
+
+    function registerFieldButtons([questManager, groupManager]) {
+      document.getElementById("quest-apply-fields")?.addEventListener("click", () => applyQuestFields(questManager));
+      document.getElementById("group-apply-fields")?.addEventListener("click", () => applyGroupFields(groupManager));
+
+      document.getElementById("quest-req-item-add")?.addEventListener("click", () => {
+        const id = document.getElementById("quest-req-item-id").value.trim();
+        const qtyRaw = document.getElementById("quest-req-item-count").value.trim();
+        if (!id) return;
+        const qty = qtyRaw === "" ? 1 : Number(qtyRaw);
+        if (Number.isNaN(qty) || qty <= 0) return;
+        questState.requiredItems.push({ itemId: id, quantity: qty });
+        document.getElementById("quest-req-item-id").value = "";
+        document.getElementById("quest-req-item-count").value = "";
+        renderQuestBuilders();
+        updatePreviews();
+      });
+
+      document.getElementById("quest-obj-add")?.addEventListener("click", () => {
+        const type = document.getElementById("quest-obj-type").value || "unknown";
+        const targetId = document.getElementById("quest-obj-target").value.trim();
+        const countRaw = document.getElementById("quest-obj-count").value.trim();
+        const desc = document.getElementById("quest-obj-desc").value.trim();
+        const count = countRaw === "" ? 1 : Number(countRaw);
+        if (Number.isNaN(count) || count <= 0) return;
+        questState.objectives.push({ type, targetId, count, description: desc || undefined });
+        document.getElementById("quest-obj-target").value = "";
+        document.getElementById("quest-obj-count").value = "";
+        document.getElementById("quest-obj-desc").value = "";
+        renderQuestBuilders();
+        updatePreviews();
+      });
+
+      document.getElementById("quest-reward-currency-add")?.addEventListener("click", () => {
+        const currencyKey = document.getElementById("quest-reward-currency-key").value.trim();
+        const amountRaw = document.getElementById("quest-reward-currency-amount").value.trim();
+        if (!currencyKey) return;
+        const amount = amountRaw === "" ? 0 : Number(amountRaw);
+        if (Number.isNaN(amount)) return;
+        questState.rewardCurrencies.push({ currencyKey, amount });
+        document.getElementById("quest-reward-currency-key").value = "";
+        document.getElementById("quest-reward-currency-amount").value = "";
+        renderQuestBuilders();
+        updatePreviews();
+      });
+
+      document.getElementById("quest-reward-item-add")?.addEventListener("click", () => {
+        const itemId = document.getElementById("quest-reward-item-id").value.trim();
+        const qtyRaw = document.getElementById("quest-reward-item-count").value.trim();
+        if (!itemId) return;
+        const quantity = qtyRaw === "" ? 1 : Number(qtyRaw);
+        if (Number.isNaN(quantity) || quantity <= 0) return;
+        questState.rewardItems.push({ itemId, quantity });
+        document.getElementById("quest-reward-item-id").value = "";
+        document.getElementById("quest-reward-item-count").value = "";
+        renderQuestBuilders();
+        updatePreviews();
+      });
+
+      document.getElementById("group-quest-add")?.addEventListener("click", () => {
+        const questId = document.getElementById("group-quest-id").value.trim();
+        if (!questId) return;
+        const unlocksAfter = toStringArray(document.getElementById("group-quest-unlocks").value);
+        const required = document.getElementById("group-quest-required").checked;
+        groupState.quests.push({ questId, required, unlocksAfter: unlocksAfter.length ? unlocksAfter : undefined });
+        document.getElementById("group-quest-id").value = "";
+        document.getElementById("group-quest-unlocks").value = "";
+        document.getElementById("group-quest-required").checked = true;
+        renderGroupBuilders();
+        updatePreviews();
+      });
+
+      document.getElementById("group-reward-currency-add")?.addEventListener("click", () => {
+        const currencyKey = document.getElementById("group-reward-currency-key").value.trim();
+        const amountRaw = document.getElementById("group-reward-currency-amount").value.trim();
+        if (!currencyKey) return;
+        const amount = amountRaw === "" ? 0 : Number(amountRaw);
+        if (Number.isNaN(amount)) return;
+        groupState.rewardCurrencies.push({ currencyKey, amount });
+        document.getElementById("group-reward-currency-key").value = "";
+        document.getElementById("group-reward-currency-amount").value = "";
+        renderGroupBuilders();
+        updatePreviews();
+      });
+
+      document.getElementById("group-reward-item-add")?.addEventListener("click", () => {
+        const itemId = document.getElementById("group-reward-item-id").value.trim();
+        const qtyRaw = document.getElementById("group-reward-item-count").value.trim();
+        if (!itemId) return;
+        const quantity = qtyRaw === "" ? 1 : Number(qtyRaw);
+        if (Number.isNaN(quantity) || quantity <= 0) return;
+        groupState.rewardItems.push({ itemId, quantity });
+        document.getElementById("group-reward-item-id").value = "";
+        document.getElementById("group-reward-item-count").value = "";
+        renderGroupBuilders();
+        updatePreviews();
+      });
+    }
+
+    async function initialize() {
+      const managers = createManagers();
+      registerFieldButtons(managers);
+
+      const previewInputs = [
+        "quest-json",
+        "quest-id",
+        "quest-title",
+        "quest-category",
+        "quest-target",
+        "quest-summary",
+        "quest-level-min",
+        "quest-recommended-level",
+        "quest-repeat-type",
+        "quest-tags",
+        "quest-requirements",
+        "quest-objectives",
+        "quest-rewards",
+        "quest-tracking",
+        "quest-metadata",
+        "group-json",
+        "group-id",
+        "group-title",
+        "group-order-type",
+        "group-max-concurrent",
+        "group-tags",
+        "group-quests",
+        "group-rules",
+        "group-rewards",
+        "group-metadata",
+      ];
+      previewInputs.forEach((id) => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", updatePreviews);
+        el?.addEventListener("change", updatePreviews);
+      });
+
+      try {
+        const app = initializeApp(await getFirebaseConfig());
+        const db = getFirestore(app);
+        managers.forEach((manager) => {
+          manager.attachDb(db);
+          manager.resetForm();
+          manager.loadTable();
+        });
+        renderQuestBuilders();
+        renderGroupBuilders();
+        updatePreviews();
+      } catch (error) {
+        console.error(error);
+        managers.forEach((manager) => {
+          manager.setStatus("Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.", { persist: true });
+          manager.toggleButtons(true);
+        });
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
