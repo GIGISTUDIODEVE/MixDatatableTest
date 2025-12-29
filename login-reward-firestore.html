@@ -259,6 +259,26 @@
       flex-wrap: wrap;
       gap: 0.35rem;
     }
+
+    .reward-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.6rem;
+      padding: 0.75rem;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      background: #0b1220;
+    }
+
+    .reward-row textarea {
+      min-height: 120px;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
@@ -410,6 +430,18 @@
         <button class="secondary" id="btn-json-to-form">JSON → 폼 채우기</button>
         <button class="primary" id="btn-form-to-json">폼 → JSON 반영</button>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>일자별 보상 편집</h2>
+      <p class="muted">각 일자(day)별 label · isFinal · rewards 배열(예: <code>[{"kind":"currency","id":"gold","amount":5000}]</code>)을 수정하고 JSON에 반영하세요.</p>
+      <div class="actions">
+        <button class="secondary" id="btn-sync-rewards-from-json">JSON → 보상 행 채우기</button>
+        <button class="secondary" id="btn-add-reward-row">보상 행 추가</button>
+        <button class="primary" id="btn-sync-rewards-to-json">보상 행 → JSON 반영</button>
+      </div>
+      <div id="reward-rows" class="container" style="gap: 0.75rem;"></div>
+      <p class="muted">보상 행을 비우면 기존 JSON의 rewards를 유지합니다. 각 행의 rewards는 JSON 배열 형태만 허용합니다.</p>
     </div>
 
     <details class="card collapsible" open>
@@ -708,6 +740,10 @@
         this.applyPresetBtn = document.getElementById("apply-preset");
         this.jsonToFormBtn = document.getElementById("btn-json-to-form");
         this.formToJsonBtn = document.getElementById("btn-form-to-json");
+        this.syncRewardsFromJsonBtn = document.getElementById("btn-sync-rewards-from-json");
+        this.syncRewardsToJsonBtn = document.getElementById("btn-sync-rewards-to-json");
+        this.addRewardRowBtn = document.getElementById("btn-add-reward-row");
+        this.rewardRows = document.getElementById("reward-rows");
 
         this.fieldTitle = document.getElementById("field-title");
         this.fieldType = document.getElementById("field-type");
@@ -744,6 +780,9 @@
         this.presetSelect?.addEventListener("change", () => this.updatePresetSummary());
         this.jsonToFormBtn?.addEventListener("click", () => this.syncFormFromJson());
         this.formToJsonBtn?.addEventListener("click", () => this.applyFormToJson());
+        this.syncRewardsFromJsonBtn?.addEventListener("click", () => this.syncRewardRowsFromJson());
+        this.syncRewardsToJsonBtn?.addEventListener("click", () => this.applyRewardRowsToJson());
+        this.addRewardRowBtn?.addEventListener("click", () => this.addRewardRow());
       }
 
       populatePresets() {
@@ -797,6 +836,7 @@
         this.jsonInput.value = JSON.stringify(data ?? {}, null, 2);
         this.updatePreview();
         this.populateFormFields(data ?? {});
+        this.syncRewardRowsFromJson();
       }
 
       updatePreview() {
@@ -893,6 +933,121 @@
         this.jsonInput.value = JSON.stringify(next, null, 2);
         this.updatePreview();
         this.setStatus("폼 내용을 JSON에 반영했습니다.");
+      }
+
+      addRewardRow(data = {}) {
+        const row = document.createElement("div");
+        row.className = "reward-row";
+
+        const dayInput = document.createElement("input");
+        dayInput.type = "number";
+        dayInput.min = "1";
+        dayInput.placeholder = "day";
+        dayInput.value = data.day ?? "";
+
+        const labelInput = document.createElement("input");
+        labelInput.type = "text";
+        labelInput.placeholder = "label";
+        labelInput.value = data.label ?? "";
+
+        const finalWrapper = document.createElement("label");
+        finalWrapper.className = "inline";
+        const finalCheckbox = document.createElement("input");
+        finalCheckbox.type = "checkbox";
+        finalCheckbox.checked = Boolean(data.isFinal);
+        finalCheckbox.style.marginLeft = "0";
+        const finalText = document.createElement("span");
+        finalText.textContent = "isFinal";
+        finalWrapper.append(finalCheckbox, finalText);
+
+        const rewardsInput = document.createElement("textarea");
+        rewardsInput.placeholder = '[{"kind":"currency","id":"gold","amount":5000}]';
+        rewardsInput.value = Array.isArray(data.rewards) ? JSON.stringify(data.rewards, null, 2) : "";
+
+        const actions = document.createElement("div");
+        actions.className = "row-actions";
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "danger";
+        removeBtn.textContent = "삭제";
+        removeBtn.addEventListener("click", () => {
+          this.rewardRows.removeChild(row);
+        });
+        actions.appendChild(removeBtn);
+
+        row.append(
+          this.wrapWithLabel("day", dayInput),
+          this.wrapWithLabel("label", labelInput),
+          this.wrapWithLabel("isFinal", finalWrapper),
+          this.wrapWithLabel("rewards (JSON 배열)", rewardsInput),
+          actions,
+        );
+
+        this.rewardRows.appendChild(row);
+      }
+
+      wrapWithLabel(text, element) {
+        const container = document.createElement("div");
+        const label = document.createElement("label");
+        label.textContent = text;
+        container.append(label, element);
+        return container;
+      }
+
+      syncRewardRowsFromJson() {
+        const parsed = this.parseJsonOrWarn();
+        if (!parsed) return;
+        const rewards = Array.isArray(parsed.rewards) ? parsed.rewards : [];
+        this.rewardRows.innerHTML = "";
+        if (rewards.length === 0) {
+          this.addRewardRow();
+        } else {
+          rewards.forEach((entry) => this.addRewardRow(entry));
+        }
+        this.setStatus("JSON의 rewards를 보상 행에 반영했습니다.");
+      }
+
+      collectRewardRows() {
+        const rows = Array.from(this.rewardRows.querySelectorAll(".reward-row"));
+        const result = [];
+        for (const row of rows) {
+          const inputs = row.querySelectorAll("input, textarea");
+          const day = Number(inputs[0].value);
+          if (Number.isNaN(day) || day <= 0) continue;
+          const label = inputs[1].value.trim();
+          const isFinal = inputs[2].checked;
+          const rewardsJson = inputs[3].value.trim();
+
+          if (!rewardsJson) continue;
+          const parsedRewards = safeJsonParse(rewardsJson);
+          if (!Array.isArray(parsedRewards)) {
+            this.setStatus(`D${day} rewards가 배열 JSON이 아닙니다.`);
+            return null;
+          }
+
+          result.push({
+            day,
+            label: label || undefined,
+            isFinal: isFinal || undefined,
+            rewards: parsedRewards,
+          });
+        }
+        return result;
+      }
+
+      applyRewardRowsToJson() {
+        const parsed = this.parseJsonOrWarn() ?? {};
+        const collected = this.collectRewardRows();
+        if (!collected) return;
+        if (collected.length === 0) {
+          this.setStatus("보상 행이 비어 있어 rewards를 변경하지 않습니다.");
+          return;
+        }
+        const sorted = collected.sort((a, b) => a.day - b.day);
+        const next = { ...parsed, rewards: sorted };
+        this.jsonInput.value = JSON.stringify(next, null, 2);
+        this.updatePreview();
+        this.setStatus("보상 행 내용을 JSON에 반영했습니다.");
       }
 
       normalizeData(docId, data) {
