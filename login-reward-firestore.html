@@ -394,6 +394,7 @@
     <section class="card">
       <h2>저장될 JSON 미리보기</h2>
       <pre class="preview" id="preview-json">{ }</pre>
+      <div class="muted" id="payout-summary" style="margin-top: 0.5rem; line-height: 1.6;"></div>
     </section>
   </div>
 
@@ -431,6 +432,7 @@
       rewardRows: document.getElementById("reward-rows"),
       status: document.getElementById("status"),
       preview: document.getElementById("preview-json"),
+      payoutSummary: document.getElementById("payout-summary"),
       fillPreset: document.getElementById("fill-preset-btn"),
       resetForm: document.getElementById("reset-form-btn"),
       presetSelect: document.getElementById("preset-key"),
@@ -622,10 +624,46 @@
       };
     }
 
+    function aggregateRewardsForPayout(rewards) {
+      const bucket = new Map();
+      rewards.forEach((r) => {
+        const key = `${r.rewardType}::${r.rewardKey ?? ""}`;
+        if (!bucket.has(key)) {
+          bucket.set(key, { rewardType: r.rewardType, rewardKey: r.rewardKey ?? "", name: r.name ?? "", amount: 0 });
+        }
+        const current = bucket.get(key);
+        current.amount += clampNumber(r.amount ?? 0, 0);
+        if (!current.name && r.name) current.name = r.name;
+      });
+      return Array.from(bucket.values());
+    }
+
+    function renderPayoutSummary(payload) {
+      const { payoutMode = "daily", rewards = [], totalDays = rewards.length } = payload;
+      const lines = [];
+      lines.push(`지급 방식: ${payoutMode === "final" ? "마지막 일괄 지급" : "일차별 지급"}`);
+      lines.push(`보상 기간: ${totalDays}일`);
+      if (payoutMode === "final") {
+        const aggregated = aggregateRewardsForPayout(rewards);
+        if (aggregated.length === 0) {
+          lines.push("일괄 지급 보상이 없습니다.");
+        } else {
+          lines.push("일괄 지급 구성:");
+          aggregated.forEach((item) => {
+            lines.push(`- [${item.rewardType}] ${item.name || item.rewardKey || "이름 없음"} x ${item.amount}`);
+          });
+        }
+      } else {
+        lines.push("모든 일차별 보상이 그대로 지급됩니다.");
+      }
+      elements.payoutSummary.textContent = lines.join("\n");
+    }
+
     function updatePreview() {
       const data = readForm();
       const payload = buildPayload(data);
       elements.preview.textContent = JSON.stringify(payload, null, 2);
+      renderPayoutSummary(payload);
     }
 
     function buildPayload(formState) {
