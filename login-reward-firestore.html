@@ -117,6 +117,17 @@
       line-height: 1.45;
     }
 
+    .inline {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .inline label {
+      margin: 0;
+      font-weight: 600;
+    }
+
     .actions {
       display: flex;
       gap: 0.75rem;
@@ -321,6 +332,83 @@
       <h2>미리보기</h2>
       <div class="preview" id="reward-preview">
         <div class="muted">JSON을 입력하거나 프리셋을 불러오면 핵심 요약을 표시합니다.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>핵심 인자 빠른 편집</h2>
+      <p class="muted">JSON을 직접 편집하지 않아도 주요 필드를 수정할 수 있습니다. 버튼을 눌러 폼/JSON을 상호 반영하세요.</p>
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div>
+          <label for="field-title">제목</label>
+          <input id="field-title" type="text" placeholder="예: 7일 기본 출석" />
+        </div>
+        <div>
+          <label for="field-type">타입</label>
+          <select id="field-type">
+            <option value="">(유지)</option>
+            <option value="daily">daily</option>
+            <option value="returning">returning</option>
+            <option value="event">event</option>
+          </select>
+        </div>
+        <div>
+          <label for="field-category">카테고리</label>
+          <input id="field-category" type="text" placeholder="예: basic / growth / special" />
+        </div>
+        <div>
+          <label for="field-cycle">cycleDays</label>
+          <input id="field-cycle" type="number" min="1" placeholder="예: 7" />
+        </div>
+        <div>
+          <label for="field-timezone">timezone</label>
+          <input id="field-timezone" type="text" placeholder="예: Asia/Seoul" />
+        </div>
+        <div>
+          <label for="field-tags">tags (쉼표 구분)</label>
+          <input id="field-tags" type="text" placeholder="예: login,daily,basic" />
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        <div>
+          <label for="field-reset-type">resetRule.type</label>
+          <select id="field-reset-type">
+            <option value="">(유지)</option>
+            <option value="loop">loop</option>
+            <option value="once">once</option>
+            <option value="event">event</option>
+          </select>
+          <p class="muted">loop: resetInterval(weekly/monthly), once: expiresAfterDays, event: endsAt 사용</p>
+        </div>
+        <div>
+          <label for="field-reset-interval">resetRule.resetInterval / expiresAfterDays</label>
+          <input id="field-reset-interval" type="text" placeholder="예: weekly 또는 21" />
+        </div>
+        <div>
+          <label for="field-reset-ends">resetRule.endsAt (ISO)</label>
+          <input id="field-reset-ends" type="text" placeholder="예: 2025-12-31T23:59:59Z" />
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        <div class="inline">
+          <input id="field-grant-daily" type="checkbox" />
+          <label for="field-grant-daily">grantRules.rewardEachDay</label>
+        </div>
+        <div class="inline">
+          <input id="field-grant-final" type="checkbox" />
+          <label for="field-grant-final">grantRules.grantLastDayBonus</label>
+        </div>
+        <div class="inline">
+          <input id="field-returning-only" type="checkbox" />
+          <label for="field-returning-only">grantRules.isReturningOnly</label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="secondary" id="btn-json-to-form">JSON → 폼 채우기</button>
+        <button class="primary" id="btn-form-to-json">폼 → JSON 반영</button>
       </div>
     </div>
 
@@ -618,6 +706,21 @@
         this.sampleBtn = document.getElementById("load-sample");
         this.reloadBtn = document.getElementById("reload-table");
         this.applyPresetBtn = document.getElementById("apply-preset");
+        this.jsonToFormBtn = document.getElementById("btn-json-to-form");
+        this.formToJsonBtn = document.getElementById("btn-form-to-json");
+
+        this.fieldTitle = document.getElementById("field-title");
+        this.fieldType = document.getElementById("field-type");
+        this.fieldCategory = document.getElementById("field-category");
+        this.fieldCycle = document.getElementById("field-cycle");
+        this.fieldTimezone = document.getElementById("field-timezone");
+        this.fieldTags = document.getElementById("field-tags");
+        this.fieldResetType = document.getElementById("field-reset-type");
+        this.fieldResetInterval = document.getElementById("field-reset-interval");
+        this.fieldResetEnds = document.getElementById("field-reset-ends");
+        this.fieldGrantDaily = document.getElementById("field-grant-daily");
+        this.fieldGrantFinal = document.getElementById("field-grant-final");
+        this.fieldReturningOnly = document.getElementById("field-returning-only");
 
         this.collectionName = "loginRewards";
         this.registerHandlers();
@@ -639,6 +742,8 @@
         this.applyPresetBtn?.addEventListener("click", () => this.loadPresetBySelect());
         this.jsonInput?.addEventListener("input", () => this.updatePreview());
         this.presetSelect?.addEventListener("change", () => this.updatePresetSummary());
+        this.jsonToFormBtn?.addEventListener("click", () => this.syncFormFromJson());
+        this.formToJsonBtn?.addEventListener("click", () => this.applyFormToJson());
       }
 
       populatePresets() {
@@ -691,6 +796,7 @@
         this.idInput.value = id ?? data?.rewardId ?? "";
         this.jsonInput.value = JSON.stringify(data ?? {}, null, 2);
         this.updatePreview();
+        this.populateFormFields(data ?? {});
       }
 
       updatePreview() {
@@ -705,6 +811,88 @@
           return null;
         }
         return parsed;
+      }
+
+      populateFormFields(data) {
+        this.fieldTitle.value = data.title ?? "";
+        this.fieldType.value = data.type ?? "";
+        this.fieldCategory.value = data.category ?? "";
+        this.fieldCycle.value = data.cycleDays ?? "";
+        const timezone = data.grantRules?.timezone ?? data.timezone ?? "";
+        this.fieldTimezone.value = timezone;
+        this.fieldTags.value = Array.isArray(data.tags) ? data.tags.join(",") : "";
+
+        const resetRule = data.resetRule ?? {};
+        this.fieldResetType.value = resetRule.type ?? "";
+        this.fieldResetInterval.value = resetRule.resetInterval ?? resetRule.expiresAfterDays ?? "";
+        this.fieldResetEnds.value = resetRule.endsAt ?? "";
+
+        const grantRules = data.grantRules ?? {};
+        this.fieldGrantDaily.checked = Boolean(grantRules.rewardEachDay);
+        this.fieldGrantFinal.checked = Boolean(grantRules.grantLastDayBonus);
+        this.fieldReturningOnly.checked = Boolean(grantRules.isReturningOnly);
+      }
+
+      syncFormFromJson() {
+        const parsed = this.parseJsonOrWarn();
+        if (!parsed) return;
+        this.populateFormFields(parsed);
+        this.setStatus("JSON 내용을 폼에 반영했습니다.");
+      }
+
+      applyFormToJson() {
+        const parsed = this.parseJsonOrWarn() ?? {};
+
+        const next = { ...parsed };
+        if (this.fieldTitle.value) next.title = this.fieldTitle.value;
+        if (this.fieldType.value) next.type = this.fieldType.value;
+        if (this.fieldCategory.value) next.category = this.fieldCategory.value;
+
+        const cycle = Number(this.fieldCycle.value);
+        if (!Number.isNaN(cycle) && cycle > 0) next.cycleDays = cycle;
+
+        const tags = this.fieldTags.value
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+        if (tags.length) next.tags = tags;
+
+        const timezone = this.fieldTimezone.value.trim();
+        const grant = { ...(next.grantRules ?? {}) };
+        if (timezone) grant.timezone = timezone;
+        grant.rewardEachDay = this.fieldGrantDaily.checked;
+        grant.grantLastDayBonus = this.fieldGrantFinal.checked;
+        if (this.fieldReturningOnly.checked) {
+          grant.isReturningOnly = true;
+        } else if ("isReturningOnly" in grant) {
+          delete grant.isReturningOnly;
+        }
+        next.grantRules = grant;
+
+        const resetType = this.fieldResetType.value;
+        const resetInterval = this.fieldResetInterval.value.trim();
+        const resetEnds = this.fieldResetEnds.value.trim();
+        const resetRule = { ...(next.resetRule ?? {}) };
+        if (resetType) resetRule.type = resetType;
+        if (resetType === "loop" && resetInterval) {
+          resetRule.resetInterval = resetInterval;
+          delete resetRule.expiresAfterDays;
+          delete resetRule.endsAt;
+        } else if (resetType === "once" && resetInterval) {
+          const expires = Number(resetInterval);
+          resetRule.expiresAfterDays = Number.isNaN(expires) ? resetInterval : expires;
+          delete resetRule.resetInterval;
+          delete resetRule.endsAt;
+        } else if (resetType === "event") {
+          if (resetEnds) resetRule.endsAt = resetEnds;
+          delete resetRule.resetInterval;
+          delete resetRule.expiresAfterDays;
+        }
+        next.resetRule = resetRule;
+
+        this.jsonInput.value = JSON.stringify(next, null, 2);
+        this.updatePreview();
+        this.setStatus("폼 내용을 JSON에 반영했습니다.");
       }
 
       normalizeData(docId, data) {
