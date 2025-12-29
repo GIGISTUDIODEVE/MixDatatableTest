@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>접속 보상 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      min-height: 240px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .inline {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .inline label {
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .muted {
+      color: #94a3b8;
+      margin: 0.25rem 0;
+    }
+
+    code {
+      background: #0b1220;
+      padding: 0.15rem 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #1f2937;
+    }
+
+    details.collapsible summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+    }
+
+    details.collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.collapsible .content {
+      padding: 1rem 1.25rem;
+      background: #0b1220;
+      border-radius: 0 0 12px 12px;
+      border-top: 1px solid #1f2937;
+    }
+
+    .preview {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .reward-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.6rem;
+      padding: 0.75rem;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      background: #0b1220;
+    }
+
+    .reward-row textarea {
+      min-height: 120px;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">LiveOps 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link" href="effect-system-firestore.html">EffectSpec 관리</a>
+      <a class="nav-link" href="monster-firestore.html">몬스터 관리</a>
+      <a class="nav-link" href="economy-firestore.html">재화/티어 관리</a>
+      <a class="nav-link" href="item-firestore.html">아이템 관리</a>
+      <a class="nav-link" href="quest-firestore.html">퀘스트 관리</a>
+      <a class="nav-link active" href="login-reward-firestore.html">접속 보상 관리</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="card">
+      <h1>접속 보상 CRUD (Firestore)</h1>
+      <p class="muted">일자별 지급 · 마지막 일자 보너스 · 특별 보상(복귀/이벤트)까지 아우르는 접속 보상 스키마를 Firestore <code>loginRewards</code> 컬렉션으로 관리합니다.</p>
+      <div class="pill">핵심 필드: rewardId · title · type(daily/returning/event) · cycleDays · rewards[{day,label,rewards[],isFinal}] · resetRule · tags</div>
+      <p class="muted" style="margin-top: 0.4rem;">코어 스키마는 안정성을 위해 JSON 유효성 검사와 ID 정규화를 거쳐 저장됩니다. 샘플 프리셋 5개가 제공됩니다.</p>
+    </header>
+
+    <div class="card">
+      <h2>프리셋 불러오기</h2>
+      <div class="grid">
+        <div>
+          <label for="preset-select">샘플 프리셋</label>
+          <select id="preset-select"></select>
+          <p class="muted">기본/성장형/복귀자/월간/이벤트 5종 프리셋으로 빠르게 구조를 채우세요.</p>
+        </div>
+        <div>
+          <label>선택된 프리셋 특징</label>
+          <div class="status" id="preset-summary">-</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="apply-preset">프리셋 적용</button>
+        <button class="secondary" id="reset-form">새 문서로 초기화</button>
+        <button class="secondary" id="reload-table">목록 새로고침</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>접속 보상 작성</h2>
+      <div class="grid">
+        <div>
+          <label for="reward-id">rewardId (문서 ID)</label>
+          <input id="reward-id" type="text" placeholder="예: login-daily-7d-basic" />
+          <p class="muted">영문/숫자/-/_ 만 허용. 비워두면 프리셋/JSON의 <code>rewardId</code>를 사용합니다.</p>
+        </div>
+        <div>
+          <label for="reward-json">접속 보상 JSON</label>
+          <textarea id="reward-json" spellcheck="false"></textarea>
+          <p class="muted">필수: <code>title</code>, <code>type</code>, <code>cycleDays</code>, <code>rewards[]</code>. <code>rewards[].isFinal</code> 또는 <code>specialRewards</code>로 마지막/특별 보상을 지정하세요.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="save-reward">Firestore에 저장</button>
+        <button class="secondary" id="load-sample">프리셋 1번 다시 불러오기</button>
+        <button class="danger" id="delete-reward">문서 삭제</button>
+      </div>
+      <div class="status" id="reward-status"></div>
+    </div>
+
+    <div class="card">
+      <h2>미리보기</h2>
+      <div class="preview" id="reward-preview">
+        <div class="muted">JSON을 입력하거나 프리셋을 불러오면 핵심 요약을 표시합니다.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>핵심 인자 빠른 편집</h2>
+      <p class="muted">JSON을 직접 편집하지 않아도 주요 필드를 수정할 수 있습니다. 버튼을 눌러 폼/JSON을 상호 반영하세요.</p>
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div>
+          <label for="field-title">제목</label>
+          <input id="field-title" type="text" placeholder="예: 7일 기본 출석" />
+        </div>
+        <div>
+          <label for="field-type">타입</label>
+          <select id="field-type">
+            <option value="">(유지)</option>
+            <option value="daily">daily</option>
+            <option value="returning">returning</option>
+            <option value="event">event</option>
+          </select>
+        </div>
+        <div>
+          <label for="field-category">카테고리</label>
+          <input id="field-category" type="text" placeholder="예: basic / growth / special" />
+        </div>
+        <div>
+          <label for="field-cycle">cycleDays</label>
+          <input id="field-cycle" type="number" min="1" placeholder="예: 7" />
+        </div>
+        <div>
+          <label for="field-timezone">timezone</label>
+          <input id="field-timezone" type="text" placeholder="예: Asia/Seoul" />
+        </div>
+        <div>
+          <label for="field-tags">tags (쉼표 구분)</label>
+          <input id="field-tags" type="text" placeholder="예: login,daily,basic" />
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        <div>
+          <label for="field-reset-type">resetRule.type</label>
+          <select id="field-reset-type">
+            <option value="">(유지)</option>
+            <option value="loop">loop</option>
+            <option value="once">once</option>
+            <option value="event">event</option>
+          </select>
+          <p class="muted">loop: resetInterval(weekly/monthly), once: expiresAfterDays, event: endsAt 사용</p>
+        </div>
+        <div>
+          <label for="field-reset-interval">resetRule.resetInterval / expiresAfterDays</label>
+          <input id="field-reset-interval" type="text" placeholder="예: weekly 또는 21" />
+        </div>
+        <div>
+          <label for="field-reset-ends">resetRule.endsAt (ISO)</label>
+          <input id="field-reset-ends" type="text" placeholder="예: 2025-12-31T23:59:59Z" />
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        <div class="inline">
+          <input id="field-grant-daily" type="checkbox" />
+          <label for="field-grant-daily">grantRules.rewardEachDay</label>
+        </div>
+        <div class="inline">
+          <input id="field-grant-final" type="checkbox" />
+          <label for="field-grant-final">grantRules.grantLastDayBonus</label>
+        </div>
+        <div class="inline">
+          <input id="field-returning-only" type="checkbox" />
+          <label for="field-returning-only">grantRules.isReturningOnly</label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="secondary" id="btn-json-to-form">JSON → 폼 채우기</button>
+        <button class="primary" id="btn-form-to-json">폼 → JSON 반영</button>
+      </div>
+    </div>
+
+    <details class="card collapsible" open>
+      <summary>
+        <span>일자별 보상 편집 (접기/펼치기)</span>
+        <span class="muted" style="font-weight:400;">데일리/복귀/이벤트 보상 행을 빠르게 수정</span>
+      </summary>
+      <div class="content">
+        <p class="muted">각 일자(day)별 label · isFinal · rewards 배열(예: <code>[{"kind":"currency","id":"gold","amount":5000}]</code>)을 수정하고 JSON에 반영하세요.</p>
+        <div class="actions">
+          <button class="secondary" id="btn-sync-rewards-from-json">JSON → 보상 행 채우기</button>
+          <button class="secondary" id="btn-add-reward-row">보상 행 추가</button>
+          <button class="primary" id="btn-sync-rewards-to-json">보상 행 → JSON 반영</button>
+        </div>
+        <div id="reward-rows" class="container" style="gap: 0.75rem;"></div>
+        <p class="muted">보상 행을 비우면 기존 JSON의 rewards를 유지합니다. 각 행의 rewards는 JSON 배열 형태만 허용합니다. day를 비우면 해당 행은 무시됩니다.</p>
+      </div>
+    </details>
+
+    <details class="card collapsible" open>
+      <summary>스키마 가이드 · 일자별/마지막 보상 설계 팁</summary>
+      <div class="content">
+        <ul style="margin: 0.35rem 0 0.75rem 1rem; line-height: 1.5;">
+          <li><strong>일자별 보상</strong>: <code>rewards</code> 배열에 <code>{ day, label, rewards[] }</code>를 오름차순으로 정의합니다. <code>rewards[].isFinal</code> 로 마지막 일자 보너스를 표시합니다.</li>
+          <li><strong>특별/복귀/이벤트 보상</strong>: <code>type</code>을 <code>returning</code> 또는 <code>event</code>로 지정하고, <code>specialRewards</code>에 조건형 보상을 넣습니다. 예) <code>{ trigger: "streak", streakDays: 3, rewards: [...] }</code></li>
+          <li><strong>리셋 규칙</strong>: <code>resetRule</code>에 <code>{ type: "loop", resetInterval: "weekly", allowCatchup: true }</code> 형식으로 설정해 반복/보상 만료를 제어합니다.</li>
+          <li><strong>시간대</strong>: <code>timezone</code>을 지정하여 “하루” 기준을 명확히 합니다. (예: <code>Asia/Seoul</code>)</li>
+        </ul>
+        <pre style="background:#0b1220; border:1px solid #1f2937; border-radius:10px; padding:0.75rem; overflow:auto; margin:0;">
+{
+  "rewardId": "login-daily-7d-basic",
+  "title": "7일 기본 출석",
+  "type": "daily",
+  "cycleDays": 7,
+  "resetRule": { "type": "loop", "resetInterval": "weekly", "allowCatchup": true },
+  "rewards": [
+    { "day": 1, "label": "골드/포션", "rewards": [{ "kind": "currency", "id": "gold", "amount": 5000 }] },
+    { "day": 7, "label": "마지막 보상", "isFinal": true, "rewards": [{ "kind": "chest", "id": "rare", "amount": 1 }] }
+  ],
+  "specialRewards": [
+    { "trigger": "streak", "streakDays": 3, "rewards": [{ "kind": "buff", "id": "exp-boost-1h", "amount": 1 }] }
+  ],
+  "tags": ["login", "daily"],
+  "metadata": { "updatedBy": "liveops" }
+}</pre>
+      </div>
+    </details>
+
+    <div class="card">
+      <h2>저장된 접속 보상</h2>
+      <p class="muted">Firestore <code>loginRewards</code> 문서를 불러와 일자 수/마지막 보상 여부/태그 요약을 표시합니다.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>rewardId</th>
+            <th>제목</th>
+            <th>타입</th>
+            <th>일수</th>
+            <th>태그</th>
+            <th>작업</th>
+          </tr>
+        </thead>
+        <tbody id="reward-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const PRESETS = [
+      {
+        id: "login-daily-7d-basic",
+        label: "① 7일 기본 출석",
+        summary: "주간 루프 · 마지막날 희귀 상자 · 태그: daily/basic",
+        data: {
+          rewardId: "login-daily-7d-basic",
+          title: "7일 기본 출석",
+          description: "누적 7일 출석. 1~6일 일반 보상, 7일차 강화 보상.",
+          type: "daily",
+          category: "standard",
+          cycleDays: 7,
+          resetRule: { type: "loop", resetInterval: "weekly", allowCatchup: true, graceDays: 1 },
+          grantRules: { rewardEachDay: true, grantLastDayBonus: true, timezone: "Asia/Seoul" },
+          rewards: [
+            { day: 1, label: "골드/포션", rewards: [{ kind: "currency", id: "gold", amount: 5000 }, { kind: "item", id: "potion-small", amount: 5 }] },
+            { day: 2, label: "장비 재료", rewards: [{ kind: "material", id: "weapon-mat", amount: 8 }] },
+            { day: 3, label: "파편", rewards: [{ kind: "shard", id: "hero-fragment", amount: 20 }] },
+            { day: 4, label: "스태미나", rewards: [{ kind: "energy", id: "stamina", amount: 60 }] },
+            { day: 5, label: "주화", rewards: [{ kind: "currency", id: "silver", amount: 15000 }] },
+            { day: 6, label: "가챠 티켓", rewards: [{ kind: "ticket", id: "gacha-normal", amount: 3 }] },
+            { day: 7, label: "희귀 상자 + 젬", isFinal: true, rewards: [{ kind: "chest", id: "rare-login", amount: 1 }, { kind: "currency", id: "gem", amount: 300 }] },
+          ],
+          tags: ["login", "daily", "basic"],
+          metadata: { version: 1, updatedBy: "system", note: "weekly loop" },
+        },
+      },
+      {
+        id: "login-14d-growth-path",
+        label: "② 14일 성장 루트",
+        summary: "2주 성장/강화 동선 · 7/14일차 강화",
+        data: {
+          rewardId: "login-14d-growth-path",
+          title: "14일 성장 루트",
+          description: "신규/복귀 혼합형. 7일차/14일차에 장비와 젬을 지급.",
+          type: "daily",
+          category: "growth",
+          cycleDays: 14,
+          resetRule: { type: "once", expiresAfterDays: 21, allowCatchup: true },
+          grantRules: { rewardEachDay: true, grantLastDayBonus: true },
+          rewards: [
+            { day: 1, label: "기본 자원", rewards: [{ kind: "currency", id: "gold", amount: 8000 }, { kind: "energy", id: "stamina", amount: 80 }] },
+            { day: 2, label: "무기 재료", rewards: [{ kind: "material", id: "weapon-mat", amount: 20 }] },
+            { day: 3, label: "방어구 재료", rewards: [{ kind: "material", id: "armor-mat", amount: 20 }] },
+            { day: 4, label: "능력치 버프", rewards: [{ kind: "buff", id: "atk-boost-1d", amount: 1 }] },
+            { day: 5, label: "가챠 티켓", rewards: [{ kind: "ticket", id: "gacha-normal", amount: 5 }] },
+            { day: 6, label: "영웅 파편", rewards: [{ kind: "shard", id: "hero-fragment", amount: 40 }] },
+            { day: 7, label: "무기 지급", rewards: [{ kind: "item", id: "epic-weapon", amount: 1 }], isFinal: true },
+            { day: 8, label: "골드/스태미나", rewards: [{ kind: "currency", id: "gold", amount: 12000 }, { kind: "energy", id: "stamina", amount: 120 }] },
+            { day: 9, label: "룬/스톤", rewards: [{ kind: "material", id: "rune-stone", amount: 12 }] },
+            { day: 10, label: "레벨 부스터", rewards: [{ kind: "consumable", id: "exp-boost-1d", amount: 1 }] },
+            { day: 11, label: "티켓", rewards: [{ kind: "ticket", id: "gacha-rare", amount: 2 }] },
+            { day: 12, label: "강화 재화", rewards: [{ kind: "currency", id: "enhance-dust", amount: 500 }] },
+            { day: 13, label: "젬", rewards: [{ kind: "currency", id: "gem", amount: 300 }] },
+            { day: 14, label: "14일차 마스터 보상", rewards: [{ kind: "item", id: "legendary-selector", amount: 1 }, { kind: "currency", id: "gem", amount: 700 }], isFinal: true },
+          ],
+          specialRewards: [
+            { trigger: "streak", streakDays: 5, rewards: [{ kind: "buff", id: "exp-boost-3h", amount: 1 }] },
+          ],
+          tags: ["login", "growth", "two-week"],
+          metadata: { updatedBy: "liveops", segment: "starter" },
+        },
+      },
+      {
+        id: "login-returning-boost",
+        label: "③ 복귀자 7일 부스터",
+        summary: "복귀 태그 · 경험치/재화 배율 보너스 포함",
+        data: {
+          rewardId: "login-returning-boost",
+          title: "복귀자 7일 부스터",
+          description: "30일 미접속 복귀자를 위한 강화 패키지. 버프/재화/영웅 지급.",
+          type: "returning",
+          category: "special",
+          cycleDays: 7,
+          resetRule: { type: "once", expiresAfterDays: 14, allowCatchup: false },
+          grantRules: { rewardEachDay: true, grantLastDayBonus: true, isReturningOnly: true },
+          rewards: [
+            { day: 1, label: "복귀 웰컴 박스", rewards: [{ kind: "bundle", id: "return-box", amount: 1 }, { kind: "currency", id: "gem", amount: 500 }] },
+            { day: 2, label: "경험치 부스트", rewards: [{ kind: "buff", id: "exp-boost-1d", amount: 1 }] },
+            { day: 3, label: "강화 재료", rewards: [{ kind: "material", id: "enhance-stone", amount: 30 }] },
+            { day: 4, label: "스태미나", rewards: [{ kind: "energy", id: "stamina", amount: 150 }] },
+            { day: 5, label: "젬/티켓", rewards: [{ kind: "currency", id: "gem", amount: 700 }, { kind: "ticket", id: "gacha-rare", amount: 2 }] },
+            { day: 6, label: "에픽 장비 선택 상자", rewards: [{ kind: "item", id: "epic-selector", amount: 1 }] },
+            { day: 7, label: "복귀 마스터 보상", isFinal: true, rewards: [{ kind: "item", id: "legendary-weapon", amount: 1 }, { kind: "currency", id: "gem", amount: 1000 }] },
+          ],
+          specialRewards: [
+            { trigger: "boost", multiplier: { exp: 1.5, gold: 1.5 }, durationHours: 48, note: "복귀 48시간 배율" },
+          ],
+          tags: ["login", "returning", "booster"],
+          metadata: { updatedBy: "liveops", segment: "returning-30d" },
+        },
+      },
+      {
+        id: "login-monthly-30d",
+        label: "④ 월간 30일 출석",
+        summary: "월간 누적 · 10/20/30일 보너스 · 일자별 테마",
+        data: {
+          rewardId: "login-monthly-30d",
+          title: "월간 30일 출석",
+          description: "월 단위 출석. 10/20/30일차에 단계별 보너스 지급.",
+          type: "daily",
+          category: "monthly",
+          cycleDays: 30,
+          resetRule: { type: "loop", resetInterval: "monthly", allowCatchup: true, cutoffDay: 35 },
+          grantRules: { rewardEachDay: true, grantLastDayBonus: true, timezone: "Asia/Seoul" },
+          rewards: [
+            { day: 1, label: "개시 보상", rewards: [{ kind: "currency", id: "gold", amount: 5000 }] },
+            { day: 2, label: "스태미나", rewards: [{ kind: "energy", id: "stamina", amount: 40 }] },
+            { day: 3, label: "재료", rewards: [{ kind: "material", id: "craft-ore", amount: 15 }] },
+            { day: 4, label: "티켓", rewards: [{ kind: "ticket", id: "gacha-normal", amount: 2 }] },
+            { day: 5, label: "젬", rewards: [{ kind: "currency", id: "gem", amount: 120 }] },
+            { day: 6, label: "파편", rewards: [{ kind: "shard", id: "hero-fragment", amount: 25 }] },
+            { day: 7, label: "스태미나", rewards: [{ kind: "energy", id: "stamina", amount: 60 }] },
+            { day: 8, label: "골드", rewards: [{ kind: "currency", id: "gold", amount: 8000 }] },
+            { day: 9, label: "룬", rewards: [{ kind: "material", id: "rune-stone", amount: 6 }] },
+            { day: 10, label: "10일차 보너스", rewards: [{ kind: "chest", id: "rare", amount: 1 }, { kind: "currency", id: "gem", amount: 250 }], isFinal: true },
+            { day: 11, label: "티켓", rewards: [{ kind: "ticket", id: "gacha-normal", amount: 2 }] },
+            { day: 12, label: "재료", rewards: [{ kind: "material", id: "weapon-mat", amount: 15 }] },
+            { day: 13, label: "스태미나", rewards: [{ kind: "energy", id: "stamina", amount: 60 }] },
+            { day: 14, label: "젬", rewards: [{ kind: "currency", id: "gem", amount: 150 }] },
+            { day: 15, label: "골드", rewards: [{ kind: "currency", id: "gold", amount: 9000 }] },
+            { day: 16, label: "룬", rewards: [{ kind: "material", id: "rune-stone", amount: 8 }] },
+            { day: 17, label: "티켓", rewards: [{ kind: "ticket", id: "gacha-rare", amount: 1 }] },
+            { day: 18, label: "파편", rewards: [{ kind: "shard", id: "hero-fragment", amount: 30 }] },
+            { day: 19, label: "스태미나", rewards: [{ kind: "energy", id: "stamina", amount: 80 }] },
+            { day: 20, label: "20일차 보너스", rewards: [{ kind: "item", id: "epic-selector", amount: 1 }, { kind: "currency", id: "gem", amount: 350 }], isFinal: true },
+            { day: 21, label: "골드", rewards: [{ kind: "currency", id: "gold", amount: 10000 }] },
+            { day: 22, label: "재료", rewards: [{ kind: "material", id: "armor-mat", amount: 20 }] },
+            { day: 23, label: "티켓", rewards: [{ kind: "ticket", id: "gacha-normal", amount: 3 }] },
+            { day: 24, label: "젬", rewards: [{ kind: "currency", id: "gem", amount: 180 }] },
+            { day: 25, label: "파편", rewards: [{ kind: "shard", id: "hero-fragment", amount: 35 }] },
+            { day: 26, label: "스태미나", rewards: [{ kind: "energy", id: "stamina", amount: 100 }] },
+            { day: 27, label: "룬", rewards: [{ kind: "material", id: "rune-stone", amount: 10 }] },
+            { day: 28, label: "골드", rewards: [{ kind: "currency", id: "gold", amount: 12000 }] },
+            { day: 29, label: "티켓", rewards: [{ kind: "ticket", id: "gacha-rare", amount: 1 }] },
+            { day: 30, label: "30일차 최종 보상", rewards: [{ kind: "item", id: "legendary-selector", amount: 1 }, { kind: "currency", id: "gem", amount: 1000 }], isFinal: true },
+          ],
+          specialRewards: [
+            { trigger: "milestone", day: 30, rewards: [{ kind: "title", id: "monthly-master", amount: 1 }] },
+          ],
+          tags: ["login", "monthly", "long-cycle"],
+          metadata: { updatedBy: "system", season: "monthly-default" },
+        },
+      },
+      {
+        id: "login-event-festival-10d",
+        label: "⑤ 이벤트 10일 축제",
+        summary: "이벤트 타입 · 배수/특수 트리거 · 짧은 사이클",
+        data: {
+          rewardId: "login-event-festival-10d",
+          title: "이벤트 10일 축제",
+          description: "기간 한정 이벤트용. 중간/마지막날 특별 토큰 지급.",
+          type: "event",
+          category: "festival",
+          cycleDays: 10,
+          resetRule: { type: "event", endsAt: "2025-12-31T23:59:59Z", allowCatchup: false },
+          grantRules: { rewardEachDay: true, grantLastDayBonus: true },
+          rewards: [
+            { day: 1, label: "축제 토큰", rewards: [{ kind: "currency", id: "festival-token", amount: 30 }] },
+            { day: 2, label: "스태미나", rewards: [{ kind: "energy", id: "stamina", amount: 80 }] },
+            { day: 3, label: "젬", rewards: [{ kind: "currency", id: "gem", amount: 200 }] },
+            { day: 4, label: "축제 상자", rewards: [{ kind: "chest", id: "festival", amount: 1 }] },
+            { day: 5, label: "5일차 보너스", rewards: [{ kind: "ticket", id: "festival-rare", amount: 2 }], isFinal: true },
+            { day: 6, label: "골드", rewards: [{ kind: "currency", id: "gold", amount: 12000 }] },
+            { day: 7, label: "재료", rewards: [{ kind: "material", id: "festival-mat", amount: 20 }] },
+            { day: 8, label: "버프", rewards: [{ kind: "buff", id: "drop-boost-1d", amount: 1 }] },
+            { day: 9, label: "젬", rewards: [{ kind: "currency", id: "gem", amount: 400 }] },
+            { day: 10, label: "10일차 피날레", rewards: [{ kind: "item", id: "festival-legendary", amount: 1 }, { kind: "currency", id: "festival-token", amount: 200 }], isFinal: true },
+          ],
+          specialRewards: [
+            { trigger: "weekend", rewards: [{ kind: "buff", id: "exp-boost-24h", amount: 1 }] },
+            { trigger: "streak", streakDays: 3, rewards: [{ kind: "currency", id: "festival-token", amount: 60 }] },
+          ],
+          tags: ["login", "event", "festival"],
+          metadata: { updatedBy: "events", eventName: "festival-2025" },
+        },
+      },
+    ];
+
+    function sanitizeId(raw) {
+      return raw.trim().replace(/[^A-Za-z0-9_.-]+/g, "_");
+    }
+
+    function safeJsonParse(value) {
+      if (!value || !value.trim()) return null;
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+
+    function buildPreviewText(data) {
+      if (!data) return "JSON을 파싱할 수 없습니다.";
+      const rewards = Array.isArray(data.rewards) ? data.rewards : [];
+      const finalDays = rewards.filter((r) => r.isFinal).map((r) => r.day);
+      const tags = Array.isArray(data.tags) ? data.tags : [];
+      const type = data.type ?? "unknown";
+      const cycle = data.cycleDays ?? rewards.length;
+      const special = Array.isArray(data.specialRewards) ? data.specialRewards.length : 0;
+      const timezone = data.grantRules?.timezone ?? data.timezone ?? "기본(UTC)";
+
+      const lines = [
+        `제목: ${data.title ?? "-"} (${data.rewardId ?? "-"})`,
+        `타입: ${type} / 일수: ${cycle}일 / 보상 정의: ${rewards.length}개`,
+        `마지막/마일스톤 일자: ${finalDays.length ? finalDays.join(", ") : "없음"}`,
+        `특별 보상: ${special > 0 ? `${special}개 정의됨` : "없음"}`,
+        `태그: ${tags.length ? tags.join(", ") : "없음"}`,
+        `시간대: ${timezone}`,
+      ];
+
+      const previewReward = rewards.slice(0, 3).map((r) => `D${r.day}: ${r.label ?? "보상"}`).join(" · ");
+      if (previewReward) lines.push(`예시: ${previewReward}${rewards.length > 3 ? " ..." : ""}`);
+
+      return lines.join("\n");
+    }
+
+    class LoginRewardManager {
+      constructor() {
+        this.idInput = document.getElementById("reward-id");
+        this.jsonInput = document.getElementById("reward-json");
+        this.statusEl = document.getElementById("reward-status");
+        this.tableBody = document.getElementById("reward-table");
+        this.previewEl = document.getElementById("reward-preview");
+        this.presetSelect = document.getElementById("preset-select");
+        this.presetSummary = document.getElementById("preset-summary");
+
+        this.saveBtn = document.getElementById("save-reward");
+        this.deleteBtn = document.getElementById("delete-reward");
+        this.resetBtn = document.getElementById("reset-form");
+        this.sampleBtn = document.getElementById("load-sample");
+        this.reloadBtn = document.getElementById("reload-table");
+        this.applyPresetBtn = document.getElementById("apply-preset");
+        this.jsonToFormBtn = document.getElementById("btn-json-to-form");
+        this.formToJsonBtn = document.getElementById("btn-form-to-json");
+        this.syncRewardsFromJsonBtn = document.getElementById("btn-sync-rewards-from-json");
+        this.syncRewardsToJsonBtn = document.getElementById("btn-sync-rewards-to-json");
+        this.addRewardRowBtn = document.getElementById("btn-add-reward-row");
+        this.rewardRows = document.getElementById("reward-rows");
+
+        this.fieldTitle = document.getElementById("field-title");
+        this.fieldType = document.getElementById("field-type");
+        this.fieldCategory = document.getElementById("field-category");
+        this.fieldCycle = document.getElementById("field-cycle");
+        this.fieldTimezone = document.getElementById("field-timezone");
+        this.fieldTags = document.getElementById("field-tags");
+        this.fieldResetType = document.getElementById("field-reset-type");
+        this.fieldResetInterval = document.getElementById("field-reset-interval");
+        this.fieldResetEnds = document.getElementById("field-reset-ends");
+        this.fieldGrantDaily = document.getElementById("field-grant-daily");
+        this.fieldGrantFinal = document.getElementById("field-grant-final");
+        this.fieldReturningOnly = document.getElementById("field-returning-only");
+
+        this.collectionName = "loginRewards";
+        this.registerHandlers();
+        this.populatePresets();
+        this.loadPresetByIndex(0);
+      }
+
+      attachDb(db) {
+        this.db = db;
+        this.collectionRef = collection(db, this.collectionName);
+      }
+
+      registerHandlers() {
+        this.saveBtn?.addEventListener("click", () => this.handleSave());
+        this.deleteBtn?.addEventListener("click", () => this.handleDelete());
+        this.resetBtn?.addEventListener("click", () => this.resetForm());
+        this.sampleBtn?.addEventListener("click", () => this.loadPresetByIndex(0));
+        this.reloadBtn?.addEventListener("click", () => this.loadTable());
+        this.applyPresetBtn?.addEventListener("click", () => this.loadPresetBySelect());
+        this.jsonInput?.addEventListener("input", () => this.updatePreview());
+        this.presetSelect?.addEventListener("change", () => this.updatePresetSummary());
+        this.jsonToFormBtn?.addEventListener("click", () => this.syncFormFromJson());
+        this.formToJsonBtn?.addEventListener("click", () => this.applyFormToJson());
+        this.syncRewardsFromJsonBtn?.addEventListener("click", () => this.syncRewardRowsFromJson());
+        this.syncRewardsToJsonBtn?.addEventListener("click", () => this.applyRewardRowsToJson());
+        this.addRewardRowBtn?.addEventListener("click", () => this.addRewardRow());
+      }
+
+      populatePresets() {
+        if (!this.presetSelect) return;
+        this.presetSelect.innerHTML = PRESETS.map(
+          (preset) => `<option value="${preset.id}">${preset.label}</option>`
+        ).join("");
+        this.updatePresetSummary();
+      }
+
+      updatePresetSummary() {
+        const preset = PRESETS.find((p) => p.id === this.presetSelect.value);
+        if (preset) {
+          this.presetSummary.textContent = preset.summary ?? "-";
+        }
+      }
+
+      setStatus(message, { persist = false } = {}) {
+        if (!this.statusEl) return;
+        this.statusEl.textContent = message;
+        if (!persist) {
+          clearTimeout(this._statusTimer);
+          this._statusTimer = setTimeout(() => {
+            this.statusEl.textContent = "";
+          }, 4500);
+        }
+      }
+
+      loadPresetByIndex(index) {
+        const preset = PRESETS[index];
+        if (!preset) return;
+        this.fillForm(preset.id, preset.data);
+        this.setStatus(`프리셋 '${preset.label}'을 불러왔습니다.`);
+      }
+
+      loadPresetBySelect() {
+        const preset = PRESETS.find((p) => p.id === this.presetSelect.value);
+        if (!preset) return;
+        this.fillForm(preset.id, preset.data);
+        this.setStatus(`프리셋 '${preset.label}'을 불러왔습니다.`);
+      }
+
+      resetForm() {
+        this.idInput.value = "";
+        this.loadPresetByIndex(0);
+        this.setStatus("새 문서 작성을 위해 초기화했습니다.");
+      }
+
+      fillForm(id, data) {
+        this.idInput.value = id ?? data?.rewardId ?? "";
+        this.jsonInput.value = JSON.stringify(data ?? {}, null, 2);
+        this.updatePreview();
+        this.populateFormFields(data ?? {});
+        this.syncRewardRowsFromJson();
+      }
+
+      updatePreview() {
+        const parsed = safeJsonParse(this.jsonInput.value);
+        this.previewEl.textContent = buildPreviewText(parsed);
+      }
+
+      parseJsonOrWarn() {
+        const parsed = safeJsonParse(this.jsonInput.value);
+        if (!parsed) {
+          this.setStatus("JSON 파싱에 실패했습니다. 구조를 확인하세요.");
+          return null;
+        }
+        return parsed;
+      }
+
+      populateFormFields(data) {
+        this.fieldTitle.value = data.title ?? "";
+        this.fieldType.value = data.type ?? "";
+        this.fieldCategory.value = data.category ?? "";
+        this.fieldCycle.value = data.cycleDays ?? "";
+        const timezone = data.grantRules?.timezone ?? data.timezone ?? "";
+        this.fieldTimezone.value = timezone;
+        this.fieldTags.value = Array.isArray(data.tags) ? data.tags.join(",") : "";
+
+        const resetRule = data.resetRule ?? {};
+        this.fieldResetType.value = resetRule.type ?? "";
+        this.fieldResetInterval.value = resetRule.resetInterval ?? resetRule.expiresAfterDays ?? "";
+        this.fieldResetEnds.value = resetRule.endsAt ?? "";
+
+        const grantRules = data.grantRules ?? {};
+        this.fieldGrantDaily.checked = Boolean(grantRules.rewardEachDay);
+        this.fieldGrantFinal.checked = Boolean(grantRules.grantLastDayBonus);
+        this.fieldReturningOnly.checked = Boolean(grantRules.isReturningOnly);
+      }
+
+      syncFormFromJson() {
+        const parsed = this.parseJsonOrWarn();
+        if (!parsed) return;
+        this.populateFormFields(parsed);
+        this.setStatus("JSON 내용을 폼에 반영했습니다.");
+      }
+
+      applyFormToJson() {
+        const parsed = this.parseJsonOrWarn() ?? {};
+
+        const next = { ...parsed };
+        if (this.fieldTitle.value) next.title = this.fieldTitle.value;
+        if (this.fieldType.value) next.type = this.fieldType.value;
+        if (this.fieldCategory.value) next.category = this.fieldCategory.value;
+
+        const cycle = Number(this.fieldCycle.value);
+        if (!Number.isNaN(cycle) && cycle > 0) next.cycleDays = cycle;
+
+        const tags = this.fieldTags.value
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+        if (tags.length) next.tags = tags;
+
+        const timezone = this.fieldTimezone.value.trim();
+        const grant = { ...(next.grantRules ?? {}) };
+        if (timezone) grant.timezone = timezone;
+        grant.rewardEachDay = this.fieldGrantDaily.checked;
+        grant.grantLastDayBonus = this.fieldGrantFinal.checked;
+        if (this.fieldReturningOnly.checked) {
+          grant.isReturningOnly = true;
+        } else if ("isReturningOnly" in grant) {
+          delete grant.isReturningOnly;
+        }
+        next.grantRules = grant;
+
+        const resetType = this.fieldResetType.value;
+        const resetInterval = this.fieldResetInterval.value.trim();
+        const resetEnds = this.fieldResetEnds.value.trim();
+        const resetRule = { ...(next.resetRule ?? {}) };
+        if (resetType) resetRule.type = resetType;
+        if (resetType === "loop" && resetInterval) {
+          resetRule.resetInterval = resetInterval;
+          delete resetRule.expiresAfterDays;
+          delete resetRule.endsAt;
+        } else if (resetType === "once" && resetInterval) {
+          const expires = Number(resetInterval);
+          resetRule.expiresAfterDays = Number.isNaN(expires) ? resetInterval : expires;
+          delete resetRule.resetInterval;
+          delete resetRule.endsAt;
+        } else if (resetType === "event") {
+          if (resetEnds) resetRule.endsAt = resetEnds;
+          delete resetRule.resetInterval;
+          delete resetRule.expiresAfterDays;
+        }
+        next.resetRule = resetRule;
+
+        this.jsonInput.value = JSON.stringify(next, null, 2);
+        this.updatePreview();
+        this.setStatus("폼 내용을 JSON에 반영했습니다.");
+      }
+
+      addRewardRow(data = {}) {
+        const row = document.createElement("div");
+        row.className = "reward-row";
+
+        const dayInput = document.createElement("input");
+        dayInput.type = "number";
+        dayInput.min = "1";
+        dayInput.placeholder = "day";
+        dayInput.value = data.day ?? "";
+
+        const labelInput = document.createElement("input");
+        labelInput.type = "text";
+        labelInput.placeholder = "label";
+        labelInput.value = data.label ?? "";
+
+        const finalWrapper = document.createElement("label");
+        finalWrapper.className = "inline";
+        const finalCheckbox = document.createElement("input");
+        finalCheckbox.type = "checkbox";
+        finalCheckbox.checked = Boolean(data.isFinal);
+        finalCheckbox.style.marginLeft = "0";
+        const finalText = document.createElement("span");
+        finalText.textContent = "isFinal";
+        finalWrapper.append(finalCheckbox, finalText);
+
+        const rewardsInput = document.createElement("textarea");
+        rewardsInput.placeholder = '[{"kind":"currency","id":"gold","amount":5000}]';
+        rewardsInput.value = Array.isArray(data.rewards) ? JSON.stringify(data.rewards, null, 2) : "";
+
+        const actions = document.createElement("div");
+        actions.className = "row-actions";
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "danger";
+        removeBtn.textContent = "삭제";
+        removeBtn.addEventListener("click", () => {
+          this.rewardRows.removeChild(row);
+        });
+        actions.appendChild(removeBtn);
+
+        row.append(
+          this.wrapWithLabel("day", dayInput),
+          this.wrapWithLabel("label", labelInput),
+          this.wrapWithLabel("isFinal", finalWrapper),
+          this.wrapWithLabel("rewards (JSON 배열)", rewardsInput),
+          actions,
+        );
+
+        this.rewardRows.appendChild(row);
+      }
+
+      wrapWithLabel(text, element) {
+        const container = document.createElement("div");
+        const label = document.createElement("label");
+        label.textContent = text;
+        container.append(label, element);
+        return container;
+      }
+
+      syncRewardRowsFromJson() {
+        const parsed = this.parseJsonOrWarn();
+        if (!parsed) return;
+        const rewards = Array.isArray(parsed.rewards) ? parsed.rewards : [];
+        this.rewardRows.innerHTML = "";
+        if (rewards.length === 0) {
+          this.addRewardRow();
+        } else {
+          rewards.forEach((entry) => this.addRewardRow(entry));
+        }
+        this.setStatus("JSON의 rewards를 보상 행에 반영했습니다.");
+      }
+
+      collectRewardRows() {
+        const rows = Array.from(this.rewardRows.querySelectorAll(".reward-row"));
+        const result = [];
+        for (const row of rows) {
+          const inputs = row.querySelectorAll("input, textarea");
+          const day = Number(inputs[0].value);
+          if (Number.isNaN(day) || day <= 0) continue;
+          const label = inputs[1].value.trim();
+          const isFinal = inputs[2].checked;
+          const rewardsJson = inputs[3].value.trim();
+
+          if (!rewardsJson) continue;
+          const parsedRewards = safeJsonParse(rewardsJson);
+          if (!Array.isArray(parsedRewards)) {
+            this.setStatus(`D${day} rewards가 배열 JSON이 아닙니다.`);
+            return null;
+          }
+
+          result.push({
+            day,
+            label: label || undefined,
+            isFinal: isFinal || undefined,
+            rewards: parsedRewards,
+          });
+        }
+        return result;
+      }
+
+      applyRewardRowsToJson() {
+        const parsed = this.parseJsonOrWarn() ?? {};
+        const collected = this.collectRewardRows();
+        if (!collected) return;
+        if (collected.length === 0) {
+          this.setStatus("보상 행이 비어 있어 rewards를 변경하지 않습니다.");
+          return;
+        }
+        const sorted = collected.sort((a, b) => a.day - b.day);
+        const next = { ...parsed, rewards: sorted };
+        this.jsonInput.value = JSON.stringify(next, null, 2);
+        this.updatePreview();
+        this.setStatus("보상 행 내용을 JSON에 반영했습니다.");
+      }
+
+      normalizeData(docId, data) {
+        const rewards = Array.isArray(data.rewards) ? data.rewards : [];
+        const sortedRewards = [...rewards].sort((a, b) => (a.day ?? 0) - (b.day ?? 0));
+        return {
+          rewardId: docId,
+          ...data,
+          rewards: sortedRewards,
+          tags: Array.isArray(data.tags) ? data.tags : [],
+          metadata: { ...(data.metadata ?? {}), updatedAt: new Date().toISOString() },
+        };
+      }
+
+      async handleSave() {
+        if (!this.db) {
+          this.setStatus("Firestore가 초기화되지 않았습니다.", { persist: true });
+          return;
+        }
+        const data = this.parseJsonOrWarn();
+        if (!data) return;
+
+        const rawId = this.idInput.value.trim() || data.rewardId;
+        const docId = sanitizeId(rawId ?? "");
+        if (!docId) {
+          this.setStatus("rewardId를 입력하세요.");
+          return;
+        }
+
+        if (!Array.isArray(data.rewards) || data.rewards.length === 0) {
+          this.setStatus("rewards 배열이 비어 있습니다. 최소 1개 이상의 일자 보상이 필요합니다.");
+          return;
+        }
+        if (!data.title || !data.type || !data.cycleDays) {
+          this.setStatus("title/type/cycleDays는 필수입니다.");
+          return;
+        }
+
+        const payload = this.normalizeData(docId, data);
+        this.toggleButtons(true);
+        try {
+          await setDoc(doc(this.collectionRef, docId), payload, { merge: true });
+          this.setStatus(`'${docId}' 접속 보상을 저장했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("저장 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async handleDelete() {
+        if (!this.db) {
+          this.setStatus("Firestore가 초기화되지 않았습니다.", { persist: true });
+          return;
+        }
+        const rawId = this.idInput.value.trim() || safeJsonParse(this.jsonInput.value)?.rewardId;
+        const docId = sanitizeId(rawId ?? "");
+        if (!docId) {
+          this.setStatus("삭제할 rewardId를 입력하세요.");
+          return;
+        }
+        this.toggleButtons(true);
+        try {
+          await deleteDoc(doc(this.collectionRef, docId));
+          this.setStatus(`'${docId}' 문서를 삭제했습니다.`);
+          this.resetForm();
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("삭제 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      toggleButtons(disabled) {
+        [this.saveBtn, this.deleteBtn, this.sampleBtn, this.reloadBtn, this.applyPresetBtn, this.resetBtn].forEach((btn) => {
+          if (btn) btn.disabled = disabled;
+        });
+      }
+
+      renderTableRow(id, data) {
+        const rewards = Array.isArray(data.rewards) ? data.rewards : [];
+        const tags = Array.isArray(data.tags) ? data.tags.join(", ") : "";
+        const finalDays = rewards.filter((r) => r.isFinal).map((r) => r.day);
+        return `
+          <tr data-id="${id}">
+            <td>${id}</td>
+            <td>${data.title ?? "-"}</td>
+            <td>${data.type ?? "-"}</td>
+            <td>${rewards.length}/${data.cycleDays ?? "-"}</td>
+            <td>${tags || "-"}</td>
+            <td>
+              <button class="secondary" data-action="load" data-id="${id}">불러오기</button>
+              <button class="danger" data-action="delete" data-id="${id}">삭제</button>
+              <div class="muted">마지막: ${finalDays.length ? finalDays.join(", ") : "없음"}</div>
+            </td>
+          </tr>
+        `;
+      }
+
+      bindTableActions() {
+        this.tableBody.querySelectorAll("button[data-action='load']").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.dataset.id;
+            const target = this._tableData.find((entry) => entry.id === id);
+            if (target) {
+              this.fillForm(id, target.data);
+              this.setStatus(`'${id}' 문서를 불러왔습니다.`);
+            }
+          });
+        });
+
+        this.tableBody.querySelectorAll("button[data-action='delete']").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.dataset.id;
+            if (!confirm(`'${id}' 문서를 삭제하시겠습니까?`)) return;
+            this.idInput.value = id;
+            await this.handleDelete();
+          });
+        });
+      }
+
+      async loadTable() {
+        if (!this.db) return;
+        this.tableBody.innerHTML = `<tr><td colspan="6">불러오는 중...</td></tr>`;
+        try {
+          const snap = await getDocs(this.collectionRef);
+          const rows = [];
+          snap.forEach((docSnap) => rows.push({ id: docSnap.id, data: docSnap.data() }));
+          rows.sort((a, b) => a.id.localeCompare(b.id));
+          this._tableData = rows;
+          this.tableBody.innerHTML = rows.length ? rows.map((row) => this.renderTableRow(row.id, row.data)).join("") : `<tr><td colspan="6">저장된 문서가 없습니다.</td></tr>`;
+          this.bindTableActions();
+        } catch (error) {
+          console.error(error);
+          this.tableBody.innerHTML = `<tr><td colspan="6">목록을 불러오지 못했습니다.</td></tr>`;
+          this.setStatus("목록을 불러오는 중 오류가 발생했습니다.", { persist: true });
+        }
+      }
+    }
+
+    const manager = new LoginRewardManager();
+
+    async function initFirestore() {
+      try {
+        const config = await getFirebaseConfig();
+        const app = initializeApp(config);
+        const db = getFirestore(app);
+        manager.attachDb(db);
+        manager.setStatus("Firestore 초기화 완료.");
+        await manager.loadTable();
+      } catch (error) {
+        console.error(error);
+        manager.setStatus("Firestore 초기화 실패. firebase-config.js를 확인하세요.", { persist: true });
+      }
+    }
+
+    initFirestore();
+  </script>
+</body>
+</html>
