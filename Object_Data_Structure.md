@@ -28,13 +28,6 @@ Firestore에서는 아래 둘 중 하나를 추천합니다.
 #### A안 (단순/관리 쉬움): **섬 중심 구조**
 - `users/{uid}/islands/{islandInstanceId}`
 - `users/{uid}/islands/{islandInstanceId}/worldObjects/{entityId}`
-
-#### B안 (쿼리 편의): **유저 월드 오브젝트 전역**
-- `users/{uid}/islands/{islandInstanceId}`
-- `users/{uid}/worldObjects/{entityId}`  (필드에 `islandInstanceId` 포함)
-
-> 추천: A안(섬 중심)으로 시작하고, 전역 조회가 필요해지면 B안을 병행(인덱스 컬렉션)합니다.
-
 ---
 
 ## 2) 공통 규칙
@@ -61,9 +54,6 @@ Firestore에서는 아래 둘 중 하나를 추천합니다.
 
 ### 3.2 Building core
 - `categoryKey` (string): `production | housing | utility | decoration | defense | road | ...`
-- `size` (object)
-  - `w` (number)
-  - `h` (number)
 - `placeRules` (object)
   - `allowedTileTags` (array<string>, 선택): 배치 가능한 타일 태그
   - `disallowOnWater` (boolean, 선택)
