@@ -1,0 +1,1980 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>건물/식물/섬 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 1rem 1.25rem;
+    }
+
+    .wide-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 0.75rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.35rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      border: 1px solid #334155;
+      white-space: nowrap;
+    }
+
+    .pill.solid {
+      background: linear-gradient(90deg, #8b5cf6, #06b6d4);
+      color: #0b1220;
+      border: none;
+    }
+
+    .preview-card {
+      margin-top: 0.25rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .preview-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .preview-card .label {
+      color: #cbd5e1;
+      margin-top: 0.35rem;
+      display: block;
+    }
+
+    details.collapsible {
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      background: #111827;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    details.collapsible summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      font-weight: 800;
+    }
+
+    details.collapsible summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.collapsible[open] > summary {
+      border-bottom: 1px solid #1f2937;
+    }
+
+    details.collapsible .content {
+      padding: 1rem 1.25rem 1.25rem;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 8px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+    }
+
+    .inline-field {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.95rem;
+      color: #cbd5e1;
+    }
+
+    .inline-field input[type="radio"] {
+      accent-color: #06b6d4;
+    }
+
+    .section-hint {
+      margin: 0.2rem 0 0.6rem;
+      color: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Stat 관리 도구</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="combat-dps-tester.html">Combat DPS 테스트</a>
+      <a class="nav-link" href="effect-system-firestore.html">EffectSpec 관리</a>
+      <a class="nav-link" href="monster-firestore.html">몬스터 관리</a>
+      <a class="nav-link" href="economy-firestore.html">재화/티어 관리</a>
+      <a class="nav-link" href="item-firestore.html">아이템 관리</a>
+      <a class="nav-link active" href="object-structure-firestore.html">건물/식물/섬 관리</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header class="card">
+      <h1>건물/식물/섬 CRUD (Object Data Structure)</h1>
+      <p class="muted">Object_Data_Structure.md를 기준으로 buildingDefs / plantDefs / islandDefs / islands(유저 소유) / worldObjects를 Firestore에서 관리합니다. 모든 섹션은 기본 필드 입력 → JSON 병합 → 저장 흐름을 따르며, 프리뷰에서 핵심 정보를 즉시 확인할 수 있습니다.</p>
+      <div class="pill">Def와 Instance를 분리하여 저장 (템플릿은 정적, 인스턴스는 상태/타이머 중심)</div>
+      <ul class="muted" style="margin-top: 0.65rem; line-height: 1.6;">
+        <li>필수 필드는 개별 인풋으로 제공, 복잡한 블록(placeRules/growth/upgrade 등)은 JSON 영역으로 작성 후 "필드값을 JSON에 반영"을 눌러 병합합니다.</li>
+        <li>섬/월드 오브젝트 섹션은 유저 ID 경로를 입력하면 즉시 하위 컬렉션을 조회하도록 설계되었습니다.</li>
+        <li>Document ID는 영문/숫자/._- 만 허용하며, 잘못된 문자는 자동 치환됩니다.</li>
+      </ul>
+    </header>
+
+    <details class="collapsible" open>
+      <summary>
+        <span>buildingDefs 관리</span>
+        <span class="pill">collection = buildingDefs</span>
+      </summary>
+      <div class="content">
+        <div class="split-grid">
+          <div>
+            <div class="grid">
+              <div>
+                <label for="building-id">문서 ID (buildingDefId)</label>
+                <input id="building-id" type="text" placeholder="workshop_t1" />
+              </div>
+              <div>
+                <label for="building-slug">slug</label>
+                <input id="building-slug" type="text" placeholder="workshop" />
+              </div>
+              <div>
+                <label for="building-name">name</label>
+                <input id="building-name" type="text" placeholder="작업장" />
+              </div>
+              <div>
+                <label for="building-category">categoryKey</label>
+                <select id="building-category">
+                  <option value="">(선택)</option>
+                  <option value="production">production</option>
+                  <option value="housing">housing</option>
+                  <option value="utility">utility</option>
+                  <option value="decoration">decoration</option>
+                  <option value="defense">defense</option>
+                  <option value="road">road</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="building-width">size.w</label>
+                <input id="building-width" type="number" min="0" step="0.1" />
+              </div>
+              <div>
+                <label for="building-height">size.h</label>
+                <input id="building-height" type="number" min="0" step="0.1" />
+              </div>
+              <div>
+                <label for="building-max">maxPerIsland</label>
+                <input id="building-max" type="number" min="0" step="1" />
+              </div>
+              <div>
+                <label for="building-tags">tags (콤마)</label>
+                <input id="building-tags" type="text" placeholder="crafting, wood" />
+              </div>
+            </div>
+            <div class="wide-grid">
+              <div>
+                <label for="building-place">placeRules (JSON)</label>
+                <textarea id="building-place" spellcheck="false" placeholder='{"allowedTileTags": ["land"]}'></textarea>
+              </div>
+              <div>
+                <label for="building-power">power (JSON)</label>
+                <textarea id="building-power" spellcheck="false" placeholder='{"consumes": 2, "produces": 0}'></textarea>
+              </div>
+              <div>
+                <label for="building-upgrade">upgrade (JSON)</label>
+                <textarea id="building-upgrade" spellcheck="false" placeholder='{"levelMax": 10, "mode": "table"}'></textarea>
+              </div>
+              <div>
+                <label for="building-production">production (JSON)</label>
+                <textarea id="building-production" spellcheck="false" placeholder='{"enabled": true, "mode": "cycle"}'></textarea>
+              </div>
+              <div>
+                <label for="building-metadata">metadata (JSON)</label>
+                <textarea id="building-metadata" spellcheck="false" placeholder='{"version": "1.0"}'></textarea>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="building-apply">필드값을 JSON에 반영</button>
+            </div>
+            <div>
+              <label for="building-json">buildingDef JSON (전체 문서)</label>
+              <textarea id="building-json" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="building-save">저장/업데이트</button>
+              <button class="secondary" id="building-sample">샘플 불러오기</button>
+              <button class="secondary" id="building-reset">새로 작성</button>
+              <button class="secondary" id="building-refresh">목록 새로고침</button>
+            </div>
+            <div class="status" id="building-status"></div>
+          </div>
+          <div>
+            <div class="preview-card">
+              <h3>프리뷰</h3>
+              <div class="label">핵심 정보</div>
+              <div id="building-preview">-</div>
+              <div class="label">생산/업그레이드</div>
+              <div id="building-preview-extra">-</div>
+            </div>
+            <p class="muted">템플릿은 정적 밸런스 정보만 포함합니다. Instance에는 상태/타이머/배치만 기록하세요.</p>
+          </div>
+        </div>
+        <div>
+          <p class="muted">저장된 buildingDef 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>buildingDefId</th>
+                <th>name</th>
+                <th>category</th>
+                <th>size</th>
+                <th>tags</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="building-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+
+    <details class="collapsible">
+      <summary>
+        <span>plantDefs 관리</span>
+        <span class="pill">collection = plantDefs</span>
+      </summary>
+      <div class="content">
+        <div class="split-grid">
+          <div>
+            <div class="grid">
+              <div>
+                <label for="plant-id">문서 ID (plantDefId)</label>
+                <input id="plant-id" type="text" placeholder="tomato_01" />
+              </div>
+              <div>
+                <label for="plant-slug">slug</label>
+                <input id="plant-slug" type="text" placeholder="tomato" />
+              </div>
+              <div>
+                <label for="plant-name">name</label>
+                <input id="plant-name" type="text" placeholder="토마토" />
+              </div>
+              <div>
+                <label for="plant-type">plantTypeKey</label>
+                <select id="plant-type">
+                  <option value="">(선택)</option>
+                  <option value="crop">crop</option>
+                  <option value="tree">tree</option>
+                  <option value="flower">flower</option>
+                  <option value="fungus">fungus</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="plant-tags">tags (콤마)</label>
+                <input id="plant-tags" type="text" placeholder="farm, food" />
+              </div>
+              <div>
+                <label for="plant-place">placeRules (JSON)</label>
+                <textarea id="plant-place" spellcheck="false" placeholder='{"requiresSoil": true}'></textarea>
+              </div>
+              <div>
+                <label for="plant-growth">growth (JSON)</label>
+                <textarea id="plant-growth" spellcheck="false" placeholder='{"stages": []}'></textarea>
+              </div>
+              <div>
+                <label for="plant-harvest">harvest (JSON)</label>
+                <textarea id="plant-harvest" spellcheck="false" placeholder='{"harvestStageKey": "mature"}'></textarea>
+              </div>
+              <div>
+                <label for="plant-metadata">metadata (JSON)</label>
+                <textarea id="plant-metadata" spellcheck="false" placeholder='{"author": "balance"}'></textarea>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="plant-apply">필드값을 JSON에 반영</button>
+            </div>
+            <div>
+              <label for="plant-json">plantDef JSON (전체 문서)</label>
+              <textarea id="plant-json" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="plant-save">저장/업데이트</button>
+              <button class="secondary" id="plant-sample">샘플 불러오기</button>
+              <button class="secondary" id="plant-reset">새로 작성</button>
+              <button class="secondary" id="plant-refresh">목록 새로고침</button>
+            </div>
+            <div class="status" id="plant-status"></div>
+          </div>
+          <div>
+            <div class="preview-card">
+              <h3>프리뷰</h3>
+              <div class="label">핵심 정보</div>
+              <div id="plant-preview">-</div>
+              <div class="label">성장/수확</div>
+              <div id="plant-preview-extra">-</div>
+            </div>
+            <p class="muted">growth.stages는 Object_Data_Structure의 stageKey/duration/needs 규칙을 그대로 사용하세요.</p>
+          </div>
+        </div>
+        <div>
+          <p class="muted">저장된 plantDef 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>plantDefId</th>
+                <th>name</th>
+                <th>type</th>
+                <th>harvestStage</th>
+                <th>tags</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="plant-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+
+    <details class="collapsible">
+      <summary>
+        <span>islandDefs 관리</span>
+        <span class="pill">collection = islandDefs</span>
+      </summary>
+      <div class="content">
+        <div class="split-grid">
+          <div>
+            <div class="grid">
+              <div>
+                <label for="island-id">문서 ID (islandDefId)</label>
+                <input id="island-id" type="text" placeholder="island_tutorial" />
+              </div>
+              <div>
+                <label for="island-slug">slug</label>
+                <input id="island-slug" type="text" placeholder="tutorial-island" />
+              </div>
+              <div>
+                <label for="island-name">name</label>
+                <input id="island-name" type="text" placeholder="튜토리얼 섬" />
+              </div>
+              <div>
+                <label for="island-tier">tierNumber</label>
+                <input id="island-tier" type="number" min="0" />
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="island-tags">tags (콤마)</label>
+                <input id="island-tags" type="text" placeholder="early, starter" />
+              </div>
+              <div>
+                <label for="island-capacity">capacity (JSON)</label>
+                <textarea id="island-capacity" spellcheck="false" placeholder='{"maxBuildings": 20, "maxPlants": 40}'></textarea>
+              </div>
+              <div>
+                <label for="island-initial">initialZones (JSON)</label>
+                <textarea id="island-initial" spellcheck="false" placeholder='[{"zoneKey": "core", "unlocked": true}]'></textarea>
+              </div>
+              <div>
+                <label for="island-expand">expand (JSON)</label>
+                <textarea id="island-expand" spellcheck="false" placeholder='{"zones": []}'></textarea>
+              </div>
+              <div>
+                <label for="island-env">environment (JSON)</label>
+                <textarea id="island-env" spellcheck="false" placeholder='{"modifiers": {}}'></textarea>
+              </div>
+              <div>
+                <label for="island-metadata">metadata (JSON)</label>
+                <textarea id="island-metadata" spellcheck="false" placeholder='{"version": "1.0"}'></textarea>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="island-apply">필드값을 JSON에 반영</button>
+            </div>
+            <div>
+              <label for="island-json">islandDef JSON (전체 문서)</label>
+              <textarea id="island-json" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="island-save">저장/업데이트</button>
+              <button class="secondary" id="island-sample">샘플 불러오기</button>
+              <button class="secondary" id="island-reset">새로 작성</button>
+              <button class="secondary" id="island-refresh">목록 새로고침</button>
+            </div>
+            <div class="status" id="island-status"></div>
+          </div>
+          <div>
+            <div class="preview-card">
+              <h3>프리뷰</h3>
+              <div class="label">핵심 정보</div>
+              <div id="island-preview">-</div>
+              <div class="label">수용/확장/환경</div>
+              <div id="island-preview-extra">-</div>
+            </div>
+            <p class="muted">섬 템플릿은 확장 가능한 zone 테이블과 환경 보너스를 정의합니다. 인스턴스(섬 소유)는 별도 섹션에서 관리하세요.</p>
+          </div>
+        </div>
+        <div>
+          <p class="muted">저장된 islandDef 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>islandDefId</th>
+                <th>name</th>
+                <th>tier</th>
+                <th>capacity</th>
+                <th>zones</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="island-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+
+    <details class="collapsible">
+      <summary>
+        <span>유저 섬 인스턴스 관리</span>
+        <span class="pill">collection = users/{uid}/islands</span>
+      </summary>
+      <div class="content">
+        <div>
+          <div class="grid" style="margin-bottom: 0.5rem;">
+            <div>
+              <label for="island-user-id">유저 ID (필수)</label>
+              <input id="island-user-id" type="text" placeholder="user_123" />
+            </div>
+            <div>
+              <label for="island-instance-id">문서 ID (islandInstanceId)</label>
+              <input id="island-instance-id" type="text" placeholder="island_demo" />
+            </div>
+            <div>
+              <label for="island-instance-def">islandDefId</label>
+              <input id="island-instance-def" type="text" placeholder="island_tutorial" />
+            </div>
+            <div>
+              <label for="island-instance-level">level</label>
+              <input id="island-instance-level" type="number" min="1" />
+            </div>
+          </div>
+          <div class="grid">
+            <div>
+              <label for="island-instance-name">nameOverride</label>
+              <input id="island-instance-name" type="text" placeholder="내 섬" />
+            </div>
+            <div>
+              <label for="island-instance-zones">unlockedZoneKeys (콤마)</label>
+              <input id="island-instance-zones" type="text" placeholder="core,north" />
+            </div>
+            <div>
+              <label for="island-instance-economy">economyState (JSON)</label>
+              <textarea id="island-instance-economy" spellcheck="false" placeholder='{"bonuses": []}'></textarea>
+            </div>
+            <div>
+              <label for="island-instance-meta">metadata (JSON)</label>
+              <textarea id="island-instance-meta" spellcheck="false" placeholder='{"notes": "alpha"}'></textarea>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="secondary" id="island-instance-apply">필드값을 JSON에 반영</button>
+          </div>
+          <div>
+            <label for="island-instance-json">island 인스턴스 JSON (전체 문서)</label>
+            <textarea id="island-instance-json" spellcheck="false"></textarea>
+          </div>
+          <div class="actions">
+            <button class="primary" id="island-instance-save">저장/업데이트</button>
+            <button class="secondary" id="island-instance-sample">샘플 불러오기</button>
+            <button class="secondary" id="island-instance-reset">새로 작성</button>
+            <button class="secondary" id="island-instance-refresh">목록 새로고침</button>
+          </div>
+          <div class="status" id="island-instance-status"></div>
+        </div>
+        <div class="split-grid">
+          <div>
+            <div class="preview-card">
+              <h3>프리뷰</h3>
+              <div class="label">핵심 정보</div>
+              <div id="island-instance-preview">-</div>
+              <div class="label">해금/상태</div>
+              <div id="island-instance-preview-extra">-</div>
+            </div>
+            <p class="muted">선택한 유저 경로(users/{uid}/islands)를 기준으로 CRUD를 수행합니다.</p>
+          </div>
+          <div>
+            <p class="muted">선택한 유저의 섬 목록</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>islandInstanceId</th>
+                  <th>islandDefId</th>
+                  <th>level</th>
+                  <th>nameOverride</th>
+                  <th>unlockedZones</th>
+                  <th>작업</th>
+                </tr>
+              </thead>
+              <tbody id="island-instance-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="collapsible">
+      <summary>
+        <span>월드 오브젝트 인스턴스 관리</span>
+        <span class="pill">collection = users/{uid}/islands/{islandId}/worldObjects</span>
+      </summary>
+      <div class="content">
+        <div class="grid" style="align-items: end;">
+          <div>
+            <label for="world-user-id">유저 ID (필수)</label>
+            <input id="world-user-id" type="text" placeholder="user_123" />
+          </div>
+          <div>
+            <label for="world-island-id">islandInstanceId (섬 중심 모드 필수)</label>
+            <input id="world-island-id" type="text" placeholder="island_demo" />
+          </div>
+          <div>
+            <label class="inline-field">
+              <input type="radio" name="world-path" value="island" checked /> 섬 중심 (권장)
+            </label>
+            <label class="inline-field">
+              <input type="radio" name="world-path" value="global" /> 전역(users/{uid}/worldObjects)
+            </label>
+            <p class="section-hint">경로를 전환하면 목록을 다시 불러옵니다.</p>
+          </div>
+          <div class="actions" style="margin: 0;">
+            <button class="secondary" id="world-path-refresh">경로 적용 및 목록 새로고침</button>
+          </div>
+        </div>
+        <div class="split-grid">
+          <div>
+            <div class="grid">
+              <div>
+                <label for="world-entity-id">문서 ID (entityId)</label>
+                <input id="world-entity-id" type="text" placeholder="entity_01" />
+              </div>
+              <div>
+                <label for="world-type">type</label>
+                <select id="world-type">
+                  <option value="">(선택)</option>
+                  <option value="building">building</option>
+                  <option value="plant">plant</option>
+                </select>
+              </div>
+              <div>
+                <label for="world-def-id">defId</label>
+                <input id="world-def-id" type="text" placeholder="workshop_t1" />
+              </div>
+              <div>
+                <label for="world-island-ref">islandInstanceId 필드</label>
+                <input id="world-island-ref" type="text" placeholder="island_demo" />
+              </div>
+            </div>
+            <div class="grid">
+              <div>
+                <label for="world-level">level (building)</label>
+                <input id="world-level" type="number" min="0" />
+              </div>
+              <div>
+                <label for="world-stage">stageIndex (plant)</label>
+                <input id="world-stage" type="number" min="0" />
+              </div>
+              <div>
+                <label for="world-pos-x">position.x</label>
+                <input id="world-pos-x" type="number" step="1" />
+              </div>
+              <div>
+                <label for="world-pos-y">position.y</label>
+                <input id="world-pos-y" type="number" step="1" />
+              </div>
+              <div>
+                <label for="world-rot">position.rot</label>
+                <input id="world-rot" type="number" step="1" />
+              </div>
+              <div>
+                <label for="world-tags">state flags (콤마: placed,paused,broken)</label>
+                <input id="world-tags" type="text" placeholder="placed" />
+              </div>
+            </div>
+            <div class="wide-grid">
+              <div>
+                <label for="world-timers">timers (JSON)</label>
+                <textarea id="world-timers" spellcheck="false" placeholder='{"nextTickTime": null}'></textarea>
+              </div>
+              <div>
+                <label for="world-production">productionState (JSON)</label>
+                <textarea id="world-production" spellcheck="false" placeholder='{"queue": [], "storedOutputs": {}}'></textarea>
+              </div>
+              <div>
+                <label for="world-plant">plantState (JSON)</label>
+                <textarea id="world-plant" spellcheck="false" placeholder='{"water": 10, "health": 100}'></textarea>
+              </div>
+              <div>
+                <label for="world-meta">metadata (JSON)</label>
+                <textarea id="world-meta" spellcheck="false" placeholder='{"notes": "beta"}'></textarea>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="world-apply">필드값을 JSON에 반영</button>
+            </div>
+            <div>
+              <label for="world-json">worldObject JSON (전체 문서)</label>
+              <textarea id="world-json" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="primary" id="world-save">저장/업데이트</button>
+              <button class="secondary" id="world-sample">샘플 불러오기</button>
+              <button class="secondary" id="world-reset">새로 작성</button>
+              <button class="secondary" id="world-refresh">목록 새로고침</button>
+            </div>
+            <div class="status" id="world-status"></div>
+          </div>
+          <div>
+            <div class="preview-card">
+              <h3>프리뷰</h3>
+              <div class="label">핵심 정보</div>
+              <div id="world-preview">-</div>
+              <div class="label">배치/상태</div>
+              <div id="world-preview-extra">-</div>
+            </div>
+            <p class="muted">경로 A: users/{uid}/islands/{islandId}/worldObjects | 경로 B: users/{uid}/worldObjects (islandInstanceId 필드로 참조).</p>
+          </div>
+        </div>
+        <div>
+          <p class="muted">선택한 경로의 worldObjects 목록</p>
+          <table>
+            <thead>
+              <tr>
+                <th>entityId</th>
+                <th>type</th>
+                <th>defId</th>
+                <th>islandRef</th>
+                <th>레벨/스테이지</th>
+                <th>좌표</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="world-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const SAMPLE_BUILDING = {
+      id: "workshop_t1",
+      slug: "workshop",
+      name: "작업장",
+      categoryKey: "production",
+      size: { w: 2, h: 2 },
+      placeRules: { allowedTileTags: ["land"], requiresAdjacentTags: ["road"] },
+      maxPerIsland: 5,
+      power: { consumes: 2, produces: 0 },
+      upgrade: {
+        levelMin: 1,
+        levelMax: 10,
+        mode: "table",
+        timeSecondsByLevel: { "1": 600, "2": 900, "3": 1200 },
+        costByLevel: { "1": { gold: 1200 }, "2": { gold: 1600, token_event: 2 }, "3": { gold: 2000 } },
+        effectsByLevel: { "1": { productionSpeedMul: 1.0 }, "5": { productionSpeedMul: 1.15 } },
+      },
+      production: {
+        enabled: true,
+        mode: "cycle",
+        inputs: { wood: 2 },
+        outputs: { plank: 1 },
+        cycleSeconds: 60,
+        storageCap: { plank: 30 },
+      },
+      tags: ["crafting", "wood"],
+      metadata: { version: "1.0" },
+    };
+
+    const SAMPLE_PLANT = {
+      id: "tomato_01",
+      slug: "tomato",
+      name: "토마토",
+      plantTypeKey: "crop",
+      placeRules: { requiresSoil: true },
+      growth: {
+        stages: [
+          { stageKey: "seed", durationSeconds: 1800, needs: { waterMin: 10 } },
+          { stageKey: "sprout", durationSeconds: 1800, needs: { waterMin: 12, lightMin: 1 } },
+          { stageKey: "mature", durationSeconds: 3600, needs: { waterMin: 14 } },
+        ],
+        witherRules: { waterMin: 5 },
+      },
+      harvest: {
+        harvestStageKey: "mature",
+        yields: { tomato: 3, seed_tomato_01: 1 },
+        regrow: { enabled: true, regrowSeconds: 5400, regrowToStageKey: "sprout" },
+      },
+      tags: ["farm", "food"],
+      metadata: { author: "balance" },
+    };
+
+    const SAMPLE_ISLAND = {
+      id: "island_tutorial",
+      slug: "tutorial-island",
+      name: "튜토리얼 섬",
+      tierNumber: 1,
+      capacity: { maxBuildings: 25, maxPlants: 40 },
+      initialZones: [{ zoneKey: "core", unlocked: true }],
+      expand: {
+        zones: [
+          { zoneKey: "north", unlockCost: { gold: 1500 }, requiresZoneKeys: ["core"] },
+          { zoneKey: "south", unlockItems: { island_license: 1 }, requiresZoneKeys: ["core"] },
+        ],
+      },
+      environment: { modifiers: { growthSpeedMul: 1.05, waterEfficiencyMul: 0.95 } },
+      metadata: { author: "design-team" },
+    };
+
+    const SAMPLE_ISLAND_INSTANCE = {
+      islandInstanceId: "island_demo",
+      islandDefId: "island_tutorial",
+      level: 1,
+      nameOverride: "내 섬",
+      unlockedZoneKeys: ["core"],
+      economyState: { bonuses: ["event_buff"] },
+      metadata: { notes: "beta" },
+    };
+
+    const SAMPLE_WORLD_OBJECT = {
+      entityId: "entity_01",
+      islandInstanceId: "island_demo",
+      type: "building",
+      defId: "workshop_t1",
+      level: 1,
+      position: { x: 4, y: 6, rot: 0 },
+      state: { placed: true, paused: false, broken: false },
+      timers: { constructionEndTime: null, upgradeEndTime: null, nextTickTime: null },
+      productionState: { queue: [], storedOutputs: { plank: 2 } },
+      plantState: { water: 10, health: 100 },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    function toStringArray(value) {
+      if (!value) return [];
+      return value
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+    }
+
+    function safeParseJson(text, fallback = null) {
+      if (!text || !text.trim()) return fallback;
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+
+    function toNumber(value) {
+      if (value === undefined || value === null || value === "") return null;
+      const num = Number(value);
+      return Number.isNaN(num) ? null : num;
+    }
+
+    class SpecManager {
+      constructor({
+        entityName,
+        collectionName,
+        collectionResolver,
+        idInputId,
+        jsonInputId,
+        statusId,
+        tableBodyId,
+        saveBtnId,
+        resetBtnId,
+        sampleBtnId,
+        refreshBtnId,
+        sampleData,
+        extraFill,
+        summaryExtractor,
+        transformBeforeSave,
+      }) {
+        this.entityName = entityName;
+        this.collectionName = collectionName;
+        this.collectionResolver = collectionResolver;
+        this.idInput = document.getElementById(idInputId);
+        this.jsonInput = document.getElementById(jsonInputId);
+        this.statusEl = document.getElementById(statusId);
+        this.tableBody = document.getElementById(tableBodyId);
+        this.sampleData = sampleData;
+        this.extraFill = extraFill;
+        this.summaryExtractor = summaryExtractor;
+        this.transformBeforeSave = transformBeforeSave;
+
+        this.saveBtn = document.getElementById(saveBtnId);
+        this.resetBtn = document.getElementById(resetBtnId);
+        this.sampleBtn = document.getElementById(sampleBtnId);
+        this.refreshBtn = document.getElementById(refreshBtnId);
+
+        this.registerHandlers();
+      }
+
+      attachDb(db) {
+        this.db = db;
+        if (this.collectionName) {
+          this.collectionRef = collection(db, this.collectionName);
+        }
+      }
+
+      registerHandlers() {
+        this.saveBtn?.addEventListener("click", () => this.handleSave());
+        this.resetBtn?.addEventListener("click", () => this.resetForm());
+        this.sampleBtn?.addEventListener("click", () => this.loadSample());
+        this.refreshBtn?.addEventListener("click", () => this.loadTable());
+      }
+
+      setStatus(message, { persist = false } = {}) {
+        this.statusEl.textContent = message;
+        if (!persist) {
+          clearTimeout(this._statusTimer);
+          this._statusTimer = setTimeout(() => {
+            this.statusEl.textContent = "";
+          }, 4200);
+        }
+      }
+
+      sanitizeId(rawId) {
+        return rawId.trim().replace(/[^A-Za-z0-9_.-]+/g, "_");
+      }
+
+      getDocIdOrWarn() {
+        const raw = this.idInput.value.trim();
+        if (!raw) {
+          this.setStatus(`${this.entityName} ID를 입력하세요.`);
+          return null;
+        }
+        const sanitized = this.sanitizeId(raw);
+        if (!sanitized) {
+          this.setStatus("유효한 ID를 입력하세요 (영문/숫자/._- 조합).", { persist: true });
+          return null;
+        }
+        if (sanitized !== raw) {
+          this.idInput.value = sanitized;
+        }
+        return sanitized;
+      }
+
+      parseJsonOrWarn() {
+        const raw = this.jsonInput.value.trim();
+        if (!raw) return {};
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("JSON 파싱에 실패했습니다. 포맷을 확인하세요.");
+          return null;
+        }
+      }
+
+      fillForm(id, data) {
+        this.idInput.value = id;
+        if (this.extraFill) this.extraFill({ manager: this, data });
+        this.jsonInput.value = JSON.stringify(data, null, 2);
+        this.setStatus(`'${id}' ${this.entityName}를 불러왔습니다.`);
+        updatePreviews();
+      }
+
+      resetForm() {
+        this.idInput.value = "";
+        if (this.extraFill) this.extraFill({ manager: this, data: this.sampleData });
+        this.jsonInput.value = JSON.stringify(this.sampleData, null, 2);
+        this.setStatus("새 문서를 작성하세요.");
+        updatePreviews();
+      }
+
+      loadSample() {
+        const candidates = [
+          this.sampleData?.id,
+          this.sampleData?.[`${this.entityName}Id`],
+          this.sampleData?.[`${this.entityName}ID`],
+          this.sampleData?.entityId,
+          this.sampleData?.islandInstanceId,
+        ].filter(Boolean);
+        const sampleId = candidates[0] ?? "";
+        this.fillForm(sampleId, this.sampleData);
+        this.setStatus("샘플 데이터를 불러왔습니다.");
+      }
+
+      getCollectionRefOrWarn() {
+        if (!this.db) return null;
+        if (this.collectionResolver) {
+          const ref = this.collectionResolver(this);
+          if (!ref) return null;
+          return ref;
+        }
+        return this.collectionRef;
+      }
+
+      async handleSave() {
+        if (!this.db) return;
+        const docId = this.getDocIdOrWarn();
+        if (!docId) return;
+        const data = this.parseJsonOrWarn();
+        if (!data) return;
+        const transformed = this.transformBeforeSave
+          ? this.transformBeforeSave({ data, manager: this, docId })
+          : data;
+
+        if (transformed === null) {
+          this.setStatus("입력 병합 중 오류가 발생했습니다.", { persist: true });
+          return;
+        }
+
+        const collectionRef = this.getCollectionRefOrWarn();
+        if (!collectionRef) return;
+
+        this.toggleButtons(true);
+        try {
+          await setDoc(doc(collectionRef, docId), transformed, { merge: true });
+          this.setStatus(`'${docId}' ${this.entityName}를 저장했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("저장 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async handleDelete(docId, label) {
+        if (!this.db) return;
+        if (!confirm(`'${label}' ${this.entityName}를 삭제할까요?`)) return;
+        const collectionRef = this.getCollectionRefOrWarn();
+        if (!collectionRef) return;
+        this.toggleButtons(true);
+        try {
+          await deleteDoc(doc(collectionRef, docId));
+          this.setStatus(`'${label}' ${this.entityName}를 삭제했습니다.`);
+          await this.loadTable();
+        } catch (error) {
+          console.error(error);
+          this.setStatus("삭제 중 오류가 발생했습니다. 네트워크/권한을 확인하세요.", { persist: true });
+        } finally {
+          this.toggleButtons(false);
+        }
+      }
+
+      async loadTable() {
+        if (!this.db) return;
+        const collectionRef = this.getCollectionRefOrWarn();
+        if (!collectionRef) return;
+        this.setStatus("목록을 불러오는 중...", { persist: true });
+        try {
+          const snapshot = await getDocs(collectionRef);
+          const rows = [];
+          snapshot.forEach((docSnap) => {
+            rows.push({ id: docSnap.id, data: docSnap.data() });
+          });
+          rows.sort((a, b) => a.id.localeCompare(b.id));
+          this.renderTable(rows);
+          this.setStatus(`총 ${rows.length}개 ${this.entityName}를 불러왔습니다.`);
+        } catch (error) {
+          console.error(error);
+          this.setStatus("목록을 불러오는 중 오류가 발생했습니다. 콘솔을 확인하세요.", { persist: true });
+        }
+      }
+
+      renderTable(rows) {
+        this.tableBody.innerHTML = "";
+        if (!rows.length) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          const sampleCells = this.summaryExtractor ? (this.summaryExtractor({})?.cells ?? []) : [];
+          td.colSpan = sampleCells.length + 2;
+          td.textContent = "저장된 문서가 없습니다.";
+          tr.appendChild(td);
+          this.tableBody.appendChild(tr);
+          return;
+        }
+
+        rows.forEach(({ id, data }) => {
+          const tr = document.createElement("tr");
+          const summary = this.summaryExtractor ? this.summaryExtractor(data) : {};
+          const cells = summary.cells ?? [];
+          [id, ...cells].forEach((value) => {
+            const td = document.createElement("td");
+            td.textContent = value ?? "-";
+            tr.appendChild(td);
+          });
+
+          const actionsTd = document.createElement("td");
+          const loadBtn = document.createElement("button");
+          loadBtn.className = "secondary";
+          loadBtn.textContent = "불러오기";
+          loadBtn.addEventListener("click", () => this.fillForm(id, data));
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "danger";
+          deleteBtn.textContent = "삭제";
+          deleteBtn.addEventListener("click", () => this.handleDelete(id, summary.label ?? id));
+
+          actionsTd.append(loadBtn, deleteBtn);
+          tr.appendChild(actionsTd);
+          this.tableBody.appendChild(tr);
+        });
+      }
+
+      toggleButtons(disabled) {
+        [this.saveBtn, this.resetBtn, this.sampleBtn, this.refreshBtn].forEach((btn) => {
+          if (btn) btn.disabled = disabled;
+        });
+      }
+    }
+
+    function fillBuildingQuickFields(data) {
+      document.getElementById("building-slug").value = data.slug ?? "";
+      document.getElementById("building-name").value = data.name ?? "";
+      document.getElementById("building-category").value = data.categoryKey ?? "";
+      document.getElementById("building-width").value = data.size?.w ?? "";
+      document.getElementById("building-height").value = data.size?.h ?? "";
+      document.getElementById("building-max").value = data.maxPerIsland ?? "";
+      document.getElementById("building-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
+      document.getElementById("building-place").value = data.placeRules ? JSON.stringify(data.placeRules, null, 2) : "";
+      document.getElementById("building-power").value = data.power ? JSON.stringify(data.power, null, 2) : "";
+      document.getElementById("building-upgrade").value = data.upgrade ? JSON.stringify(data.upgrade, null, 2) : "";
+      document.getElementById("building-production").value = data.production ? JSON.stringify(data.production, null, 2) : "";
+      document.getElementById("building-metadata").value = data.metadata ? JSON.stringify(data.metadata, null, 2) : "";
+    }
+
+    function mergeBuildingInputs() {
+      const base = safeParseJson(document.getElementById("building-json").value, {});
+      if (base === null) return null;
+      const next = { ...(base || {}) };
+      const id = document.getElementById("building-id").value.trim();
+      if (id) next.id = id;
+      const slug = document.getElementById("building-slug").value.trim();
+      if (slug) next.slug = slug;
+      const name = document.getElementById("building-name").value.trim();
+      if (name) next.name = name;
+      const category = document.getElementById("building-category").value;
+      if (category) next.categoryKey = category;
+      const tags = toStringArray(document.getElementById("building-tags").value);
+      if (tags.length) next.tags = tags;
+      const w = toNumber(document.getElementById("building-width").value);
+      const h = toNumber(document.getElementById("building-height").value);
+      if (w !== null || h !== null) {
+        next.size = next.size ?? {};
+        if (w !== null) next.size.w = w;
+        if (h !== null) next.size.h = h;
+      }
+      const max = toNumber(document.getElementById("building-max").value);
+      if (max !== null) next.maxPerIsland = max;
+
+      const place = safeParseJson(document.getElementById("building-place").value, undefined);
+      if (place !== undefined) next.placeRules = place;
+      const power = safeParseJson(document.getElementById("building-power").value, undefined);
+      if (power !== undefined) next.power = power;
+      const upgrade = safeParseJson(document.getElementById("building-upgrade").value, undefined);
+      if (upgrade !== undefined) next.upgrade = upgrade;
+      const production = safeParseJson(document.getElementById("building-production").value, undefined);
+      if (production !== undefined) next.production = production;
+      const metadata = safeParseJson(document.getElementById("building-metadata").value, undefined);
+      if (metadata !== undefined) next.metadata = metadata;
+      return next;
+    }
+
+    function applyBuildingFields(manager) {
+      const merged = mergeBuildingInputs();
+      if (merged === null) {
+        manager.setStatus("JSON 파싱 오류: buildingDef");
+        return;
+      }
+      manager.jsonInput.value = JSON.stringify(merged, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillBuildingQuickFields(merged);
+      updatePreviews();
+    }
+
+    function buildBuildingPreview(data) {
+      if (!data) return "유효한 JSON을 입력하세요.";
+      const name = data.name ?? "이름 미정";
+      const id = data.id ?? "-";
+      const category = data.categoryKey ?? "-";
+      const size = data.size ? `${data.size.w ?? "?"}x${data.size.h ?? "?"}` : "?x?";
+      const tags = Array.isArray(data.tags) && data.tags.length ? ` | ${data.tags.join(", ")}` : "";
+      const max = data.maxPerIsland ? ` · 섬당 ${data.maxPerIsland}개` : "";
+      return `[${id}] ${name} · ${category} · size=${size}${max}${tags}`;
+    }
+
+    function buildBuildingExtraPreview(data) {
+      if (!data) return "-";
+      const prod = data.production;
+      const upgrade = data.upgrade;
+      const prodText = prod?.enabled
+        ? `${prod.mode ?? "?"} | inputs=${Object.keys(prod.inputs ?? {}).length} · outputs=${Object.keys(prod.outputs ?? {}).length}`
+        : "생산 비활성";
+      const upgradeText = upgrade
+        ? `레벨 ${upgrade.levelMin ?? 1}~${upgrade.levelMax ?? "?"} (${upgrade.mode ?? "table"})`
+        : "업그레이드 정보 없음";
+      return `${prodText} / ${upgradeText}`;
+    }
+
+    function fillPlantQuickFields(data) {
+      document.getElementById("plant-slug").value = data.slug ?? "";
+      document.getElementById("plant-name").value = data.name ?? "";
+      document.getElementById("plant-type").value = data.plantTypeKey ?? "";
+      document.getElementById("plant-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
+      document.getElementById("plant-place").value = data.placeRules ? JSON.stringify(data.placeRules, null, 2) : "";
+      document.getElementById("plant-growth").value = data.growth ? JSON.stringify(data.growth, null, 2) : "";
+      document.getElementById("plant-harvest").value = data.harvest ? JSON.stringify(data.harvest, null, 2) : "";
+      document.getElementById("plant-metadata").value = data.metadata ? JSON.stringify(data.metadata, null, 2) : "";
+    }
+
+    function mergePlantInputs() {
+      const base = safeParseJson(document.getElementById("plant-json").value, {});
+      if (base === null) return null;
+      const next = { ...(base || {}) };
+      const id = document.getElementById("plant-id").value.trim();
+      if (id) next.id = id;
+      const slug = document.getElementById("plant-slug").value.trim();
+      if (slug) next.slug = slug;
+      const name = document.getElementById("plant-name").value.trim();
+      if (name) next.name = name;
+      const type = document.getElementById("plant-type").value;
+      if (type) next.plantTypeKey = type;
+      const tags = toStringArray(document.getElementById("plant-tags").value);
+      if (tags.length) next.tags = tags;
+
+      const place = safeParseJson(document.getElementById("plant-place").value, undefined);
+      if (place !== undefined) next.placeRules = place;
+      const growth = safeParseJson(document.getElementById("plant-growth").value, undefined);
+      if (growth !== undefined) next.growth = growth;
+      const harvest = safeParseJson(document.getElementById("plant-harvest").value, undefined);
+      if (harvest !== undefined) next.harvest = harvest;
+      const metadata = safeParseJson(document.getElementById("plant-metadata").value, undefined);
+      if (metadata !== undefined) next.metadata = metadata;
+      return next;
+    }
+
+    function applyPlantFields(manager) {
+      const merged = mergePlantInputs();
+      if (merged === null) {
+        manager.setStatus("JSON 파싱 오류: plantDef");
+        return;
+      }
+      manager.jsonInput.value = JSON.stringify(merged, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillPlantQuickFields(merged);
+      updatePreviews();
+    }
+
+    function buildPlantPreview(data) {
+      if (!data) return "유효한 JSON을 입력하세요.";
+      const id = data.id ?? "-";
+      const name = data.name ?? "이름 미정";
+      const type = data.plantTypeKey ?? "-";
+      const tags = Array.isArray(data.tags) && data.tags.length ? ` | ${data.tags.join(", ")}` : "";
+      const stages = Array.isArray(data.growth?.stages) ? data.growth.stages.length : 0;
+      return `[${id}] ${name} · ${type} · stages=${stages}${tags}`;
+    }
+
+    function buildPlantExtraPreview(data) {
+      if (!data) return "-";
+      const harvest = data.harvest?.harvestStageKey ?? "-";
+      const yields = data.harvest?.yields ? Object.keys(data.harvest.yields).length : 0;
+      const regrow = data.harvest?.regrow?.enabled ? "regrow" : "no-regrow";
+      return `수확=${harvest} | 산출 ${yields}개 | ${regrow}`;
+    }
+
+    function fillIslandQuickFields(data) {
+      document.getElementById("island-slug").value = data.slug ?? "";
+      document.getElementById("island-name").value = data.name ?? "";
+      document.getElementById("island-tier").value = data.tierNumber ?? "";
+      document.getElementById("island-tags").value = Array.isArray(data.tags) ? data.tags.join(", ") : "";
+      document.getElementById("island-capacity").value = data.capacity ? JSON.stringify(data.capacity, null, 2) : "";
+      document.getElementById("island-initial").value = data.initialZones ? JSON.stringify(data.initialZones, null, 2) : "";
+      document.getElementById("island-expand").value = data.expand ? JSON.stringify(data.expand, null, 2) : "";
+      document.getElementById("island-env").value = data.environment ? JSON.stringify(data.environment, null, 2) : "";
+      document.getElementById("island-metadata").value = data.metadata ? JSON.stringify(data.metadata, null, 2) : "";
+    }
+
+    function mergeIslandInputs() {
+      const base = safeParseJson(document.getElementById("island-json").value, {});
+      if (base === null) return null;
+      const next = { ...(base || {}) };
+      const id = document.getElementById("island-id").value.trim();
+      if (id) next.id = id;
+      const slug = document.getElementById("island-slug").value.trim();
+      if (slug) next.slug = slug;
+      const name = document.getElementById("island-name").value.trim();
+      if (name) next.name = name;
+      const tier = toNumber(document.getElementById("island-tier").value);
+      if (tier !== null) next.tierNumber = tier;
+      const tags = toStringArray(document.getElementById("island-tags").value);
+      if (tags.length) next.tags = tags;
+
+      const capacity = safeParseJson(document.getElementById("island-capacity").value, undefined);
+      if (capacity !== undefined) next.capacity = capacity;
+      const initialZones = safeParseJson(document.getElementById("island-initial").value, undefined);
+      if (initialZones !== undefined) next.initialZones = initialZones;
+      const expand = safeParseJson(document.getElementById("island-expand").value, undefined);
+      if (expand !== undefined) next.expand = expand;
+      const env = safeParseJson(document.getElementById("island-env").value, undefined);
+      if (env !== undefined) next.environment = env;
+      const metadata = safeParseJson(document.getElementById("island-metadata").value, undefined);
+      if (metadata !== undefined) next.metadata = metadata;
+      return next;
+    }
+
+    function applyIslandFields(manager) {
+      const merged = mergeIslandInputs();
+      if (merged === null) {
+        manager.setStatus("JSON 파싱 오류: islandDef");
+        return;
+      }
+      manager.jsonInput.value = JSON.stringify(merged, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillIslandQuickFields(merged);
+      updatePreviews();
+    }
+
+    function buildIslandPreview(data) {
+      if (!data) return "유효한 JSON을 입력하세요.";
+      const id = data.id ?? "-";
+      const name = data.name ?? "이름 미정";
+      const tier = data.tierNumber ?? "-";
+      const caps = data.capacity || {};
+      const capText = `B:${caps.maxBuildings ?? "?"} / P:${caps.maxPlants ?? "?"}`;
+      return `[${id}] ${name} · tier=${tier} · cap(${capText})`;
+    }
+
+    function buildIslandExtraPreview(data) {
+      if (!data) return "-";
+      const zones = Array.isArray(data.expand?.zones) ? data.expand.zones.length : 0;
+      const env = data.environment?.modifiers ? Object.keys(data.environment.modifiers).length : 0;
+      const initial = Array.isArray(data.initialZones) ? data.initialZones.length : 0;
+      return `초기 구역 ${initial}개 | 확장 ${zones}개 | 환경 보정 ${env}개`;
+    }
+
+    function fillIslandInstanceQuickFields(data) {
+      document.getElementById("island-instance-def").value = data.islandDefId ?? "";
+      document.getElementById("island-instance-level").value = data.level ?? "";
+      document.getElementById("island-instance-name").value = data.nameOverride ?? "";
+      document.getElementById("island-instance-zones").value = Array.isArray(data.unlockedZoneKeys) ? data.unlockedZoneKeys.join(", ") : "";
+      document.getElementById("island-instance-economy").value = data.economyState ? JSON.stringify(data.economyState, null, 2) : "";
+      document.getElementById("island-instance-meta").value = data.metadata ? JSON.stringify(data.metadata, null, 2) : "";
+    }
+
+    function mergeIslandInstanceInputs() {
+      const base = safeParseJson(document.getElementById("island-instance-json").value, {});
+      if (base === null) return null;
+      const next = { ...(base || {}) };
+      const id = document.getElementById("island-instance-id").value.trim();
+      if (id) next.islandInstanceId = id;
+      const def = document.getElementById("island-instance-def").value.trim();
+      if (def) next.islandDefId = def;
+      const level = toNumber(document.getElementById("island-instance-level").value);
+      if (level !== null) next.level = level;
+      const name = document.getElementById("island-instance-name").value.trim();
+      if (name) next.nameOverride = name;
+      const zones = toStringArray(document.getElementById("island-instance-zones").value);
+      if (zones.length) next.unlockedZoneKeys = zones;
+
+      const economy = safeParseJson(document.getElementById("island-instance-economy").value, undefined);
+      if (economy !== undefined) next.economyState = economy;
+      const metadata = safeParseJson(document.getElementById("island-instance-meta").value, undefined);
+      if (metadata !== undefined) next.metadata = metadata;
+      return next;
+    }
+
+    function applyIslandInstanceFields(manager) {
+      const merged = mergeIslandInstanceInputs();
+      if (merged === null) {
+        manager.setStatus("JSON 파싱 오류: island 인스턴스");
+        return;
+      }
+      manager.jsonInput.value = JSON.stringify(merged, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillIslandInstanceQuickFields(merged);
+      updatePreviews();
+    }
+
+    function buildIslandInstancePreview(data) {
+      if (!data) return "유효한 JSON을 입력하세요.";
+      const id = data.islandInstanceId ?? "-";
+      const def = data.islandDefId ?? "-";
+      const level = data.level ?? "-";
+      const name = data.nameOverride ? ` · ${data.nameOverride}` : "";
+      return `[${id}] def=${def} · L${level}${name}`;
+    }
+
+    function buildIslandInstanceExtra(data) {
+      if (!data) return "-";
+      const zones = Array.isArray(data.unlockedZoneKeys) ? data.unlockedZoneKeys.join(", ") : "없음";
+      const bonuses = Array.isArray(data.economyState?.bonuses) ? data.economyState.bonuses.length : 0;
+      return `구역: ${zones} | economy bonuses=${bonuses}`;
+    }
+
+    function fillWorldQuickFields(data) {
+      document.getElementById("world-def-id").value = data.defId ?? "";
+      document.getElementById("world-type").value = data.type ?? "";
+      document.getElementById("world-island-ref").value = data.islandInstanceId ?? "";
+      document.getElementById("world-level").value = data.level ?? "";
+      document.getElementById("world-stage").value = data.stageIndex ?? "";
+      document.getElementById("world-pos-x").value = data.position?.x ?? "";
+      document.getElementById("world-pos-y").value = data.position?.y ?? "";
+      document.getElementById("world-rot").value = data.position?.rot ?? "";
+      const flags = data.state
+        ? ["placed", "paused", "broken"].filter((k) => data.state[k]).join(", ")
+        : "";
+      document.getElementById("world-tags").value = flags;
+      document.getElementById("world-timers").value = data.timers ? JSON.stringify(data.timers, null, 2) : "";
+      document.getElementById("world-production").value = data.productionState ? JSON.stringify(data.productionState, null, 2) : "";
+      document.getElementById("world-plant").value = data.plantState ? JSON.stringify(data.plantState, null, 2) : "";
+      document.getElementById("world-meta").value = data.metadata ? JSON.stringify(data.metadata, null, 2) : "";
+    }
+
+    function mergeWorldInputs() {
+      const base = safeParseJson(document.getElementById("world-json").value, {});
+      if (base === null) return null;
+      const next = { ...(base || {}) };
+      const id = document.getElementById("world-entity-id").value.trim();
+      if (id) next.entityId = id;
+      const defId = document.getElementById("world-def-id").value.trim();
+      if (defId) next.defId = defId;
+      const type = document.getElementById("world-type").value;
+      if (type) next.type = type;
+      const islandRef = document.getElementById("world-island-ref").value.trim();
+      if (islandRef) next.islandInstanceId = islandRef;
+      const level = toNumber(document.getElementById("world-level").value);
+      if (level !== null) next.level = level;
+      const stage = toNumber(document.getElementById("world-stage").value);
+      if (stage !== null) next.stageIndex = stage;
+      const x = toNumber(document.getElementById("world-pos-x").value);
+      const y = toNumber(document.getElementById("world-pos-y").value);
+      const rot = toNumber(document.getElementById("world-rot").value);
+      if (x !== null || y !== null || rot !== null) {
+        next.position = next.position ?? {};
+        if (x !== null) next.position.x = x;
+        if (y !== null) next.position.y = y;
+        if (rot !== null) next.position.rot = rot;
+      }
+      const flags = toStringArray(document.getElementById("world-tags").value);
+      if (flags.length) {
+        next.state = next.state ?? {};
+        next.state.placed = flags.includes("placed");
+        next.state.paused = flags.includes("paused");
+        next.state.broken = flags.includes("broken");
+      }
+
+      const timers = safeParseJson(document.getElementById("world-timers").value, undefined);
+      if (timers !== undefined) next.timers = timers;
+      const production = safeParseJson(document.getElementById("world-production").value, undefined);
+      if (production !== undefined) next.productionState = production;
+      const plantState = safeParseJson(document.getElementById("world-plant").value, undefined);
+      if (plantState !== undefined) next.plantState = plantState;
+      const metadata = safeParseJson(document.getElementById("world-meta").value, undefined);
+      if (metadata !== undefined) next.metadata = metadata;
+      return next;
+    }
+
+    function applyWorldFields(manager) {
+      const merged = mergeWorldInputs();
+      if (merged === null) {
+        manager.setStatus("JSON 파싱 오류: worldObject");
+        return;
+      }
+      manager.jsonInput.value = JSON.stringify(merged, null, 2);
+      manager.setStatus("입력값을 JSON에 반영했습니다.");
+      fillWorldQuickFields(merged);
+      updatePreviews();
+    }
+
+    function buildWorldPreview(data) {
+      if (!data) return "유효한 JSON을 입력하세요.";
+      const id = data.entityId ?? "-";
+      const type = data.type ?? "-";
+      const def = data.defId ?? "-";
+      const island = data.islandInstanceId ? `@${data.islandInstanceId}` : "@?";
+      const level = data.level ?? data.stageIndex ?? "-";
+      return `[${id}] ${type} · def=${def} ${island} · lv/stage=${level}`;
+    }
+
+    function buildWorldExtraPreview(data) {
+      if (!data) return "-";
+      const pos = data.position ? `(${data.position.x ?? "?"}, ${data.position.y ?? "?"}, rot=${data.position.rot ?? 0})` : "(미배치)";
+      const state = data.state ?
+        [data.state.placed ? "placed" : null, data.state.paused ? "paused" : null, data.state.broken ? "broken" : null]
+          .filter(Boolean)
+          .join(", ") : "state 없음";
+      const nextTick = data.timers?.nextTickTime ? `nextTick=${data.timers.nextTickTime}` : "스케줄 없음";
+      return `${pos} | ${state} | ${nextTick}`;
+    }
+
+    function requireUserId(inputId, statusEl) {
+      const value = document.getElementById(inputId).value.trim();
+      if (!value) {
+        statusEl.textContent = "유저 ID를 입력하세요.";
+        return null;
+      }
+      return value;
+    }
+
+    function resolveIslandCollection(manager) {
+      const userId = requireUserId("island-user-id", manager.statusEl);
+      if (!userId) return null;
+      return collection(manager.db, "users", userId, "islands");
+    }
+
+    function resolveWorldCollection(manager) {
+      const userId = requireUserId("world-user-id", manager.statusEl);
+      if (!userId) return null;
+      const mode = document.querySelector("input[name='world-path']:checked")?.value ?? "island";
+      if (mode === "island") {
+        const islandId = document.getElementById("world-island-id").value.trim();
+        if (!islandId) {
+          manager.setStatus("섬 중심 모드에서는 islandInstanceId를 입력하세요.", { persist: true });
+          return null;
+        }
+        return collection(manager.db, "users", userId, "islands", islandId, "worldObjects");
+      }
+      return collection(manager.db, "users", userId, "worldObjects");
+    }
+
+    function createBuildingManager() {
+      return new SpecManager({
+        entityName: "buildingDef",
+        collectionName: "buildingDefs",
+        idInputId: "building-id",
+        jsonInputId: "building-json",
+        statusId: "building-status",
+        tableBodyId: "building-table",
+        saveBtnId: "building-save",
+        resetBtnId: "building-reset",
+        sampleBtnId: "building-sample",
+        refreshBtnId: "building-refresh",
+        sampleData: SAMPLE_BUILDING,
+        extraFill: ({ data }) => fillBuildingQuickFields(data),
+        summaryExtractor: (data) => ({
+          label: data.name ?? data.id ?? "building",
+          cells: [
+            data.name ?? "-",
+            data.categoryKey ?? "-",
+            data.size ? `${data.size.w ?? "?"}x${data.size.h ?? "?"}` : "-",
+            Array.isArray(data.tags) ? data.tags.join(", ") : "-",
+          ],
+        }),
+        transformBeforeSave: ({ docId }) => {
+          const merged = mergeBuildingInputs();
+          if (!merged) return null;
+          merged.id = merged.id ?? docId;
+          return merged;
+        },
+      });
+    }
+
+    function createPlantManager() {
+      return new SpecManager({
+        entityName: "plantDef",
+        collectionName: "plantDefs",
+        idInputId: "plant-id",
+        jsonInputId: "plant-json",
+        statusId: "plant-status",
+        tableBodyId: "plant-table",
+        saveBtnId: "plant-save",
+        resetBtnId: "plant-reset",
+        sampleBtnId: "plant-sample",
+        refreshBtnId: "plant-refresh",
+        sampleData: SAMPLE_PLANT,
+        extraFill: ({ data }) => fillPlantQuickFields(data),
+        summaryExtractor: (data) => ({
+          label: data.name ?? data.id ?? "plant",
+          cells: [
+            data.name ?? "-",
+            data.plantTypeKey ?? "-",
+            data.harvest?.harvestStageKey ?? "-",
+            Array.isArray(data.tags) ? data.tags.join(", ") : "-",
+          ],
+        }),
+        transformBeforeSave: ({ docId }) => {
+          const merged = mergePlantInputs();
+          if (!merged) return null;
+          merged.id = merged.id ?? docId;
+          return merged;
+        },
+      });
+    }
+
+    function createIslandManager() {
+      return new SpecManager({
+        entityName: "islandDef",
+        collectionName: "islandDefs",
+        idInputId: "island-id",
+        jsonInputId: "island-json",
+        statusId: "island-status",
+        tableBodyId: "island-table",
+        saveBtnId: "island-save",
+        resetBtnId: "island-reset",
+        sampleBtnId: "island-sample",
+        refreshBtnId: "island-refresh",
+        sampleData: SAMPLE_ISLAND,
+        extraFill: ({ data }) => fillIslandQuickFields(data),
+        summaryExtractor: (data) => ({
+          label: data.name ?? data.id ?? "island",
+          cells: [
+            data.name ?? "-",
+            data.tierNumber ?? "-",
+            data.capacity ? `${data.capacity.maxBuildings ?? "?"}/${data.capacity.maxPlants ?? "?"}` : "-",
+            Array.isArray(data.expand?.zones) ? data.expand.zones.length : 0,
+          ],
+        }),
+        transformBeforeSave: ({ docId }) => {
+          const merged = mergeIslandInputs();
+          if (!merged) return null;
+          merged.id = merged.id ?? docId;
+          return merged;
+        },
+      });
+    }
+
+    function createIslandInstanceManager() {
+      return new SpecManager({
+        entityName: "islandInstance",
+        collectionResolver: resolveIslandCollection,
+        idInputId: "island-instance-id",
+        jsonInputId: "island-instance-json",
+        statusId: "island-instance-status",
+        tableBodyId: "island-instance-table",
+        saveBtnId: "island-instance-save",
+        resetBtnId: "island-instance-reset",
+        sampleBtnId: "island-instance-sample",
+        refreshBtnId: "island-instance-refresh",
+        sampleData: SAMPLE_ISLAND_INSTANCE,
+        extraFill: ({ data }) => fillIslandInstanceQuickFields(data),
+        summaryExtractor: (data) => ({
+          label: data.nameOverride ?? data.islandInstanceId ?? "island",
+          cells: [
+            data.islandDefId ?? "-",
+            data.level ?? "-",
+            data.nameOverride ?? "-",
+            Array.isArray(data.unlockedZoneKeys) ? data.unlockedZoneKeys.join(", ") : "-",
+          ],
+        }),
+        transformBeforeSave: ({ docId }) => {
+          const merged = mergeIslandInstanceInputs();
+          if (!merged) return null;
+          merged.islandInstanceId = merged.islandInstanceId ?? docId;
+          return merged;
+        },
+      });
+    }
+
+    function createWorldManager() {
+      return new SpecManager({
+        entityName: "worldObject",
+        collectionResolver: resolveWorldCollection,
+        idInputId: "world-entity-id",
+        jsonInputId: "world-json",
+        statusId: "world-status",
+        tableBodyId: "world-table",
+        saveBtnId: "world-save",
+        resetBtnId: "world-reset",
+        sampleBtnId: "world-sample",
+        refreshBtnId: "world-refresh",
+        sampleData: SAMPLE_WORLD_OBJECT,
+        extraFill: ({ data }) => fillWorldQuickFields(data),
+        summaryExtractor: (data) => ({
+          label: data.entityId ?? data.defId ?? "worldObject",
+          cells: [
+            data.type ?? "-",
+            data.defId ?? "-",
+            data.islandInstanceId ?? "-",
+            data.level ?? data.stageIndex ?? "-",
+            data.position ? `${data.position.x ?? "?"},${data.position.y ?? "?"}` : "-",
+          ],
+        }),
+        transformBeforeSave: ({ docId }) => {
+          const merged = mergeWorldInputs();
+          if (!merged) return null;
+          merged.entityId = merged.entityId ?? docId;
+          return merged;
+        },
+      });
+    }
+
+    function registerFieldButtons(managers) {
+      document.getElementById("building-apply")?.addEventListener("click", () => applyBuildingFields(managers.building));
+      document.getElementById("plant-apply")?.addEventListener("click", () => applyPlantFields(managers.plant));
+      document.getElementById("island-apply")?.addEventListener("click", () => applyIslandFields(managers.island));
+      document.getElementById("island-instance-apply")?.addEventListener("click", () => applyIslandInstanceFields(managers.islandInstance));
+      document.getElementById("world-apply")?.addEventListener("click", () => applyWorldFields(managers.world));
+      document.getElementById("world-path-refresh")?.addEventListener("click", () => managers.world.loadTable());
+      document.querySelectorAll("input[name='world-path']").forEach((el) => {
+        el.addEventListener("change", () => managers.world.loadTable());
+      });
+    }
+
+    function registerPreviewInputs(ids) {
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        el?.addEventListener("input", updatePreviews);
+        el?.addEventListener("change", updatePreviews);
+      });
+    }
+
+    function updatePreviews() {
+      const buildingData = mergeBuildingInputs();
+      document.getElementById("building-preview").textContent = buildingData ? buildBuildingPreview(buildingData) : "JSON 파싱 오류";
+      document.getElementById("building-preview-extra").textContent = buildingData ? buildBuildingExtraPreview(buildingData) : "-";
+
+      const plantData = mergePlantInputs();
+      document.getElementById("plant-preview").textContent = plantData ? buildPlantPreview(plantData) : "JSON 파싱 오류";
+      document.getElementById("plant-preview-extra").textContent = plantData ? buildPlantExtraPreview(plantData) : "-";
+
+      const islandData = mergeIslandInputs();
+      document.getElementById("island-preview").textContent = islandData ? buildIslandPreview(islandData) : "JSON 파싱 오류";
+      document.getElementById("island-preview-extra").textContent = islandData ? buildIslandExtraPreview(islandData) : "-";
+
+      const islandInstanceData = mergeIslandInstanceInputs();
+      document.getElementById("island-instance-preview").textContent = islandInstanceData ? buildIslandInstancePreview(islandInstanceData) : "JSON 파싱 오류";
+      document.getElementById("island-instance-preview-extra").textContent = islandInstanceData ? buildIslandInstanceExtra(islandInstanceData) : "-";
+
+      const worldData = mergeWorldInputs();
+      document.getElementById("world-preview").textContent = worldData ? buildWorldPreview(worldData) : "JSON 파싱 오류";
+      document.getElementById("world-preview-extra").textContent = worldData ? buildWorldExtraPreview(worldData) : "-";
+    }
+
+    async function initialize() {
+      const managers = {
+        building: createBuildingManager(),
+        plant: createPlantManager(),
+        island: createIslandManager(),
+        islandInstance: createIslandInstanceManager(),
+        world: createWorldManager(),
+      };
+
+      registerFieldButtons(managers);
+      registerPreviewInputs([
+        "building-json",
+        "building-id",
+        "building-slug",
+        "building-name",
+        "building-category",
+        "building-width",
+        "building-height",
+        "building-max",
+        "building-tags",
+        "building-place",
+        "building-power",
+        "building-upgrade",
+        "building-production",
+        "building-metadata",
+        "plant-json",
+        "plant-id",
+        "plant-slug",
+        "plant-name",
+        "plant-type",
+        "plant-tags",
+        "plant-place",
+        "plant-growth",
+        "plant-harvest",
+        "plant-metadata",
+        "island-json",
+        "island-id",
+        "island-slug",
+        "island-name",
+        "island-tier",
+        "island-tags",
+        "island-capacity",
+        "island-initial",
+        "island-expand",
+        "island-env",
+        "island-metadata",
+        "island-instance-json",
+        "island-instance-id",
+        "island-instance-def",
+        "island-instance-level",
+        "island-instance-name",
+        "island-instance-zones",
+        "island-instance-economy",
+        "island-instance-meta",
+        "world-json",
+        "world-entity-id",
+        "world-def-id",
+        "world-type",
+        "world-island-ref",
+        "world-level",
+        "world-stage",
+        "world-pos-x",
+        "world-pos-y",
+        "world-rot",
+        "world-tags",
+        "world-timers",
+        "world-production",
+        "world-plant",
+        "world-meta",
+      ]);
+
+      try {
+        const app = initializeApp(await getFirebaseConfig());
+        const db = getFirestore(app);
+        Object.values(managers).forEach((manager) => manager.attachDb(db));
+        managers.building.resetForm();
+        managers.plant.resetForm();
+        managers.island.resetForm();
+        managers.islandInstance.resetForm();
+        managers.world.resetForm();
+        managers.building.loadTable();
+        managers.plant.loadTable();
+        managers.island.loadTable();
+        updatePreviews();
+      } catch (error) {
+        console.error(error);
+        Object.values(managers).forEach((manager) => {
+          manager.setStatus("Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.", { persist: true });
+          manager.toggleButtons(true);
+        });
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
