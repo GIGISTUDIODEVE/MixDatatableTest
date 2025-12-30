@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Item vs Object 아키텍처 관리 (Firestore)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1.5rem;
+      margin: -1.5rem -1.5rem 1.25rem;
+      background: rgba(11, 18, 32, 0.8);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .nav-brand {
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 0.45rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: #111827;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    .nav-link.active {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+      border-color: transparent;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .container {
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    .split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 200px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+
+    button.primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: #0b1220;
+    }
+
+    button.secondary {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: #0b1220;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid #1f2937;
+      padding: 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    tr:hover td {
+      background: #0b1220;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 10px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      min-height: 1.4rem;
+      white-space: pre-line;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #1f2937;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      border: 1px solid #334155;
+    }
+
+    .pill.solid {
+      background: linear-gradient(90deg, #8b5cf6, #06b6d4);
+      color: #0b1220;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="nav-brand">Item ↔ Object 아키텍처</div>
+    <div class="nav-links">
+      <a class="nav-link" href="base-stats-firestore.html">BaseStat 프리셋</a>
+      <a class="nav-link" href="growth-base-stats-firestore.html">GrowthBaseStat 프리셋</a>
+      <a class="nav-link" href="combat-stats-firestore.html">CombatStats 관리</a>
+      <a class="nav-link" href="effect-system-firestore.html">EffectSpec 관리</a>
+      <a class="nav-link" href="monster-firestore.html">몬스터 관리</a>
+      <a class="nav-link" href="economy-firestore.html">재화/티어 관리</a>
+      <a class="nav-link" href="item-firestore.html">아이템 관리</a>
+      <a class="nav-link active" href="item-object-architecture-firestore.html">Item vs Object</a>
+    </div>
+  </nav>
+  <div class="container">
+    <header class="card">
+      <h1>Item ↔ Object 아키텍처 관리</h1>
+      <p class="muted">Item_Object_Architecture.md에서 정의한 “아이템 = 권리/재료, 오브젝트 = 월드 실체” 원칙을 그대로 Firestore에 반영하기 위한 CRUD 도구입니다. Def(정적 설계)와 User-owned Entity(동적 상태)를 분리하여 저장/불러오기/삭제를 수행합니다.</p>
+      <div class="pill">Item = 권리/재료/트리거 · Object = 위치/타이머/레벨을 가진 실체</div>
+      <div class="pill">정적 Def: buildingDefs · plantDefs · islandDefs · itemDefs · upgradeDefs</div>
+      <div class="pill">동적 상태: users/{uid}/inventory · islands · worldObjects</div>
+      <p class="muted">아이템에는 위치/타이머/성장 단계가 절대 포함되지 않도록 JSON을 분리하고, Entity에는 레벨/타이머/생산 상태만 유지합니다.</p>
+    </header>
+
+    <section class="card">
+      <h2>정적 Def 관리</h2>
+      <p class="muted">건물/식물/섬/아이템/업그레이드 Def는 상태를 가지지 않는 설계 데이터입니다. collection을 선택하고 JSON을 수정 후 저장하세요.</p>
+      <div class="grid">
+        <div>
+          <label for="def-collection">Def Collection</label>
+          <select id="def-collection">
+            <option value="buildingDefs">buildingDefs</option>
+            <option value="plantDefs">plantDefs</option>
+            <option value="islandDefs">islandDefs</option>
+            <option value="itemDefs">itemDefs</option>
+            <option value="upgradeDefs">upgradeDefs</option>
+          </select>
+        </div>
+        <div>
+          <label for="def-id">문서 ID</label>
+          <input id="def-id" type="text" placeholder="sawmill_v1" />
+        </div>
+      </div>
+      <label for="def-json">Def JSON</label>
+      <textarea id="def-json" spellcheck="false"></textarea>
+      <div class="actions">
+        <button class="secondary" id="def-reset">샘플 불러오기</button>
+        <button class="primary" id="def-save">저장 (setDoc)</button>
+        <button class="secondary" id="def-load">불러오기 (getDoc)</button>
+        <button class="danger" id="def-delete">삭제</button>
+        <button class="secondary" id="def-reload-table">목록 새로고침</button>
+      </div>
+      <div class="status" id="def-status"></div>
+      <p class="muted" style="margin-top: 0.5rem;">※ 비용/시간/조건/효과 등 게임 밸런스 파라미터만 Def에 유지하고, 상태 값은 저장하지 않습니다.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>collection</th>
+            <th>docId</th>
+            <th>요약</th>
+          </tr>
+        </thead>
+        <tbody id="def-table"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>유저 상태 관리 · Item을 통한 권리</h2>
+      <p class="muted">users/{uid}/inventory는 “권리/재료/트리거”만 저장합니다. 위치/타이머/레벨을 절대 넣지 말고, itemDefId와 quantity만 유지합니다.</p>
+      <div class="grid">
+        <div>
+          <label for="inventory-user">uid</label>
+          <input id="inventory-user" type="text" placeholder="user123" />
+        </div>
+        <div>
+          <label for="inventory-id">inventoryId (doc id)</label>
+          <input id="inventory-id" type="text" placeholder="seed-slot-01" />
+        </div>
+      </div>
+      <label for="inventory-json">Inventory JSON</label>
+      <textarea id="inventory-json" spellcheck="false"></textarea>
+      <div class="actions">
+        <button class="secondary" id="inventory-reset">샘플 불러오기</button>
+        <button class="primary" id="inventory-save">저장 (setDoc)</button>
+        <button class="secondary" id="inventory-load">불러오기 (getDoc)</button>
+        <button class="danger" id="inventory-delete">삭제</button>
+        <button class="secondary" id="inventory-reload-table">목록 새로고침</button>
+      </div>
+      <div class="status" id="inventory-status"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>docId</th>
+            <th>itemDefId</th>
+            <th>quantity</th>
+          </tr>
+        </thead>
+        <tbody id="inventory-table"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>유저 상태 관리 · Island Entity</h2>
+      <p class="muted">섬은 항상 Entity로 관리합니다. 해금 구역, 개발도, 소속 오브젝트 리스트 등 장기 상태만 저장합니다.</p>
+      <div class="grid">
+        <div>
+          <label for="island-user">uid</label>
+          <input id="island-user" type="text" placeholder="user123" />
+        </div>
+        <div>
+          <label for="island-id">islandInstanceId (doc id)</label>
+          <input id="island-id" type="text" placeholder="island-01" />
+        </div>
+      </div>
+      <label for="island-json">Island Entity JSON</label>
+      <textarea id="island-json" spellcheck="false"></textarea>
+      <div class="actions">
+        <button class="secondary" id="island-reset">샘플 불러오기</button>
+        <button class="primary" id="island-save">저장 (setDoc)</button>
+        <button class="secondary" id="island-load">불러오기 (getDoc)</button>
+        <button class="danger" id="island-delete">삭제</button>
+        <button class="secondary" id="island-reload-table">목록 새로고침</button>
+      </div>
+      <div class="status" id="island-status"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>docId</th>
+            <th>islandDefId</th>
+            <th>level</th>
+            <th>unlockedZones</th>
+          </tr>
+        </thead>
+        <tbody id="island-table"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>유저 상태 관리 · World Object Entity</h2>
+      <p class="muted">건물/식물은 worldObjects에 Entity로 저장합니다. 위치/타이머/레벨/생산 상태만 포함하고, 구매권은 inventory 아이템으로 분리합니다.</p>
+      <div class="grid">
+        <div>
+          <label for="world-user">uid</label>
+          <input id="world-user" type="text" placeholder="user123" />
+        </div>
+        <div>
+          <label for="world-id">entityId (doc id)</label>
+          <input id="world-id" type="text" placeholder="plant-07" />
+        </div>
+      </div>
+      <label for="world-json">World Object JSON</label>
+      <textarea id="world-json" spellcheck="false"></textarea>
+      <div class="actions">
+        <button class="secondary" id="world-reset">샘플 불러오기</button>
+        <button class="primary" id="world-save">저장 (setDoc)</button>
+        <button class="secondary" id="world-load">불러오기 (getDoc)</button>
+        <button class="danger" id="world-delete">삭제</button>
+        <button class="secondary" id="world-reload-table">목록 새로고침</button>
+      </div>
+      <div class="status" id="world-status"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>docId</th>
+            <th>type</th>
+            <th>defId</th>
+            <th>level/stage</th>
+            <th>position</th>
+          </tr>
+        </thead>
+        <tbody id="world-table"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      getDoc,
+      setDoc,
+      deleteDoc,
+      doc,
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import { getFirebaseConfig } from "./firebase-config.js";
+
+    const DEF_SAMPLES = {
+      buildingDefs: {
+        name: "Sawmill",
+        slug: "sawmill",
+        category: "resource",
+        placeable: true,
+        cost: { gold: 1500, wood: 200 },
+        buildTimeSeconds: 120,
+        production: { perHour: { wood: 45 }, capacity: { wood: 200 } },
+        upgradePath: [
+          { level: 2, cost: { gold: 2200, stone: 120 }, timeSeconds: 180 },
+          { level: 3, cost: { gold: 3200, stone: 240 }, timeSeconds: 240 },
+        ],
+        tags: ["core", "resource"],
+      },
+      plantDefs: {
+        name: "Wheat",
+        slug: "wheat",
+        growTimeSeconds: 300,
+        harvestYield: { grain: 8 },
+        seedItemId: "seed-wheat",
+        zone: "field",
+        tags: ["crop"],
+      },
+      islandDefs: {
+        name: "Starter Island",
+        slug: "starter_island",
+        unlockCost: { gold: 5000 },
+        zones: ["harbor", "forest", "field"],
+        modifiers: { productionBoost: { wood: 0.05 } },
+      },
+      itemDefs: {
+        name: "Island License",
+        slug: "island_license_t1",
+        itemType: "key_item",
+        tierKey: "T1",
+        stack: { stackable: false, maxStack: 1 },
+        usage: { unlocksIslandDefId: "starter_island" },
+        tags: ["license", "unlock"],
+      },
+      upgradeDefs: {
+        key: "default_building_upgrade",
+        appliesTo: "building",
+        requirements: { levelMin: 1 },
+        costByLevel: {
+          "1": { gold: 500, wood: 100 },
+          "2": { gold: 900, wood: 160 },
+        },
+        timeByLevelSeconds: {
+          "1": 90,
+          "2": 140,
+        },
+      },
+    };
+
+    const INVENTORY_SAMPLE = {
+      itemDefId: "seed-wheat",
+      quantity: 5,
+      tags: ["tradeable"],
+      note: "위치는 저장하지 않음. 씨앗 소유권만 기록",
+    };
+
+    const ISLAND_SAMPLE = {
+      islandDefId: "starter_island",
+      level: 1,
+      unlockedZones: ["harbor"],
+      developmentScore: 0,
+      modifiers: { productionBoost: { wood: 0.05 } },
+      createdAt: Date.now(),
+    };
+
+    const WORLD_OBJECT_SAMPLE = {
+      type: "building",
+      defId: "sawmill",
+      ownerIslandId: "island-01",
+      level: 2,
+      position: { x: 12, y: 4 },
+      timers: { constructionEnd: Date.now() + 60000 },
+      productionState: {
+        running: true,
+        queue: [{ output: { wood: 30 }, endTime: Date.now() + 600000 }],
+      },
+      tags: ["core"],
+    };
+
+    function setStatus(el, message) {
+      const target = document.getElementById(el);
+      if (target) target.textContent = message;
+    }
+
+    function requireId(value, label) {
+      if (!value) {
+        throw new Error(`${label}가 필요합니다.`);
+      }
+      return value;
+    }
+
+    function tryParseJSON(text) {
+      if (!text.trim()) return {};
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        throw new Error("JSON 파싱에 실패했습니다. 입력을 확인하세요.");
+      }
+    }
+
+    function renderTableBody(targetId, rows) {
+      const tbody = document.getElementById(targetId);
+      if (!tbody) return;
+      tbody.innerHTML = rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("");
+    }
+
+    class DefManager {
+      constructor(db) {
+        this.db = db;
+        this.collectionSelect = document.getElementById("def-collection");
+        this.idInput = document.getElementById("def-id");
+        this.jsonInput = document.getElementById("def-json");
+        this.statusId = "def-status";
+        this.tableId = "def-table";
+        this.bindEvents();
+        this.resetSample();
+        this.loadTable();
+      }
+
+      bindEvents() {
+        document.getElementById("def-reset")?.addEventListener("click", () => this.resetSample());
+        document.getElementById("def-save")?.addEventListener("click", () => this.save());
+        document.getElementById("def-load")?.addEventListener("click", () => this.load());
+        document.getElementById("def-delete")?.addEventListener("click", () => this.delete());
+        document.getElementById("def-reload-table")?.addEventListener("click", () => this.loadTable());
+        this.collectionSelect?.addEventListener("change", () => {
+          this.resetSample();
+          this.loadTable();
+        });
+      }
+
+      currentCollection() {
+        return this.collectionSelect?.value ?? "buildingDefs";
+      }
+
+      resetSample() {
+        const sample = DEF_SAMPLES[this.currentCollection()];
+        this.jsonInput.value = JSON.stringify(sample, null, 2);
+        setStatus(this.statusId, "샘플 JSON을 불러왔습니다.");
+      }
+
+      async save() {
+        try {
+          const id = requireId(this.idInput.value.trim(), "문서 ID");
+          const data = tryParseJSON(this.jsonInput.value);
+          await setDoc(doc(this.db, this.currentCollection(), id), data);
+          setStatus(this.statusId, `저장 완료: ${id}`);
+          this.loadTable();
+        } catch (error) {
+          console.error(error);
+          setStatus(this.statusId, error.message);
+        }
+      }
+
+      async load() {
+        try {
+          const id = requireId(this.idInput.value.trim(), "문서 ID");
+          const snap = await getDoc(doc(this.db, this.currentCollection(), id));
+          if (!snap.exists()) {
+            setStatus(this.statusId, "문서를 찾을 수 없습니다.");
+            return;
+          }
+          this.jsonInput.value = JSON.stringify(snap.data(), null, 2);
+          setStatus(this.statusId, `불러오기 완료: ${id}`);
+        } catch (error) {
+          console.error(error);
+          setStatus(this.statusId, error.message);
+        }
+      }
+
+      async delete() {
+        try {
+          const id = requireId(this.idInput.value.trim(), "문서 ID");
+          await deleteDoc(doc(this.db, this.currentCollection(), id));
+          setStatus(this.statusId, `삭제 완료: ${id}`);
+          this.loadTable();
+        } catch (error) {
+          console.error(error);
+          setStatus(this.statusId, error.message);
+        }
+      }
+
+      async loadTable() {
+        try {
+          const rows = [];
+          const snapshot = await getDocs(collection(this.db, this.currentCollection()));
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const summary = data.name ?? data.slug ?? data.key ?? "-";
+            rows.push([this.currentCollection(), docSnap.id, summary]);
+          });
+          renderTableBody(this.tableId, rows);
+          setStatus(this.statusId, `목록 ${rows.length}건 로드 완료`);
+        } catch (error) {
+          console.error(error);
+          setStatus(this.statusId, "목록을 불러오지 못했습니다. 컬렉션 권한을 확인하세요.");
+        }
+      }
+    }
+
+    class UserSubcollectionManager {
+      constructor(db, options) {
+        this.db = db;
+        this.userInput = document.getElementById(options.userInputId);
+        this.idInput = document.getElementById(options.idInputId);
+        this.jsonInput = document.getElementById(options.jsonInputId);
+        this.statusId = options.statusId;
+        this.tableId = options.tableId;
+        this.collectionName = options.collectionName;
+        this.sample = options.sample;
+        this.columns = options.columns;
+        this.bindEvents(options);
+        this.resetSample();
+      }
+
+      bindEvents(options) {
+        document.getElementById(options.resetBtn)?.addEventListener("click", () => this.resetSample());
+        document.getElementById(options.saveBtn)?.addEventListener("click", () => this.save());
+        document.getElementById(options.loadBtn)?.addEventListener("click", () => this.load());
+        document.getElementById(options.deleteBtn)?.addEventListener("click", () => this.delete());
+        document.getElementById(options.reloadBtn)?.addEventListener("click", () => this.loadTable());
+      }
+
+      resetSample() {
+        this.jsonInput.value = JSON.stringify(this.sample, null, 2);
+        setStatus(this.statusId, "샘플 JSON을 불러왔습니다.");
+      }
+
+      baseCollection() {
+        const uid = requireId(this.userInput.value.trim(), "uid");
+        return collection(this.db, "users", uid, this.collectionName);
+      }
+
+      async save() {
+        try {
+          const id = requireId(this.idInput.value.trim(), "문서 ID");
+          const data = tryParseJSON(this.jsonInput.value);
+          await setDoc(doc(this.baseCollection(), id), data);
+          setStatus(this.statusId, `저장 완료: ${id}`);
+          this.loadTable();
+        } catch (error) {
+          console.error(error);
+          setStatus(this.statusId, error.message);
+        }
+      }
+
+      async load() {
+        try {
+          const id = requireId(this.idInput.value.trim(), "문서 ID");
+          const snap = await getDoc(doc(this.baseCollection(), id));
+          if (!snap.exists()) {
+            setStatus(this.statusId, "문서를 찾을 수 없습니다.");
+            return;
+          }
+          this.jsonInput.value = JSON.stringify(snap.data(), null, 2);
+          setStatus(this.statusId, `불러오기 완료: ${id}`);
+        } catch (error) {
+          console.error(error);
+          setStatus(this.statusId, error.message);
+        }
+      }
+
+      async delete() {
+        try {
+          const id = requireId(this.idInput.value.trim(), "문서 ID");
+          await deleteDoc(doc(this.baseCollection(), id));
+          setStatus(this.statusId, `삭제 완료: ${id}`);
+          this.loadTable();
+        } catch (error) {
+          console.error(error);
+          setStatus(this.statusId, error.message);
+        }
+      }
+
+      async loadTable() {
+        try {
+          const rows = [];
+          const snap = await getDocs(this.baseCollection());
+          snap.forEach((docSnap) => {
+            const data = docSnap.data();
+            const summaryCells = this.columns.map((key) => {
+              if (key === "position" && data.position) {
+                return `(${data.position.x ?? "-"}, ${data.position.y ?? "-"})`;
+              }
+              if (key === "unlockedZones" && Array.isArray(data.unlockedZones)) {
+                return data.unlockedZones.length;
+              }
+              if (key.includes("/")) {
+                const [parent, child] = key.split("/");
+                return data[parent]?.[child] ?? "-";
+              }
+              return data[key] ?? "-";
+            });
+            rows.push([docSnap.id, ...summaryCells]);
+          });
+          renderTableBody(this.tableId, rows);
+          setStatus(this.statusId, `목록 ${rows.length}건 로드 완료`);
+        } catch (error) {
+          console.error(error);
+          setStatus(this.statusId, "목록을 불러오지 못했습니다. uid/보안 규칙을 확인하세요.");
+        }
+      }
+    }
+
+    async function initialize() {
+      try {
+        const app = initializeApp(await getFirebaseConfig());
+        const db = getFirestore(app);
+        new DefManager(db);
+        new UserSubcollectionManager(db, {
+          collectionName: "inventory",
+          userInputId: "inventory-user",
+          idInputId: "inventory-id",
+          jsonInputId: "inventory-json",
+          statusId: "inventory-status",
+          tableId: "inventory-table",
+          resetBtn: "inventory-reset",
+          saveBtn: "inventory-save",
+          loadBtn: "inventory-load",
+          deleteBtn: "inventory-delete",
+          reloadBtn: "inventory-reload-table",
+          sample: INVENTORY_SAMPLE,
+          columns: ["itemDefId", "quantity"],
+        });
+        new UserSubcollectionManager(db, {
+          collectionName: "islands",
+          userInputId: "island-user",
+          idInputId: "island-id",
+          jsonInputId: "island-json",
+          statusId: "island-status",
+          tableId: "island-table",
+          resetBtn: "island-reset",
+          saveBtn: "island-save",
+          loadBtn: "island-load",
+          deleteBtn: "island-delete",
+          reloadBtn: "island-reload-table",
+          sample: ISLAND_SAMPLE,
+          columns: ["islandDefId", "level", "unlockedZones"],
+        });
+        new UserSubcollectionManager(db, {
+          collectionName: "worldObjects",
+          userInputId: "world-user",
+          idInputId: "world-id",
+          jsonInputId: "world-json",
+          statusId: "world-status",
+          tableId: "world-table",
+          resetBtn: "world-reset",
+          saveBtn: "world-save",
+          loadBtn: "world-load",
+          deleteBtn: "world-delete",
+          reloadBtn: "world-reload-table",
+          sample: WORLD_OBJECT_SAMPLE,
+          columns: ["type", "defId", "level", "position"],
+        });
+      } catch (error) {
+        console.error(error);
+        setStatus("def-status", "Firestore 초기화에 실패했습니다. firebase-config.js를 확인하세요.");
+        setStatus("inventory-status", "Firestore 초기화에 실패했습니다.");
+        setStatus("island-status", "Firestore 초기화에 실패했습니다.");
+        setStatus("world-status", "Firestore 초기화에 실패했습니다.");
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
